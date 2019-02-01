@@ -26,7 +26,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     // Perform application initialization:
 	Parthenos win(szClass);
-	if (!win.Create(hInstance, szTitle, WS_OVERLAPPEDWINDOW, 0, CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS))
+	if (!win.Create(hInstance,
+					szTitle, 
+					CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS,
+					IDI_PARTHENOS,
+					IDI_SMALL,
+					IDC_PARTHENOS,
+					300,200,1000,600
+	))
 	{
 		return -1;
 	}
@@ -53,8 +60,7 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg)
 	{
-	case WM_CREATE:
-	{
+	case WM_CREATE: {
 		hCursor = LoadCursor(NULL, IDC_ARROW);
 
 		// Create a Direct2D factory
@@ -113,6 +119,14 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		}
 		return 0;
 	}
+
+	//case WM_CLOSE: {
+	//	if (MessageBox(m_hwnd, L"Really quit?", L"Parthenos", MB_OKCANCEL) == IDOK)
+	//	{
+	//		::DestroyWindow(m_hwnd);
+	//	}
+	//	return 0;
+	//}
 	case WM_DESTROY:
 		DiscardGraphicsResources();
 		SafeRelease(&pFactory);

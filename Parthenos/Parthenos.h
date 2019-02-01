@@ -2,10 +2,10 @@
 
 #include "stdafx.h"
 #include "resource.h"
-#include "basewin.h"
+#include "BorderlessWindow.h"
 
 
-class Parthenos : public BaseWindow<Parthenos>
+class Parthenos : public BorderlessWindow<Parthenos>
 {
 	// Variables 
 
@@ -32,12 +32,12 @@ class Parthenos : public BaseWindow<Parthenos>
 
 public:
 
-	Parthenos() : pFactory(NULL), pRenderTarget(NULL), pBrush(NULL),
+	Parthenos() : BorderlessWindow(), pFactory(NULL), pRenderTarget(NULL), pBrush(NULL),
 		pDWriteFactory(NULL), pTextFormat(NULL),
 		ptMouseStart(D2D1::Point2F()), hCursor(NULL)
 	{}
 
-	Parthenos(PCWSTR szClassName) : BaseWindow(szClassName), pFactory(NULL), pRenderTarget(NULL), pBrush(NULL),
+	Parthenos(PCWSTR szClassName) : BorderlessWindow(szClassName), pFactory(NULL), pRenderTarget(NULL), pBrush(NULL),
 		pDWriteFactory(NULL), pTextFormat(NULL),
 		ptMouseStart(D2D1::Point2F()), hCursor(NULL)
 	{}

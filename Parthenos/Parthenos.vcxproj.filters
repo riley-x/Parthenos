@@ -27,10 +27,13 @@
     <ClInclude Include="utilities.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="basewin.h">
+    <ClInclude Include="Parthenos.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Parthenos.h">
+    <ClInclude Include="BorderlessWindow.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BaseWindow.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -39,9 +42,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Parthenos.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="basewin.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

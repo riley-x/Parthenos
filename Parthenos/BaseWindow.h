@@ -1,7 +1,6 @@
 #pragma once
 
 #include "stdafx.h"
-#include "Resource.h"
 
 #define MAX_LOADSTRING 100
 
@@ -11,6 +10,8 @@ class BaseWindow
 public:
 	BaseWindow() : m_wsClassName(L"BASE WINDOW"), m_hwnd(NULL), m_hInstance(NULL) { }
 	BaseWindow(PCWSTR pClassName) : m_wsClassName(pClassName), m_hwnd(NULL), m_hInstance(NULL) { }
+
+	HWND Window() const { return m_hwnd; }
 
 	static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
@@ -45,6 +46,9 @@ public:
 		DWORD dwStyle,
 		DWORD dwExStyle = 0,
 		UINT classStyle = CS_HREDRAW | CS_VREDRAW,
+		int hIcon = 0,
+		int hIconSm = 0,
+		int lpszMenuName = 0,
 		int x = CW_USEDEFAULT,
 		int y = CW_USEDEFAULT,
 		int nWidth = CW_USEDEFAULT,
@@ -61,12 +65,12 @@ public:
 		wcex.cbClsExtra = 0;
 		wcex.cbWndExtra = 0;
 		wcex.hInstance = hInstance;
-		wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_PARTHENOS)); //TODO add arguments
 		wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
 		wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
-		wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_PARTHENOS);
 		wcex.lpszClassName = ClassName();
-		wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
+		if (lpszMenuName) wcex.lpszMenuName = MAKEINTRESOURCEW(lpszMenuName);
+		if (hIcon) wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(hIcon));
+		if (hIconSm) wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(hIconSm));
 
 		RegisterClassExW(&wcex);
 
@@ -78,10 +82,6 @@ public:
 
 		return (m_hwnd ? TRUE : FALSE);
 	}
-
-	HWND Window() const { return m_hwnd; }
-
-
 
 protected:
 
