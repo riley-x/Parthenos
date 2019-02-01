@@ -28,7 +28,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	Parthenos win(szClass);
 	if (!win.Create(hInstance,
 					szTitle, 
-					CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS,
+					CS_DBLCLKS,
 					IDI_PARTHENOS,
 					IDI_SMALL,
 					IDC_PARTHENOS,
@@ -58,6 +58,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+	LRESULT ret;
+	if (BorderlessWindow<Parthenos>::handle_message(uMsg, wParam, lParam, ret)) {
+		return ret;
+	}
+
 	switch (uMsg)
 	{
 	case WM_CREATE: {
@@ -83,42 +88,42 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		}
 		return 0;
 	}
-	case WM_COMMAND: // Command items from application menu; accelerators
-	{
-		int wmId = LOWORD(wParam);
-		// Parse the menu selections:
-		switch (wmId)
-		{
-		case IDM_ABOUT:
-			DialogBox(m_hInstance, MAKEINTRESOURCE(IDD_ABOUTBOX), m_hwnd, About);
-			break;
-		case IDM_EXIT:
-			DestroyWindow(m_hwnd);
-			break;
-			/*
-		case ID_DRAW_MODE:
-			SetMode(DrawMode);
-			break;
+	//case WM_COMMAND: // Command items from application menu; accelerators
+	//{
+	//	int wmId = LOWORD(wParam);
+	//	// Parse the menu selections:
+	//	switch (wmId)
+	//	{
+	//	case IDM_ABOUT:
+	//		DialogBox(m_hInstance, MAKEINTRESOURCE(IDD_ABOUTBOX), m_hwnd, About);
+	//		break;
+	//	case IDM_EXIT:
+	//		DestroyWindow(m_hwnd);
+	//		break;
+	//		/*
+	//	case ID_DRAW_MODE:
+	//		SetMode(DrawMode);
+	//		break;
 
-		case ID_SELECT_MODE:
-			SetMode(SelectMode);
-			break;
-		case ID_TOGGLE_MODE:
-			if (mode == DrawMode)
-			{
-				SetMode(SelectMode);
-			}
-			else
-			{
-				SetMode(DrawMode);
-			}
-			break;
-			*/
-		default:
-			return DefWindowProc(m_hwnd, uMsg, wParam, lParam);
-		}
-		return 0;
-	}
+	//	case ID_SELECT_MODE:
+	//		SetMode(SelectMode);
+	//		break;
+	//	case ID_TOGGLE_MODE:
+	//		if (mode == DrawMode)
+	//		{
+	//			SetMode(SelectMode);
+	//		}
+	//		else
+	//		{
+	//			SetMode(DrawMode);
+	//		}
+	//		break;
+	//		*/
+	//	default:
+	//		return DefWindowProc(m_hwnd, uMsg, wParam, lParam);
+	//	}
+	//	return 0;
+	//}
 
 	//case WM_CLOSE: {
 	//	if (MessageBox(m_hwnd, L"Really quit?", L"Parthenos", MB_OKCANCEL) == IDOK)
@@ -136,25 +141,25 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_PAINT:
 		OnPaint();
 		return 0;
-		/*
-	case WM_SIZE:
-		Resize();
-		return 0;
-	case WM_TIMER:
-		if (wParam == HALF_SECOND_TIMER) InvalidateRect(m_hwnd, NULL, FALSE);   // invalidate whole window
-		return 0;
-	case WM_LBUTTONDOWN:
-		OnLButtonDown(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), (DWORD)wParam);
-		return 0;
-	case WM_LBUTTONUP:
-		OnLButtonUp();
-		return 0;
-	case WM_MOUSEMOVE:
-		OnMouseMove(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), (DWORD)wParam);
-		return 0;
-	case WM_LBUTTONDBLCLK:
-		return 0;
-		*/
+
+	//case WM_SIZE:
+	//	Resize();
+	//	return 0;
+	//case WM_TIMER:
+	//	if (wParam == HALF_SECOND_TIMER) InvalidateRect(m_hwnd, NULL, FALSE);   // invalidate whole window
+	//	return 0;
+	//case WM_LBUTTONDOWN:
+	//	OnLButtonDown(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), (DWORD)wParam);
+	//	return 0;
+	//case WM_LBUTTONUP:
+	//	OnLButtonUp();
+	//	return 0;
+	//case WM_MOUSEMOVE:
+	//	OnMouseMove(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), (DWORD)wParam);
+	//	return 0;
+	//case WM_LBUTTONDBLCLK:
+	//	return 0;
+
 	case WM_SETCURSOR:
 		if (LOWORD(lParam) == HTCLIENT)
 		{

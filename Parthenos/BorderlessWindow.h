@@ -30,7 +30,6 @@ public:
 		HMENU hMenu = 0
 	)
 	{
-		OutputDebugString(L"Hello\n");
 		BOOL out = BaseWindow<DERIVED_TYPE>::Create(
 			hInstance,
 			lpWindowName,
@@ -39,7 +38,7 @@ public:
 			classStyle,
 			hIcon,
 			hIconSm,
-			lpszMenuName,
+			0,
 			x,
 			y,
 			nWidth,
@@ -47,7 +46,12 @@ public:
 			hWndParent,
 			hMenu
 		);
-		BorderlessWindow<DERIVED_TYPE>::set_shadow();
+
+		static const MARGINS shadow_state{ 1,1,1,1 };
+		::DwmExtendFrameIntoClientArea(this->m_hwnd, &shadow_state);
+		// redraw frame
+		::SetWindowPos(this->m_hwnd, nullptr, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE);
+
 		return out;
 	}
 
@@ -104,70 +108,54 @@ public:
 		};
 
 		const auto result =
-			left * (cursor.x < (window.left + border.x)) |
-			right * (cursor.x >= (window.right - border.x)) |
-			top * (cursor.y < (window.top + border.y)) |
-			bottom * (cursor.y >= (window.bottom - border.y));
+			left    * (cursor.x <  (window.left   + border.x)) |
+			right   * (cursor.x >= (window.right  - border.x)) |
+			top     * (cursor.y <  (window.top    + border.y)) |
+			bottom  * (cursor.y >= (window.bottom - border.y));
 
 		switch (result) {
-		case left: return borderless_resize ? HTLEFT : drag;
-		case right: return borderless_resize ? HTRIGHT : drag;
-		case top: return borderless_resize ? HTTOP : drag;
-		case bottom: return borderless_resize ? HTBOTTOM : drag;
-		case top | left: return borderless_resize ? HTTOPLEFT : drag;
-		case top | right: return borderless_resize ? HTTOPRIGHT : drag;
-		case bottom | left: return borderless_resize ? HTBOTTOMLEFT : drag;
-		case bottom | right: return borderless_resize ? HTBOTTOMRIGHT : drag;
-		case client: return drag;
-		default: return HTNOWHERE;
+			case left          : return borderless_resize ? HTLEFT        : drag;
+			case right         : return borderless_resize ? HTRIGHT       : drag;
+			case top           : return borderless_resize ? HTTOP         : drag;
+			case bottom        : return borderless_resize ? HTBOTTOM      : drag;
+			case top | left    : return borderless_resize ? HTTOPLEFT     : drag;
+			case top | right   : return borderless_resize ? HTTOPRIGHT    : drag;
+			case bottom | left : return borderless_resize ? HTBOTTOMLEFT  : drag;
+			case bottom | right: return borderless_resize ? HTBOTTOMRIGHT : drag;
+			case client        : return drag;
+			default            : return HTNOWHERE;
 		}
-	}
-
-	auto set_shadow() -> void {
-		DWORD old_style = ::GetWindowLongPtrW(this->m_hwnd, GWL_STYLE);
-
-		if (aero_borderless_style != old_style) {
-			::SetWindowLongPtrW(this->m_hwnd, GWL_STYLE, static_cast<LONG>(aero_borderless_style));
-
-			static const MARGINS shadow_state{ 1,1,1,1 };
-			::DwmExtendFrameIntoClientArea(this->m_hwnd, &shadow_state);
-
-			// redraw frame
-			::SetWindowPos(this->m_hwnd, nullptr, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE);
-			::ShowWindow(this->m_hwnd, SW_SHOW);
-		}
-	
 	}
 
 	/* Returns 'true' if message is handled */
-	auto handle_message(UINT msg, WPARAM wparam, LPARAM lparam) -> bool {
+	auto handle_message(UINT msg, WPARAM wparam, LPARAM lparam, LRESULT & ret) -> bool {
+		ret = 0;
 		switch (msg) {
 		case WM_NCCALCSIZE: {
 			if (wparam == TRUE) {
 				auto& params = *reinterpret_cast<NCCALCSIZE_PARAMS*>(lparam);
 				adjust_maximized_client_rect(params.rgrc[0]);
-				return 0;
+				return true;
 			}
-			break;
+			else {
+				return false;
+			}
 		}
 		case WM_NCHITTEST: {
 			// When we have no border or title bar, we need to perform our
 			// own hit testing to allow resizing and moving.
-			return hit_test(POINT{
+			ret = hit_test(POINT{
 				GET_X_LPARAM(lparam),
 				GET_Y_LPARAM(lparam)
 				});
-			break;
+			return true;
 		}
 		default:
 			return false;
 		}
-		return true;
 	}
 
 protected:
 	bool borderless_resize = true; // should the window allow resizing by dragging the borders while borderless
-	bool borderless_drag = true; // should the window allow moving my dragging the client area
-	bool borderless_shadow = true; // should the window display a native aero shadow while borderless
-
+	bool borderless_drag   = true; // should the window allow moving my dragging the client area
 };
