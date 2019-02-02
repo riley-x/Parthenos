@@ -1,27 +1,22 @@
 #pragma once
 #include "stdafx.h"
-#include "BaseWindow.h"
+#include "D2Objects.h"
 
-class Parthenos;
-
-class TitleBar : public BaseWindow<TitleBar> 
+class TitleBar
 {
 public:
-	static DWORD const title_bar_style = WS_CHILD; // Consider WS_CLIPSIBLINGS
+	TitleBar()
+	{
+		m_cRect.left = 0;
+		m_cRect.top = 0;
+		m_cRect.right = 0;
+		m_cRect.bottom = 0;
+	}
 
-	TitleBar(HWND hwnd_parent, HINSTANCE hInstance, Parthenos *parent);
-
-	// Call TitleBar::Resize() after Create() 
-	BOOL Create(int childID);
-	LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);
+	void Paint(D2Objects const & d2);
 	void Resize(RECT pRect);
 
-	HWND GetHWnd() { return m_hwnd; }
-
 private:
-	HWND		m_hWndParent;
-	int			m_ID;
-	Parthenos*	m_parent; // TODO: template this
+	RECT		m_cRect; // pixels in main window client coordinates
 
-	LRESULT OnPaint();
 };

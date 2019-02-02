@@ -155,6 +155,7 @@
   <ItemGroup>
     <ClInclude Include="BaseWindow.h" />
     <ClInclude Include="BorderlessWindow.h" />
+    <ClInclude Include="D2Objects.h" />
     <ClInclude Include="Parthenos.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
@@ -163,6 +164,7 @@
     <ClInclude Include="utilities.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="D2Objects.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Parthenos.cpp" />
     <ClCompile Include="stdafx.cpp">

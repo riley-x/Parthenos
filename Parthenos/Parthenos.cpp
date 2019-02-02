@@ -91,9 +91,8 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	//	return 0;
 	//}
 	case WM_DESTROY:
-		DiscardGraphicsResources();
-		SafeRelease(&pFactory);
-		SafeRelease(&pDWriteFactory);
+		m_d2.DiscardGraphicsResources();
+		m_d2.DiscardFactories();
 		PostQuitMessage(0);
 		return 0;
 	case WM_PAINT:
@@ -128,19 +127,18 @@ LRESULT Parthenos::OnNCHitTest(int x, int y) {
 		return HTNOWHERE;
 	}
 	return 0;
-	// Header should be another window for simplicity...
 }
 
 LRESULT Parthenos::OnSize()
 {
-	if (pRenderTarget != NULL)
+	if (m_d2.pRenderTarget != NULL)
 	{
 		RECT rc;
 		GetClientRect(m_hwnd, &rc);
 
 		D2D1_SIZE_U size = D2D1::SizeU(rc.right, rc.bottom);
-		pRenderTarget->Resize(size);
-		m_titleBar->Resize(rc);
+		m_d2.pRenderTarget->Resize(size);
+		m_titleBar.Resize(rc);
 
 		InvalidateRect(m_hwnd, NULL, FALSE);
 	}
@@ -150,70 +148,40 @@ LRESULT Parthenos::OnSize()
 LRESULT Parthenos::OnCreate()
 {
 	hCursor = LoadCursor(NULL, IDC_ARROW);
+	HRESULT hr = m_d2.CreateFactories();
 
-	// Create a Direct2D factory
-	HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &pFactory);
-	if (SUCCEEDED(hr))
-	{
-		DPIScale::Initialize(pFactory);
-
-		// Create a DirectWrite factory.
-		hr = DWriteCreateFactory(
-			DWRITE_FACTORY_TYPE_SHARED,
-			__uuidof(pDWriteFactory),
-			reinterpret_cast<IUnknown **>(&pDWriteFactory)
-		);
-	}
-	if (SUCCEEDED(hr))
-	{
-
-		m_titleBar = new TitleBar(m_hwnd, m_hInstance, this);
-		if (!m_titleBar || !m_titleBar->Create(137)) {
-			throw Error("titleBar create failed");
-		}
-		ShowWindow(m_titleBar->GetHWnd(), SW_SHOW);
-
-		HWND hwndButton = CreateWindow(
-			L"BUTTON",  // Predefined class; Unicode assumed 
-			L"OK",      // Button text 
-			WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,  // Styles 
-			100,         // x position 
-			100,         // y position 
-			30,        // Button width
-			15,        // Button height
-			m_hwnd,     // Parent window
-			NULL,       // No menu.
-			(HINSTANCE)GetWindowLong(m_hwnd, GWL_HINSTANCE),
-			NULL);      // Pointer not needed.
-
-	}
+	//if (SUCCEEDED(hr))
 	if (FAILED(hr))
 	{
+		throw Error("D2 factory creation failed!");
 		return -1;  // Fail CreateWindowEx.
 	}
 	return 0;
 }
 
+void Parthenos::PreShow()
+{
+	RECT rc;
+	GetClientRect(m_hwnd, &rc);
+	m_titleBar.Resize(rc);
+}
+
 LRESULT Parthenos::OnPaint()
 {
-	HRESULT hr = CreateGraphicsResources();
+	HRESULT hr = m_d2.CreateGraphicsResources(m_hwnd);
 	if (SUCCEEDED(hr))
 	{
 		PAINTSTRUCT ps;
 		BeginPaint(m_hwnd, &ps);
-		pRenderTarget->BeginDraw();
+		m_d2.pRenderTarget->BeginDraw();
 
-		D2D1_SIZE_F size = pRenderTarget->GetSize();
-		pRenderTarget->Clear(D2D1::ColorF(0.2f, 0.2f, 0.2f, 1.0f));
+		m_d2.pRenderTarget->Clear(D2D1::ColorF(0.2f, 0.2f, 0.2f, 1.0f));
+
+		m_titleBar.Paint(m_d2);
+
+		//D2D1_SIZE_F size = m_d2.pRenderTarget->GetSize();
 		//const float x = size.width;
 		//const float y = size.height;
-		//pBrush->SetColor(D2D1::ColorF(0.5f, 0, 0, 1.0f));
-		//pRenderTarget->FillRectangle(D2D1::RectF(
-		//	0.0f,
-		//	0.0f,
-		//	size.width,
-		//	30.0f
-		//), pBrush);
 
 
 		//D2D1_RECT_F layoutRect = D2D1::RectF(0.f, 0.f, 200.f, 200.f);
@@ -221,7 +189,7 @@ LRESULT Parthenos::OnPaint()
 		//swprintf_s(msg, L"DPI: %3.1f %3.1f\n\n\n", DPIScale::dpiX, DPIScale::dpiY);
 		//OutputDebugString(msg);
 		////PCWSTR msg = L"Hellow World";
-		//pRenderTarget->DrawText(
+		//m_d2.pRenderTarget->DrawText(
 		//	msg,
 		//	wcslen(msg),
 		//	pTextFormat,
@@ -229,10 +197,10 @@ LRESULT Parthenos::OnPaint()
 		//	pBrush
 		//);
 
-		hr = pRenderTarget->EndDraw();
+		hr = m_d2.pRenderTarget->EndDraw();
 		if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
 		{
-			DiscardGraphicsResources();
+			m_d2.DiscardGraphicsResources();
 		}
 		EndPaint(m_hwnd, &ps);
 	}
@@ -248,50 +216,6 @@ LRESULT Parthenos::OnMouseMove(int pixelX, int pixelY, DWORD flags)
 	::SetCursor(hCursor);
 
 	return 0;
-}
-
-HRESULT Parthenos::CreateGraphicsResources()
-{
-	HRESULT hr = S_OK;
-	if (pRenderTarget == NULL)
-	{
-		RECT rc;
-		GetClientRect(m_hwnd, &rc);
-
-		D2D1_SIZE_U size = D2D1::SizeU(rc.right, rc.bottom);
-
-		hr = pFactory->CreateHwndRenderTarget(
-			D2D1::RenderTargetProperties(),
-			D2D1::HwndRenderTargetProperties(m_hwnd, size),
-			&pRenderTarget);
-		if (SUCCEEDED(hr))
-		{
-			hr = pDWriteFactory->CreateTextFormat(
-				L"Arial",
-				NULL,
-				DWRITE_FONT_WEIGHT_NORMAL,
-				DWRITE_FONT_STYLE_NORMAL,
-				DWRITE_FONT_STRETCH_NORMAL,
-				12.0f * 96.0f / 72.0f,
-				L"", //locale
-				&pTextFormat
-			);
-		}
-		if (SUCCEEDED(hr))
-		{
-			const D2D1_COLOR_F color = D2D1::ColorF(0.15f, 0.15f, 0.16f);
-			hr = pRenderTarget->CreateSolidColorBrush(color, &pBrush);
-		}
-
-	}
-	return hr;
-}
-
-void Parthenos::DiscardGraphicsResources()
-{
-	SafeRelease(&pRenderTarget);
-	SafeRelease(&pBrush);
-	SafeRelease(&pTextFormat);
 }
 
 

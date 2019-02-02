@@ -39,6 +39,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	{
 		return -1;
 	}
+	win.PreShow();
 	ShowWindow(win.Window(), nCmdShow);
 
 	HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_PARTHENOS));
