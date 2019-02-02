@@ -6,54 +6,26 @@
 
 #include <windowsx.h>
 
-// Forward declarations of functions included in this code module:
-INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
-
-// Main entry point
-int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
-                     _In_opt_ HINSTANCE hPrevInstance,
-                     _In_ LPWSTR    lpCmdLine,
-                     _In_ int       nCmdShow)
-{
-    UNREFERENCED_PARAMETER(hPrevInstance);
-    UNREFERENCED_PARAMETER(lpCmdLine);
-	
-	// Initialize strings from string table
-	WCHAR szTitle[MAX_LOADSTRING];            // the title bar text
-	WCHAR szClass[MAX_LOADSTRING];            // the window class name
-	LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING); // "Parthenos"
-	LoadStringW(hInstance, IDC_PARTHENOS, szClass, MAX_LOADSTRING); // "PARTHENOS"
-
-    // Perform application initialization:
-	Parthenos win(szClass);
-	if (!win.Create(hInstance,
-					szTitle, 
-					CS_DBLCLKS,
-					IDI_PARTHENOS,
-					IDI_SMALL,
-					IDC_PARTHENOS,
-					300,200,1000,600
-	))
+namespace {
+	// Message handler for about box.
+	INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	{
-		return -1;
+		UNREFERENCED_PARAMETER(lParam);
+		switch (message)
+		{
+		case WM_INITDIALOG:
+			return (INT_PTR)TRUE;
+
+		case WM_COMMAND:
+			if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
+			{
+				EndDialog(hDlg, LOWORD(wParam));
+				return (INT_PTR)TRUE;
+			}
+			break;
+		}
+		return (INT_PTR)FALSE;
 	}
-	ShowWindow(win.Window(), nCmdShow);
-
-    HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_PARTHENOS));
-
-    MSG msg;
-
-    // Main message loop:
-    while (GetMessage(&msg, nullptr, 0, 0))
-    {
-        if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
-        {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-    }
-
-    return (int) msg.wParam;
 }
 
 LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -142,9 +114,9 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		OnPaint();
 		return 0;
 
-	//case WM_SIZE:
-	//	Resize();
-	//	return 0;
+	case WM_SIZE:
+		Resize();
+		return 0;
 	//case WM_TIMER:
 	//	if (wParam == HALF_SECOND_TIMER) InvalidateRect(m_hwnd, NULL, FALSE);   // invalidate whole window
 	//	return 0;
@@ -171,25 +143,21 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return DefWindowProc(m_hwnd, uMsg, wParam, lParam);
 }
 
-// Message handler for about box.
-INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+void Parthenos::Resize()
 {
-	UNREFERENCED_PARAMETER(lParam);
-	switch (message)
+	if (pRenderTarget != NULL)
 	{
-	case WM_INITDIALOG:
-		return (INT_PTR)TRUE;
+		RECT rc;
+		GetClientRect(m_hwnd, &rc);
 
-	case WM_COMMAND:
-		if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
-		{
-			EndDialog(hDlg, LOWORD(wParam));
-			return (INT_PTR)TRUE;
-		}
-		break;
+		D2D1_SIZE_U size = D2D1::SizeU(rc.right, rc.bottom);
+
+		pRenderTarget->Resize(size);
+		InvalidateRect(m_hwnd, NULL, FALSE);
 	}
-	return (INT_PTR)FALSE;
 }
+
+
 
 HRESULT Parthenos::CreateGraphicsResources()
 {
@@ -245,7 +213,14 @@ void Parthenos::OnPaint()
 
 		pRenderTarget->BeginDraw();
 
-		pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::SkyBlue));
+		pRenderTarget->Clear(D2D1::ColorF(1.0f, 0.2f, 0.2f, 1.0f));
+		pRenderTarget->FillRectangle(D2D1::RectF(
+			5.0f,
+			5.0f,
+			105.0f,
+			105.0f
+		), pBrush);
+
 		//for (auto it = ellipses.rbegin(); it != ellipses.rend(); it++)
 		//{
 		//	pBrush->SetColor((*it)->color);

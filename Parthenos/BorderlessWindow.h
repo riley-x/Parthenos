@@ -15,37 +15,15 @@ public:
 	BorderlessWindow() : BaseWindow<DERIVED_TYPE>::BaseWindow() { }
 	BorderlessWindow(PCWSTR szClassName) : BaseWindow<DERIVED_TYPE>::BaseWindow(szClassName) { }
 
-	BOOL Create(
-		HINSTANCE hInstance,
-		PCWSTR lpWindowName,
-		UINT classStyle = CS_HREDRAW | CS_VREDRAW,
-		int hIcon = 0,
-		int hIconSm = 0,
-		int lpszMenuName = 0,
-		int x = CW_USEDEFAULT,
-		int y = CW_USEDEFAULT,
-		int nWidth = CW_USEDEFAULT,
-		int nHeight = CW_USEDEFAULT,
-		HWND hWndParent = 0,
-		HMENU hMenu = 0
-	)
+	BOOL Create(WndCreateArgs args)
 	{
-		BOOL out = BaseWindow<DERIVED_TYPE>::Create(
-			hInstance,
-			lpWindowName,
-			aero_borderless_style,
-			0,
-			classStyle,
-			hIcon,
-			hIconSm,
-			0,
-			x,
-			y,
-			nWidth,
-			nHeight,
-			hWndParent,
-			hMenu
-		);
+		args.dwStyle = aero_borderless_style;
+		if (args.x == CW_USEDEFAULT) args.x = 300;
+		if (args.y == CW_USEDEFAULT) args.y = 200;
+		if (args.nWidth  == CW_USEDEFAULT) args.nWidth  = 800;
+		if (args.nHeight == CW_USEDEFAULT) args.nHeight = 600;
+
+		BOOL out = BaseWindow<DERIVED_TYPE>::Create(args);
 
 		static const MARGINS shadow_state{ 1,1,1,1 };
 		::DwmExtendFrameIntoClientArea(this->m_hwnd, &shadow_state);

@@ -2,7 +2,28 @@
 
 #include "stdafx.h"
 
-#define MAX_LOADSTRING 100
+struct WndCreateArgs {
+	// WNDCLASSEX parameters
+
+	HINSTANCE hInstance;
+	UINT classStyle = CS_HREDRAW | CS_VREDRAW;
+	HBRUSH hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
+	LPCWSTR lpszMenuName = 0;
+	HICON hIcon = 0;
+	HICON hIconSm = 0;
+
+	// CreateWindowEx arguments
+
+	PCWSTR lpWindowName = L"BaseWindow";
+	DWORD dwStyle = WS_OVERLAPPEDWINDOW;
+	DWORD dwExStyle = 0;
+	int x = CW_USEDEFAULT;
+	int y = CW_USEDEFAULT;
+	int nWidth = CW_USEDEFAULT;
+	int nHeight = CW_USEDEFAULT;
+	HWND hWndParent = 0;
+	HMENU hMenu = 0;
+};
 
 template <class DERIVED_TYPE>
 class BaseWindow
@@ -40,45 +61,30 @@ public:
 		}
 	}
 
-	BOOL Create(
-		HINSTANCE hInstance,
-		PCWSTR lpWindowName,
-		DWORD dwStyle,
-		DWORD dwExStyle = 0,
-		UINT classStyle = CS_HREDRAW | CS_VREDRAW,
-		int hIcon = 0,
-		int hIconSm = 0,
-		int lpszMenuName = 0,
-		int x = CW_USEDEFAULT,
-		int y = CW_USEDEFAULT,
-		int nWidth = CW_USEDEFAULT,
-		int nHeight = CW_USEDEFAULT,
-		HWND hWndParent = 0,
-		HMENU hMenu = 0
-	)
+	BOOL Create(WndCreateArgs & args)
 	{
 		WNDCLASSEXW wcex{};
 
 		wcex.cbSize = sizeof(WNDCLASSEX);
-		wcex.style = classStyle;
+		wcex.style = args.classStyle;
 		wcex.lpfnWndProc = DERIVED_TYPE::WindowProc;
 		wcex.cbClsExtra = 0;
 		wcex.cbWndExtra = 0;
-		wcex.hInstance = hInstance;
+		wcex.hInstance = args.hInstance;
 		wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
-		wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
+		wcex.hbrBackground = args.hbrBackground;
 		wcex.lpszClassName = ClassName();
-		if (lpszMenuName) wcex.lpszMenuName = MAKEINTRESOURCEW(lpszMenuName);
-		if (hIcon) wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(hIcon));
-		if (hIconSm) wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(hIconSm));
+		wcex.lpszMenuName = args.lpszMenuName;
+		wcex.hIcon = args.hIcon;
+		wcex.hIconSm = args.hIconSm;
 
 		RegisterClassExW(&wcex);
 
 		m_hwnd = CreateWindowEx(
-			dwExStyle, ClassName(), lpWindowName, dwStyle, x, y,
-			nWidth, nHeight, hWndParent, hMenu, hInstance, this
+			args.dwExStyle, ClassName(), args.lpWindowName, args.dwStyle, args.x, args.y,
+			args.nWidth, args.nHeight, args.hWndParent, args.hMenu, args.hInstance, this
 		);
-		m_hInstance = hInstance;
+		m_hInstance = args.hInstance;
 
 		return (m_hwnd ? TRUE : FALSE);
 	}

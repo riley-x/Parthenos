@@ -24,6 +24,7 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	void    DiscardGraphicsResources();
 
 	void    OnPaint();
+	void	Resize();
 	//void	OnLButtonDown(int pixelX, int pixelY, DWORD flags);
 	//void	OnLButtonUp();
 	//void	OnMouseMove(int pixelX, int pixelY, DWORD flags);
@@ -42,6 +43,5 @@ public:
 		ptMouseStart(D2D1::Point2F()), hCursor(NULL)
 	{}
 
-	//PCWSTR  ClassName() const { return L"Parthenos"; }
 	LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);
 };
