@@ -9,15 +9,17 @@ template <class T> void SafeRelease(T **ppT)
 	}
 }
 
+std::system_error Error(const std::string & msg);
+void OutputMessage(const std::wstring format, ...);
+
 class DPIScale
 {
 	static float scaleX;
 	static float scaleY;
-
-public:
-
 	static float dpiX;
 	static float dpiY;
+
+public:
 
 	static void Initialize(ID2D1Factory *pFactory)
 	{
@@ -44,9 +46,17 @@ public:
 		return static_cast<float>(y) / scaleY;
 	}
 
-};
+	template <typename T>
+	static int DipsToPixelsX(T x)
+	{
+		return static_cast<int>(static_cast<float>(x) * scaleX);
+	}
 
-float DPIScale::scaleX = 1.0f;
-float DPIScale::scaleY = 1.0f;
-float DPIScale::dpiX = 96.0f;
-float DPIScale::dpiY = 96.0f;
+	template <typename T>
+	static int DipsToPixelsY(T y)
+	{
+		return static_cast<int>(static_cast<float>(y) * scaleY);
+	}
+
+
+};

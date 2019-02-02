@@ -1,5 +1,7 @@
 #include "stdafx.h"
 #include "Parthenos.h"
+#include "utilities.h"
+
 
 // Main entry point
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -22,12 +24,17 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 	WndCreateArgs args;
 	args.hInstance = hInstance;
-	args.lpWindowName = szTitle;
 	args.classStyle = CS_DBLCLKS;
-	args.lpszMenuName = MAKEINTRESOURCE(IDC_PARTHENOS);
+	//args.lpszMenuName = MAKEINTRESOURCE(IDC_PARTHENOS);
 	args.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_PARTHENOS));
 	args.hIconSm = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SMALL));
+	args.lpWindowName = szTitle;
+	args.x = 50;
+	args.y = 50;
+	args.nWidth = 1800;
+	args.nHeight = 900;
 
+	win.Register(args);
 	if (!win.Create(args))
 	{
 		return -1;

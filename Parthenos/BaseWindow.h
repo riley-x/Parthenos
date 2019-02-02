@@ -2,17 +2,20 @@
 
 #include "stdafx.h"
 
+// Argument struct to pass to BaseWindow::Register/Create
 struct WndCreateArgs {
-	// WNDCLASSEX parameters
-
 	HINSTANCE hInstance;
+
+	// WNDCLASSEX only
+
 	UINT classStyle = CS_HREDRAW | CS_VREDRAW;
+	HCURSOR hCursor = 0;
 	HBRUSH hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
 	LPCWSTR lpszMenuName = 0;
 	HICON hIcon = 0;
 	HICON hIconSm = 0;
 
-	// CreateWindowEx arguments
+	// CreateWindowEx only
 
 	PCWSTR lpWindowName = L"BaseWindow";
 	DWORD dwStyle = WS_OVERLAPPEDWINDOW;
@@ -61,7 +64,7 @@ public:
 		}
 	}
 
-	BOOL Create(WndCreateArgs & args)
+	BOOL Register(WndCreateArgs & args)
 	{
 		WNDCLASSEXW wcex{};
 
@@ -71,20 +74,24 @@ public:
 		wcex.cbClsExtra = 0;
 		wcex.cbWndExtra = 0;
 		wcex.hInstance = args.hInstance;
-		wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
+		wcex.hCursor = args.hCursor;
 		wcex.hbrBackground = args.hbrBackground;
 		wcex.lpszClassName = ClassName();
 		wcex.lpszMenuName = args.lpszMenuName;
 		wcex.hIcon = args.hIcon;
 		wcex.hIconSm = args.hIconSm;
 
-		RegisterClassExW(&wcex);
+		m_hInstance = args.hInstance;
+		ATOM atom = RegisterClassExW(&wcex);
 
+		return (atom ? TRUE : FALSE);
+	}
+
+	BOOL Create(WndCreateArgs & args) {
 		m_hwnd = CreateWindowEx(
 			args.dwExStyle, ClassName(), args.lpWindowName, args.dwStyle, args.x, args.y,
 			args.nWidth, args.nHeight, args.hWndParent, args.hMenu, args.hInstance, this
 		);
-		m_hInstance = args.hInstance;
 
 		return (m_hwnd ? TRUE : FALSE);
 	}

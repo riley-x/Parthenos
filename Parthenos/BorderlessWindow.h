@@ -14,7 +14,7 @@ public:
 
 	BorderlessWindow() : BaseWindow<DERIVED_TYPE>::BaseWindow() { }
 	BorderlessWindow(PCWSTR szClassName) : BaseWindow<DERIVED_TYPE>::BaseWindow(szClassName) { }
-
+	
 	BOOL Create(WndCreateArgs args)
 	{
 		args.dwStyle = aero_borderless_style;
@@ -33,6 +33,40 @@ public:
 		return out;
 	}
 
+
+	/* Returns 'true' if message is handled */
+	auto handle_message(UINT msg, WPARAM wparam, LPARAM lparam, LRESULT & ret) -> bool {
+		ret = 0;
+		switch (msg) {
+		case WM_NCCALCSIZE: {
+			if (wparam == TRUE) {
+				auto& params = *reinterpret_cast<NCCALCSIZE_PARAMS*>(lparam);
+				adjust_maximized_client_rect(params.rgrc[0]);
+				return true;
+			}
+			else {
+				return false;
+			}
+		}
+		case WM_NCHITTEST: {
+			// When we have no border or title bar, we need to perform our
+			// own hit testing to allow resizing and moving.
+			ret = hit_test(POINT{
+				GET_X_LPARAM(lparam),
+				GET_Y_LPARAM(lparam)
+				});
+			return true;
+		}
+		default:
+			return false;
+		}
+	}
+
+protected:
+	bool borderless_resize = true;  // should the window allow resizing by dragging the borders while borderless
+	bool borderless_drag   = false; // should the window allow moving my dragging the client area
+
+private:
 	/* Adjust client rect to not spill over monitor edges when maximized.
 	 * rect(in/out): in: proposed window rect, out: calculated client rect
 	 * Does nothing if the window is not maximized.
@@ -86,54 +120,23 @@ public:
 		};
 
 		const auto result =
-			left    * (cursor.x <  (window.left   + border.x)) |
-			right   * (cursor.x >= (window.right  - border.x)) |
-			top     * (cursor.y <  (window.top    + border.y)) |
-			bottom  * (cursor.y >= (window.bottom - border.y));
+			left * (cursor.x < (window.left + border.x)) |
+			right * (cursor.x >= (window.right - border.x)) |
+			top * (cursor.y < (window.top + border.y)) |
+			bottom * (cursor.y >= (window.bottom - border.y));
 
 		switch (result) {
-			case left          : return borderless_resize ? HTLEFT        : drag;
-			case right         : return borderless_resize ? HTRIGHT       : drag;
-			case top           : return borderless_resize ? HTTOP         : drag;
-			case bottom        : return borderless_resize ? HTBOTTOM      : drag;
-			case top | left    : return borderless_resize ? HTTOPLEFT     : drag;
-			case top | right   : return borderless_resize ? HTTOPRIGHT    : drag;
-			case bottom | left : return borderless_resize ? HTBOTTOMLEFT  : drag;
-			case bottom | right: return borderless_resize ? HTBOTTOMRIGHT : drag;
-			case client        : return drag;
-			default            : return HTNOWHERE;
+		case left: return borderless_resize ? HTLEFT : drag;
+		case right: return borderless_resize ? HTRIGHT : drag;
+		case top: return borderless_resize ? HTTOP : drag;
+		case bottom: return borderless_resize ? HTBOTTOM : drag;
+		case top | left: return borderless_resize ? HTTOPLEFT : drag;
+		case top | right: return borderless_resize ? HTTOPRIGHT : drag;
+		case bottom | left: return borderless_resize ? HTBOTTOMLEFT : drag;
+		case bottom | right: return borderless_resize ? HTBOTTOMRIGHT : drag;
+		case client: return drag;
+		default: return HTNOWHERE;
 		}
 	}
 
-	/* Returns 'true' if message is handled */
-	auto handle_message(UINT msg, WPARAM wparam, LPARAM lparam, LRESULT & ret) -> bool {
-		ret = 0;
-		switch (msg) {
-		case WM_NCCALCSIZE: {
-			if (wparam == TRUE) {
-				auto& params = *reinterpret_cast<NCCALCSIZE_PARAMS*>(lparam);
-				adjust_maximized_client_rect(params.rgrc[0]);
-				return true;
-			}
-			else {
-				return false;
-			}
-		}
-		case WM_NCHITTEST: {
-			// When we have no border or title bar, we need to perform our
-			// own hit testing to allow resizing and moving.
-			ret = hit_test(POINT{
-				GET_X_LPARAM(lparam),
-				GET_Y_LPARAM(lparam)
-				});
-			return true;
-		}
-		default:
-			return false;
-		}
-	}
-
-protected:
-	bool borderless_resize = true; // should the window allow resizing by dragging the borders while borderless
-	bool borderless_drag   = true; // should the window allow moving my dragging the client area
 };

@@ -3,8 +3,10 @@
 #include "stdafx.h"
 #include "Parthenos.h"
 #include "utilities.h"
+#include "TitleBar.h"
 
 #include <windowsx.h>
+
 
 namespace {
 	// Message handler for about box.
@@ -30,36 +32,20 @@ namespace {
 
 LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	LRESULT ret;
+	LRESULT ret = 0;
+	if (uMsg == WM_NCHITTEST) { 
+		// BorderlessWindow only handles resizing, catch everything else here
+		ret = OnNCHitTest(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+		if (ret != 0) return ret;
+	}
 	if (BorderlessWindow<Parthenos>::handle_message(uMsg, wParam, lParam, ret)) {
 		return ret;
 	}
 
 	switch (uMsg)
 	{
-	case WM_CREATE: {
-		hCursor = LoadCursor(NULL, IDC_ARROW);
-
-		// Create a Direct2D factory
-		HRESULT hr = D2D1CreateFactory(
-			D2D1_FACTORY_TYPE_SINGLE_THREADED, &pFactory);
-		if (SUCCEEDED(hr))
-		{
-			DPIScale::Initialize(pFactory);
-
-			// Create a DirectWrite factory.
-			hr = DWriteCreateFactory(
-				DWRITE_FACTORY_TYPE_SHARED,
-				__uuidof(pDWriteFactory),
-				reinterpret_cast<IUnknown **>(&pDWriteFactory)
-			);
-		}
-		if (FAILED(hr))
-		{
-			return -1;  // Fail CreateWindowEx.
-		}
-		return 0;
-	}
+	case WM_CREATE:
+		return OnCreate();
 	//case WM_COMMAND: // Command items from application menu; accelerators
 	//{
 	//	int wmId = LOWORD(wParam);
@@ -111,24 +97,17 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		PostQuitMessage(0);
 		return 0;
 	case WM_PAINT:
-		OnPaint();
-		return 0;
-
+		return OnPaint();
 	case WM_SIZE:
-		Resize();
-		return 0;
-	//case WM_TIMER:
-	//	if (wParam == HALF_SECOND_TIMER) InvalidateRect(m_hwnd, NULL, FALSE);   // invalidate whole window
-	//	return 0;
+		return OnSize();
 	//case WM_LBUTTONDOWN:
 	//	OnLButtonDown(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), (DWORD)wParam);
 	//	return 0;
 	//case WM_LBUTTONUP:
 	//	OnLButtonUp();
 	//	return 0;
-	//case WM_MOUSEMOVE:
-	//	OnMouseMove(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), (DWORD)wParam);
-	//	return 0;
+	case WM_MOUSEMOVE:
+		return OnMouseMove(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), (DWORD)wParam);
 	//case WM_LBUTTONDBLCLK:
 	//	return 0;
 
@@ -143,7 +122,16 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return DefWindowProc(m_hwnd, uMsg, wParam, lParam);
 }
 
-void Parthenos::Resize()
+LRESULT Parthenos::OnNCHitTest(int x, int y) {
+	RECT window;
+	if (!::GetWindowRect(this->m_hwnd, &window)) {
+		return HTNOWHERE;
+	}
+	return 0;
+	// Header should be another window for simplicity...
+}
+
+LRESULT Parthenos::OnSize()
 {
 	if (pRenderTarget != NULL)
 	{
@@ -151,13 +139,116 @@ void Parthenos::Resize()
 		GetClientRect(m_hwnd, &rc);
 
 		D2D1_SIZE_U size = D2D1::SizeU(rc.right, rc.bottom);
-
 		pRenderTarget->Resize(size);
+		m_titleBar->Resize(rc);
+
 		InvalidateRect(m_hwnd, NULL, FALSE);
 	}
+	return 0;
 }
 
+LRESULT Parthenos::OnCreate()
+{
+	hCursor = LoadCursor(NULL, IDC_ARROW);
 
+	// Create a Direct2D factory
+	HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &pFactory);
+	if (SUCCEEDED(hr))
+	{
+		DPIScale::Initialize(pFactory);
+
+		// Create a DirectWrite factory.
+		hr = DWriteCreateFactory(
+			DWRITE_FACTORY_TYPE_SHARED,
+			__uuidof(pDWriteFactory),
+			reinterpret_cast<IUnknown **>(&pDWriteFactory)
+		);
+	}
+	if (SUCCEEDED(hr))
+	{
+
+		m_titleBar = new TitleBar(m_hwnd, m_hInstance, this);
+		if (!m_titleBar || !m_titleBar->Create(137)) {
+			throw Error("titleBar create failed");
+		}
+		ShowWindow(m_titleBar->GetHWnd(), SW_SHOW);
+
+		HWND hwndButton = CreateWindow(
+			L"BUTTON",  // Predefined class; Unicode assumed 
+			L"OK",      // Button text 
+			WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,  // Styles 
+			100,         // x position 
+			100,         // y position 
+			30,        // Button width
+			15,        // Button height
+			m_hwnd,     // Parent window
+			NULL,       // No menu.
+			(HINSTANCE)GetWindowLong(m_hwnd, GWL_HINSTANCE),
+			NULL);      // Pointer not needed.
+
+	}
+	if (FAILED(hr))
+	{
+		return -1;  // Fail CreateWindowEx.
+	}
+	return 0;
+}
+
+LRESULT Parthenos::OnPaint()
+{
+	HRESULT hr = CreateGraphicsResources();
+	if (SUCCEEDED(hr))
+	{
+		PAINTSTRUCT ps;
+		BeginPaint(m_hwnd, &ps);
+		pRenderTarget->BeginDraw();
+
+		D2D1_SIZE_F size = pRenderTarget->GetSize();
+		pRenderTarget->Clear(D2D1::ColorF(0.2f, 0.2f, 0.2f, 1.0f));
+		//const float x = size.width;
+		//const float y = size.height;
+		//pBrush->SetColor(D2D1::ColorF(0.5f, 0, 0, 1.0f));
+		//pRenderTarget->FillRectangle(D2D1::RectF(
+		//	0.0f,
+		//	0.0f,
+		//	size.width,
+		//	30.0f
+		//), pBrush);
+
+
+		//D2D1_RECT_F layoutRect = D2D1::RectF(0.f, 0.f, 200.f, 200.f);
+		//wchar_t msg[32];
+		//swprintf_s(msg, L"DPI: %3.1f %3.1f\n\n\n", DPIScale::dpiX, DPIScale::dpiY);
+		//OutputDebugString(msg);
+		////PCWSTR msg = L"Hellow World";
+		//pRenderTarget->DrawText(
+		//	msg,
+		//	wcslen(msg),
+		//	pTextFormat,
+		//	layoutRect,
+		//	pBrush
+		//);
+
+		hr = pRenderTarget->EndDraw();
+		if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
+		{
+			DiscardGraphicsResources();
+		}
+		EndPaint(m_hwnd, &ps);
+	}
+
+	return 0;
+}
+
+LRESULT Parthenos::OnMouseMove(int pixelX, int pixelY, DWORD flags)
+{
+	const float dipX = DPIScale::PixelsToDipsX(pixelX);
+	const float dipY = DPIScale::PixelsToDipsY(pixelY);
+
+	::SetCursor(hCursor);
+
+	return 0;
+}
 
 HRESULT Parthenos::CreateGraphicsResources()
 {
@@ -188,7 +279,7 @@ HRESULT Parthenos::CreateGraphicsResources()
 		}
 		if (SUCCEEDED(hr))
 		{
-			const D2D1_COLOR_F color = D2D1::ColorF(1.0f, 1.0f, 0);
+			const D2D1_COLOR_F color = D2D1::ColorF(0.15f, 0.15f, 0.16f);
 			hr = pRenderTarget->CreateSolidColorBrush(color, &pBrush);
 		}
 
@@ -203,66 +294,6 @@ void Parthenos::DiscardGraphicsResources()
 	SafeRelease(&pTextFormat);
 }
 
-void Parthenos::OnPaint()
-{
-	HRESULT hr = CreateGraphicsResources();
-	if (SUCCEEDED(hr))
-	{
-		PAINTSTRUCT ps;
-		BeginPaint(m_hwnd, &ps);
-
-		pRenderTarget->BeginDraw();
-
-		pRenderTarget->Clear(D2D1::ColorF(1.0f, 0.2f, 0.2f, 1.0f));
-		pRenderTarget->FillRectangle(D2D1::RectF(
-			5.0f,
-			5.0f,
-			105.0f,
-			105.0f
-		), pBrush);
-
-		//for (auto it = ellipses.rbegin(); it != ellipses.rend(); it++)
-		//{
-		//	pBrush->SetColor((*it)->color);
-		//	pRenderTarget->FillEllipse((*it)->ellipse, pBrush);
-		//}
-
-		//pRenderTarget->DrawEllipse(ellipse, pBlackBrush);
-
-		// Draw hands
-		//SYSTEMTIME time;
-		//GetLocalTime(&time);
-		//// 60 minutes = 30 degrees, 1 minute = 0.5 degree
-		//const float fHourAngle = (360.0f / 12) * (time.wHour) + (time.wMinute * 0.5f);
-		//const float fMinuteAngle = (360.0f / 60) * (time.wMinute) + (time.wSecond * 360.f / 3600);
-		//const float fSecondAngle = (360.0f / 60) * (time.wSecond);
-		//DrawClockHand(0.6f, fHourAngle, 6);
-		//DrawClockHand(0.85f, fMinuteAngle, 4);
-		//DrawClockHand(0.9f, fSecondAngle, 2);
-		//// Restore the identity transformation.
-		//pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
-
-		//D2D1_RECT_F layoutRect = D2D1::RectF(0.f, 0.f, 200.f, 200.f);
-		//wchar_t msg[32];
-		//swprintf_s(msg, L"DPI: %3.1f %3.1f\n\n\n", DPIScale::dpiX, DPIScale::dpiY);
-		//OutputDebugString(msg);
-		////PCWSTR msg = L"Hellow World";
-		//pRenderTarget->DrawText(
-		//	msg,
-		//	wcslen(msg),
-		//	pTextFormat,
-		//	layoutRect,
-		//	pBrush
-		//);
-
-		hr = pRenderTarget->EndDraw();
-		if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
-		{
-			DiscardGraphicsResources();
-		}
-		EndPaint(m_hwnd, &ps);
-	}
-}
 
 /*
 void MainWindow::OnLButtonDown(int pixelX, int pixelY, DWORD flags)
