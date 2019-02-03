@@ -5,6 +5,11 @@ VisualStudioVersion = 15.0.28307.329
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Parthenos", "Parthenos\Parthenos.vcxproj", "{FB7DFE04-8326-4162-AB11-FDA0D753BBE7}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{F0E062FD-83BB-45D8-B85B-91EED406D7E1}"
+	ProjectSection(SolutionItems) = preProject
+		Parthenos.dgml = Parthenos.dgml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
