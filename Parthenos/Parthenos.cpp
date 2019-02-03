@@ -33,12 +33,12 @@ namespace {
 LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	LRESULT ret = 0;
-	if (uMsg == WM_NCHITTEST) { 
-		// BorderlessWindow only handles resizing, catch everything else here
-		ret = OnNCHitTest(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-		if (ret != 0) return ret;
-	}
+	
 	if (BorderlessWindow<Parthenos>::handle_message(uMsg, wParam, lParam, ret)) {
+		if (ret == HTCLIENT && uMsg == WM_NCHITTEST) {
+			// BorderlessWindow only handles resizing, catch everything else here
+			ret = OnNCHitTest(POINT{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)});
+		}
 		return ret;
 	}
 
@@ -121,12 +121,14 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return DefWindowProc(m_hwnd, uMsg, wParam, lParam);
 }
 
-LRESULT Parthenos::OnNCHitTest(int x, int y) {
+LRESULT Parthenos::OnNCHitTest(POINT cursor) {
 	RECT window;
-	if (!::GetWindowRect(this->m_hwnd, &window)) {
+	if (!::GetWindowRect(m_hwnd, &window)) {
 		return HTNOWHERE;
 	}
-	return 0;
+	if (!::ScreenToClient(m_hwnd, &cursor)) Error("ScreenToClient failed");
+	if (cursor.y > m_titleBar.top() && cursor.y < m_titleBar.bottom()) return HTCAPTION;
+	return HTCLIENT;
 }
 
 LRESULT Parthenos::OnSize()

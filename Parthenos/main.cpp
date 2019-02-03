@@ -25,6 +25,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	WndCreateArgs args;
 	args.hInstance = hInstance;
 	args.classStyle = CS_DBLCLKS;
+	args.hbrBackground = CreateSolidBrush(RGB(0.2,0.2,0.2));
 	//args.lpszMenuName = MAKEINTRESOURCE(IDC_PARTHENOS);
 	args.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_PARTHENOS));
 	args.hIconSm = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SMALL));

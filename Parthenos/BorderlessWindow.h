@@ -95,7 +95,7 @@ private:
 		return placement.showCmd == SW_MAXIMIZE;
 	}
 
-	auto hit_test(POINT cursor) const->LRESULT {
+	auto hit_test(POINT cursor) const -> LRESULT {
 		// identify borders and corners to allow resizing the window.
 		// Note: On Windows 10, windows behave differently and
 		// allow resizing outside the visible window frame.
@@ -113,29 +113,29 @@ private:
 
 		enum region_mask {
 			client = 0b0000,
-			left = 0b0001,
-			right = 0b0010,
-			top = 0b0100,
+			left   = 0b0001,
+			right  = 0b0010,
+			top    = 0b0100,
 			bottom = 0b1000,
 		};
 
 		const auto result =
-			left * (cursor.x < (window.left + border.x)) |
-			right * (cursor.x >= (window.right - border.x)) |
-			top * (cursor.y < (window.top + border.y)) |
-			bottom * (cursor.y >= (window.bottom - border.y));
+			left    * (cursor.x <  (window.left   + border.x)) |
+			right   * (cursor.x >= (window.right  - border.x)) |
+			top     * (cursor.y <  (window.top    + border.y)) |
+			bottom  * (cursor.y >= (window.bottom - border.y));
 
 		switch (result) {
-		case left: return borderless_resize ? HTLEFT : drag;
-		case right: return borderless_resize ? HTRIGHT : drag;
-		case top: return borderless_resize ? HTTOP : drag;
-		case bottom: return borderless_resize ? HTBOTTOM : drag;
-		case top | left: return borderless_resize ? HTTOPLEFT : drag;
-		case top | right: return borderless_resize ? HTTOPRIGHT : drag;
-		case bottom | left: return borderless_resize ? HTBOTTOMLEFT : drag;
-		case bottom | right: return borderless_resize ? HTBOTTOMRIGHT : drag;
-		case client: return drag;
-		default: return HTNOWHERE;
+			case left          : return borderless_resize ? HTLEFT        : drag;
+			case right         : return borderless_resize ? HTRIGHT       : drag;
+			case top           : return borderless_resize ? HTTOP         : drag;
+			case bottom        : return borderless_resize ? HTBOTTOM      : drag;
+			case top | left    : return borderless_resize ? HTTOPLEFT     : drag;
+			case top | right   : return borderless_resize ? HTTOPRIGHT    : drag;
+			case bottom | left : return borderless_resize ? HTBOTTOMLEFT  : drag;
+			case bottom | right: return borderless_resize ? HTBOTTOMRIGHT : drag;
+			case client        : return drag;
+			default            : return HTNOWHERE;
 		}
 	}
 

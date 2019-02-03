@@ -16,7 +16,7 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	LRESULT OnPaint();
 	LRESULT OnMouseMove(int pixelX, int pixelY, DWORD flags);
 	LRESULT OnSize();
-	LRESULT OnNCHitTest(int x, int y);
+	LRESULT OnNCHitTest(POINT cursor);
 	//void	OnLButtonDown(int pixelX, int pixelY, DWORD flags);
 	//void	OnLButtonUp();
 	//void	OnMouseMove(int pixelX, int pixelY, DWORD flags);

@@ -16,6 +16,13 @@ public:
 	void Paint(D2Objects const & d2);
 	void Resize(RECT pRect);
 
+	int left() const { return m_cRect.left; }
+	int top() const { return m_cRect.top; }
+	int right() const { return m_cRect.right; }
+	int bottom() const { return m_cRect.bottom; }
+	int width() const { return m_cRect.right - m_cRect.left; }
+	int height() const { return m_cRect.bottom - m_cRect.top; }
+
 private:
 	RECT		m_cRect; // pixels in main window client coordinates
 
