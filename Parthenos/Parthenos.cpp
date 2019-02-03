@@ -33,11 +33,10 @@ namespace {
 LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	LRESULT ret = 0;
-	
 	if (BorderlessWindow<Parthenos>::handle_message(uMsg, wParam, lParam, ret)) {
 		if (ret == HTCLIENT && uMsg == WM_NCHITTEST) {
 			// BorderlessWindow only handles resizing, catch everything else here
-			ret = OnNCHitTest(POINT{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)});
+			ret = OnNCHitTest(POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) });
 		}
 		return ret;
 	}
@@ -62,7 +61,6 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	//	case ID_DRAW_MODE:
 	//		SetMode(DrawMode);
 	//		break;
-
 	//	case ID_SELECT_MODE:
 	//		SetMode(SelectMode);
 	//		break;
@@ -106,7 +104,10 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	//	OnLButtonUp();
 	//	return 0;
 	case WM_MOUSEMOVE:
-		return OnMouseMove(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), (DWORD)wParam);
+		return OnMouseMove(
+			POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }, 
+			static_cast<DWORD>(wParam)
+		);
 	//case WM_LBUTTONDBLCLK:
 	//	return 0;
 
@@ -210,11 +211,9 @@ LRESULT Parthenos::OnPaint()
 	return 0;
 }
 
-LRESULT Parthenos::OnMouseMove(int pixelX, int pixelY, DWORD flags)
+LRESULT Parthenos::OnMouseMove(POINT mouse, DWORD flags)
 {
-	const float dipX = DPIScale::PixelsToDipsX(pixelX);
-	const float dipY = DPIScale::PixelsToDipsY(pixelY);
-
+	D2D1_POINT_2F point = DPIScale::PixelsToDips(mouse.x, mouse.y);
 	::SetCursor(hCursor);
 
 	return 0;
