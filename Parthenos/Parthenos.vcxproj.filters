@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Resource Files\Command Icons">
+      <UniqueIdentifier>{858ab203-08a3-475b-919a-2993121782f9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -74,6 +77,18 @@
     </Image>
     <Image Include="Parthenos.ico">
       <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Command Icons\Close.png">
+      <Filter>Resource Files\Command Icons</Filter>
+    </Image>
+    <Image Include="Command Icons\Maximize.png">
+      <Filter>Resource Files\Command Icons</Filter>
+    </Image>
+    <Image Include="Command Icons\Minimize.png">
+      <Filter>Resource Files\Command Icons</Filter>
+    </Image>
+    <Image Include="Command Icons\Restore.png">
+      <Filter>Resource Files\Command Icons</Filter>
     </Image>
   </ItemGroup>
 </Project>

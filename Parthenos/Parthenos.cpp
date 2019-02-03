@@ -91,6 +91,7 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_DESTROY:
 		m_d2.DiscardGraphicsResources();
 		m_d2.DiscardFactories();
+		CoUninitialize();
 		PostQuitMessage(0);
 		return 0;
 	case WM_PAINT:
@@ -151,12 +152,15 @@ LRESULT Parthenos::OnSize()
 LRESULT Parthenos::OnCreate()
 {
 	hCursor = LoadCursor(NULL, IDC_ARROW);
-	HRESULT hr = m_d2.CreateFactories();
+	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 
-	//if (SUCCEEDED(hr))
+	if (SUCCEEDED(hr))
+	{
+		hr = m_d2.CreateFactories();
+	}
 	if (FAILED(hr))
 	{
-		throw Error("D2 factory creation failed!");
+		throw Error("OnCreate failed!");
 		return -1;  // Fail CreateWindowEx.
 	}
 	return 0;
@@ -180,6 +184,7 @@ LRESULT Parthenos::OnPaint()
 
 		m_d2.pRenderTarget->Clear(D2D1::ColorF(0.2f, 0.2f, 0.2f, 1.0f));
 
+		if (!m_d2.pD2DBitmap) m_titleBar.LoadCommandIcons(m_d2);
 		m_titleBar.Paint(m_d2);
 
 		//D2D1_SIZE_F size = m_d2.pRenderTarget->GetSize();

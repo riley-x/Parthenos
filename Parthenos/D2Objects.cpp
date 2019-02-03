@@ -17,6 +17,16 @@ HRESULT D2Objects::CreateFactories()
 			reinterpret_cast<IUnknown **>(&pDWriteFactory)
 		);
 	}
+	if (SUCCEEDED(hr))
+	{
+		// Create WIC factory
+		hr = CoCreateInstance(
+			CLSID_WICImagingFactory,
+			NULL,
+			CLSCTX_INPROC_SERVER,
+			IID_PPV_ARGS(&pIWICFactory)
+		);
+	}
 	return hr;
 }
 

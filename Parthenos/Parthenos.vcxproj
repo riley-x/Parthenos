@@ -184,6 +184,10 @@
     <ResourceCompile Include="Parthenos.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="Command Icons\Close.png" />
+    <Image Include="Command Icons\Maximize.png" />
+    <Image Include="Command Icons\Minimize.png" />
+    <Image Include="Command Icons\Restore.png" />
     <Image Include="Parthenos.ico" />
     <Image Include="small.ico" />
   </ItemGroup>

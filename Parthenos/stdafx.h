@@ -24,3 +24,4 @@
 #pragma comment(lib, "d2d1")
 #include <dwrite.h>
 #pragma comment(lib, "dwrite")
+#include <wincodec.h>

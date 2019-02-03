@@ -9,8 +9,14 @@
 
 class Parthenos : public BorderlessWindow<Parthenos>
 {
+	// Logical components
 	TitleBar m_titleBar;
-	D2Objects m_d2;
+
+	// Resource management.
+	D2Objects				m_d2;
+	//D2D1_POINT_2F			ptMouseStart;
+	HCURSOR					hCursor;
+
 
 	LRESULT	OnCreate();
 	LRESULT OnPaint();
@@ -24,9 +30,6 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	//void    Resize();
 
 public:
-
-	//D2D1_POINT_2F			ptMouseStart;
-	HCURSOR					hCursor;
 
 	Parthenos() : BorderlessWindow() {}
 	Parthenos(PCWSTR szClassName) : BorderlessWindow(szClassName) {}
