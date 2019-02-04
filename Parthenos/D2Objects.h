@@ -8,20 +8,20 @@ public:
 	ID2D1HwndRenderTarget   *pRenderTarget			= NULL;
 	ID2D1SolidColorBrush    *pBrush					= NULL;
 
+	// Direct Write pointers
 	IDWriteFactory          *pDWriteFactory			= NULL;
 	IDWriteTextFormat		*pTextFormat			= NULL;
 
-	// WIC interface pointers.
-	// TODO: ADD DISCARDS
-	IWICImagingFactory      *pIWICFactory			= NULL;
-	IWICStream				*pIWICStream			= NULL;
-	IWICBitmapDecoder		*pIDecoder				= NULL;
-	IWICBitmapFrameDecode	*pIDecoderFrame			= NULL;
-	IWICFormatConverter		*pConvertedSourceBitmap = NULL;
-	ID2D1Bitmap				*pD2DBitmap				= NULL;
+	// WIC pointers
+	static const int nIcons = 4; // Close, Max, Min, Restore
+	IWICImagingFactory      *pIWICFactory						= NULL;
+	IWICFormatConverter		*pConvertedSourceBitmaps[nIcons]	= {NULL}; 
+	ID2D1Bitmap				*pD2DBitmaps[nIcons]				= {NULL};
 	
 	HRESULT CreateFactories();
+	HRESULT LoadResourcePNG(int resource, IWICFormatConverter * pConvertedSourceBitmap);
 	HRESULT	CreateGraphicsResources(HWND hwnd);
 	void	DiscardFactories();
 	void	DiscardGraphicsResources();
+
 };

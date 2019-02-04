@@ -15,7 +15,6 @@ public:
 
 	void Paint(D2Objects const & d2);
 	void Resize(RECT pRect);
-	void LoadCommandIcons(D2Objects & d2);
 
 	int left() const { return m_cRect.left; }
 	int top() const { return m_cRect.top; }
@@ -26,11 +25,5 @@ public:
 
 private:
 	RECT		m_cRect; // pixels in main window client coordinates
-
-	// Resources
-	HRSRC					imageResHandle;
-	HGLOBAL					imageResDataHandle;
-	void					*pImageFile;
-	DWORD					imageFileSize;
 
 };

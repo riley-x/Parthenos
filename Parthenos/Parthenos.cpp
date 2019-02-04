@@ -184,7 +184,6 @@ LRESULT Parthenos::OnPaint()
 
 		m_d2.pRenderTarget->Clear(D2D1::ColorF(0.2f, 0.2f, 0.2f, 1.0f));
 
-		if (!m_d2.pD2DBitmap) m_titleBar.LoadCommandIcons(m_d2);
 		m_titleBar.Paint(m_d2);
 
 		//D2D1_SIZE_F size = m_d2.pRenderTarget->GetSize();
