@@ -4,28 +4,39 @@
 #include "utilities.h"
 
 
+TitleBar::TitleBar()
+{
+	m_dipRect.left	 = 0;
+	m_dipRect.top	 = 0;
+	m_dipRect.bottom = 30;
+
+	m_pixRect.left	 = 0;
+	m_pixRect.top	 = 0;
+	m_pixRect.bottom = DPIScale::DipsToPixelsY(m_dipRect.bottom);
+
+	for (int i = 0; i < nIcons; i++)
+	{
+		m_CommandIconRects[i] = D2D1::RectF(
+			0.0f,
+			6.0f,
+			0.0f,
+			24.0f // paint fixed 24x18 DIPs instead of pixels
+		);
+	}
+}
+
 void TitleBar::Paint(D2Objects const & d2)
 {
+
 	d2.pBrush->SetColor(D2D1::ColorF(0.15f, 0.16f, 0.15f, 1.0f));
-	d2.pRenderTarget->FillRectangle(D2D1::RectF(
-		DPIScale::PixelsToDipsX(m_cRect.left),
-		DPIScale::PixelsToDipsY(m_cRect.top),
-		DPIScale::PixelsToDipsX(m_cRect.right),
-		DPIScale::PixelsToDipsY(m_cRect.bottom)
-	), d2.pBrush);
+	d2.pRenderTarget->FillRectangle(m_dipRect, d2.pBrush);
 
-
-	// Draws an image and scales it to the current window size
-	D2D1_RECT_F rectangle = D2D1::RectF(
-		DPIScale::PixelsToDipsX(m_cRect.right) - 30.0f,
-		DPIScale::PixelsToDipsY(m_cRect.top),
-		DPIScale::PixelsToDipsX(m_cRect.right),
-		DPIScale::PixelsToDipsY(m_cRect.bottom)
-	);
-	if (d2.pD2DBitmaps[0])
+	for (int i = 0; i < nIcons; i++)
 	{
-		d2.pRenderTarget->DrawBitmap(d2.pD2DBitmaps[0], rectangle);
+		if (d2.pD2DBitmaps[i])
+			d2.pRenderTarget->DrawBitmap(d2.pD2DBitmaps[i], m_CommandIconRects[i]);
 	}
+
 	//GetClientRect(m_hwnd, &clientRect);
 	//OutputMessage(L"Titlebar Rect: %ld %ld\n", clientRect.right, clientRect.bottom);
 
@@ -38,8 +49,14 @@ void TitleBar::Paint(D2Objects const & d2)
 // 'pRect': client RECT of parent
 void TitleBar::Resize(RECT pRect)
 {
-	int height = DPIScale::DipsToPixelsY(30.0f);
-	m_cRect.right = pRect.right;
-	m_cRect.bottom = height;
+	float right = DPIScale::PixelsToDipsX(pRect.right);
+	m_pixRect.right = pRect.right;
+	m_dipRect.right = right;
 
+	float width = 24.0f;
+	for (int i = 0; i < nIcons; i++)
+	{
+		m_CommandIconRects[i].right = right - 4*(i+1) - width*i;
+		m_CommandIconRects[i].left = m_CommandIconRects[i].right - width;
+	}
 }

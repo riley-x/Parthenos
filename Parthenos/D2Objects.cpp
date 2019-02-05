@@ -78,7 +78,7 @@ HRESULT D2Objects::LoadResourcePNG(int resource, IWICFormatConverter *pConverted
 	// Locate the resource in the application's executable.
 	imageResHandle = FindResource(
 		NULL,							// This component.
-		MAKEINTRESOURCE(IDB_CLOSE),		// Resource name.
+		MAKEINTRESOURCE(resource),		// Resource name.
 		L"PNG");						// Resource type.
 	HRESULT hr = (imageResHandle ? S_OK : E_FAIL);
 

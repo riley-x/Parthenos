@@ -5,25 +5,24 @@
 class TitleBar
 {
 public:
-	TitleBar()
-	{
-		m_cRect.left = 0;
-		m_cRect.top = 0;
-		m_cRect.right = 0;
-		m_cRect.bottom = 0;
-	}
+	TitleBar();
 
 	void Paint(D2Objects const & d2);
 	void Resize(RECT pRect);
 
-	int left() const { return m_cRect.left; }
-	int top() const { return m_cRect.top; }
-	int right() const { return m_cRect.right; }
-	int bottom() const { return m_cRect.bottom; }
-	int width() const { return m_cRect.right - m_cRect.left; }
-	int height() const { return m_cRect.bottom - m_cRect.top; }
+	int left() const { return m_pixRect.left; }
+	int top() const { return m_pixRect.top; }
+	int right() const { return m_pixRect.right; }
+	int bottom() const { return m_pixRect.bottom; }
+	int width() const { return m_pixRect.right - m_pixRect.left; }
+	int height() const { return m_pixRect.bottom - m_pixRect.top; }
 
 private:
-	RECT		m_cRect; // pixels in main window client coordinates
+	static int const nIcons = 3;
+
+	RECT		m_pixRect; // pixels in main window client coordinates
+	D2D1_RECT_F m_dipRect; // DIPs in main window client coordinates
+	D2D1_RECT_F	m_CommandIconRects[nIcons]; // 24x18 command icons
+
 
 };
