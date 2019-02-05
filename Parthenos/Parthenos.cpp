@@ -98,9 +98,11 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return OnPaint();
 	case WM_SIZE:
 		return OnSize();
-	//case WM_LBUTTONDOWN:
-	//	OnLButtonDown(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), (DWORD)wParam);
-	//	return 0;
+	case WM_LBUTTONDOWN:
+		return OnLButtonDown(
+			POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) },
+			(DWORD)wParam
+		);
 	//case WM_LBUTTONUP:
 	//	OnLButtonUp();
 	//	return 0;
@@ -124,13 +126,19 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 }
 
 LRESULT Parthenos::OnNCHitTest(POINT cursor) {
-	RECT window;
-	if (!::GetWindowRect(m_hwnd, &window)) {
-		return HTNOWHERE;
-	}
+	//RECT window;
+	//if (!::GetWindowRect(m_hwnd, &window)) Error("GetWindowRect failed");
 	if (!::ScreenToClient(m_hwnd, &cursor)) Error("ScreenToClient failed");
-	if (cursor.y > m_titleBar.top() && cursor.y < m_titleBar.bottom()) return HTCAPTION;
-	return HTCLIENT;
+
+	LRESULT ret = m_titleBar.HitTest(DPIScale::PixelsToDips(cursor));
+	if (ret == HTCAPTION)
+	{
+		return ret;
+	}
+	else
+	{
+		return HTCLIENT;
+	}
 }
 
 LRESULT Parthenos::OnSize()
@@ -215,53 +223,36 @@ LRESULT Parthenos::OnPaint()
 	return 0;
 }
 
-LRESULT Parthenos::OnMouseMove(POINT mouse, DWORD flags)
+LRESULT Parthenos::OnMouseMove(POINT cursor, DWORD flags)
 {
-	D2D1_POINT_2F point = DPIScale::PixelsToDips(mouse.x, mouse.y);
 	::SetCursor(hCursor);
+	//D2D1_POINT_2F point = DPIScale::PixelsToDips(mouse);
 
 	return 0;
 }
 
 
-/*
-void MainWindow::OnLButtonDown(int pixelX, int pixelY, DWORD flags)
+LRESULT Parthenos::OnLButtonDown(POINT cursor, DWORD flags)
 {
-	const float dipX = DPIScale::PixelsToDipsX(pixelX);
-	const float dipY = DPIScale::PixelsToDipsY(pixelY);
-
-	if (mode == DrawMode)
+	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
+	LRESULT ret = m_titleBar.HitTest(dipCursor);
+	switch (ret)
 	{
-		POINT pt = { pixelX, pixelY };
-
-		if (DragDetect(m_hwnd, pt))
-		{
-			SetCapture(m_hwnd);
-
-			// Start a new ellipse.
-			InsertEllipse(dipX, dipY);
-		}
+	case HTMINBUTTON:
+		ShowWindow(m_hwnd, SW_MINIMIZE);
+		break;
+	case HTMAXBUTTON:
+		if (maximized()) ShowWindow(m_hwnd, SW_RESTORE);
+		else ShowWindow(m_hwnd, SW_MAXIMIZE);
+		break;
+	case HTCLOSE:
+		SendMessage(m_hwnd, WM_CLOSE, 0, 0);
+		break;
 	}
-	else
-	{
-		ClearSelection();
-
-		// TODO: add drag detect here
-		if (HitTest(dipX, dipY))
-		{
-			SetCapture(m_hwnd);
-
-			// Store offset from center
-			ptMouseStart = Selection()->ellipse.point;
-			ptMouseStart.x -= dipX;
-			ptMouseStart.y -= dipY;
-
-			SetMode(DragMode);
-		}
-	}
-	InvalidateRect(m_hwnd, NULL, FALSE);
+	return 0;
 }
 
+/*
 void MainWindow::OnMouseMove(int pixelX, int pixelY, DWORD flags)
 {
 	const float dipX = DPIScale::PixelsToDipsX(pixelX);

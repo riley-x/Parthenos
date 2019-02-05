@@ -9,6 +9,7 @@ public:
 
 	void Paint(D2Objects const & d2);
 	void Resize(RECT pRect);
+	LRESULT HitTest(D2D1_POINT_2F cursor);
 
 	int left() const { return m_pixRect.left; }
 	int top() const { return m_pixRect.top; }
@@ -19,6 +20,7 @@ public:
 
 private:
 	static int const nIcons = 3;
+	static float const iconPad;
 
 	RECT		m_pixRect; // pixels in main window client coordinates
 	D2D1_RECT_F m_dipRect; // DIPs in main window client coordinates

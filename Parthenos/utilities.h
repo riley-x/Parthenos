@@ -28,10 +28,9 @@ public:
 		scaleY = dpiY / 96.0f;
 	}
 
-	template <typename T>
-	static D2D1_POINT_2F PixelsToDips(T x, T y)
+	static D2D1_POINT_2F PixelsToDips(POINT p)
 	{
-		return D2D1::Point2F(static_cast<float>(x) / scaleX, static_cast<float>(y) / scaleY);
+		return D2D1::Point2F(static_cast<float>(p.x) / scaleX, static_cast<float>(p.y) / scaleY);
 	}
 
 	template <typename T>

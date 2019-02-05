@@ -3,6 +3,7 @@
 #include "TitleBar.h"
 #include "utilities.h"
 
+float const TitleBar::iconPad = 2.0f;
 
 TitleBar::TitleBar()
 {
@@ -56,7 +57,25 @@ void TitleBar::Resize(RECT pRect)
 	float width = 24.0f;
 	for (int i = 0; i < nIcons; i++)
 	{
-		m_CommandIconRects[i].right = right - 4*(i+1) - width*i;
+		m_CommandIconRects[i].right = (right - 2) - (width + 2*iconPad)*i - iconPad;
 		m_CommandIconRects[i].left = m_CommandIconRects[i].right - width;
 	}
+}
+
+LRESULT TitleBar::HitTest(D2D1_POINT_2F cursor)
+{
+	// Don't actually return the LRESULT values on handling messages. (Bad functionality).
+	// Just use pre-defined macros for convenience. 
+	if (cursor.y > m_dipRect.top && cursor.y < m_dipRect.bottom)
+	{
+		if (cursor.x > m_CommandIconRects[0].left - iconPad)
+			return HTCLOSE;
+		else if (cursor.x > m_CommandIconRects[1].left - iconPad)
+			return HTMAXBUTTON;
+		else if (cursor.x > m_CommandIconRects[2].left - iconPad)
+			return HTMINBUTTON;
+		else
+			return HTCAPTION;
+	}
+	return HTCLIENT;
 }

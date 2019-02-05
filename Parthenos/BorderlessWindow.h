@@ -2,6 +2,8 @@
 
 #include "stdafx.h"
 #include "BaseWindow.h"
+#include "utilities.h"
+
 #include <windowsx.h>
 #include <dwmapi.h>
 #pragma comment(lib, "Dwmapi.lib")
@@ -62,6 +64,15 @@ public:
 		}
 	}
 
+	auto maximized() -> bool {
+		WINDOWPLACEMENT placement;
+		if (!::GetWindowPlacement(this->m_hwnd, &placement)) {
+			return false;
+		}
+
+		return placement.showCmd == SW_MAXIMIZE;
+	}
+
 protected:
 	bool borderless_resize = true;  // should the window allow resizing by dragging the borders while borderless
 	bool borderless_drag   = false; // should the window allow moving my dragging the client area
@@ -86,20 +97,12 @@ private:
 		rect = monitor_info.rcWork;
 	}
 
-	auto maximized() -> bool {
-		WINDOWPLACEMENT placement;
-		if (!::GetWindowPlacement(this->m_hwnd, &placement)) {
-			return false;
-		}
-
-		return placement.showCmd == SW_MAXIMIZE;
-	}
-
 	auto hit_test(POINT cursor) const -> LRESULT {
 		// identify borders and corners to allow resizing the window.
 		// Note: On Windows 10, windows behave differently and
 		// allow resizing outside the visible window frame.
 		// This implementation does not replicate that behavior.
+
 		const POINT border{
 			::GetSystemMetrics(SM_CXFRAME) + ::GetSystemMetrics(SM_CXPADDEDBORDER),
 			::GetSystemMetrics(SM_CYFRAME) + ::GetSystemMetrics(SM_CXPADDEDBORDER)
