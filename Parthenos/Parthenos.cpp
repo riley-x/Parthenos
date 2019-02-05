@@ -97,7 +97,7 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_PAINT:
 		return OnPaint();
 	case WM_SIZE:
-		return OnSize();
+		return OnSize(wParam);
 	case WM_LBUTTONDOWN:
 		return OnLButtonDown(
 			POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) },
@@ -113,7 +113,16 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		);
 	//case WM_LBUTTONDBLCLK:
 	//	return 0;
+	case WM_MOUSELEAVE:
+		m_titleBar.MouseOn(HTNOWHERE, m_hwnd);
+		m_mouseTrack.Reset(m_hwnd);
+		return 0;
+	case WM_MOUSEHOVER:
 
+		// TODO: Handle the mouse-hover message.
+
+		m_mouseTrack.Reset(m_hwnd);
+		return 0;
 	case WM_SETCURSOR:
 		if (LOWORD(lParam) == HTCLIENT)
 		{
@@ -131,18 +140,28 @@ LRESULT Parthenos::OnNCHitTest(POINT cursor) {
 	if (!::ScreenToClient(m_hwnd, &cursor)) Error("ScreenToClient failed");
 
 	LRESULT ret = m_titleBar.HitTest(DPIScale::PixelsToDips(cursor));
-	if (ret == HTCAPTION)
+	switch (ret)
 	{
+	case HTMINBUTTON:
+	case HTMAXBUTTON:
+	case HTCLOSE:
+		m_titleBar.MouseOn(ret, m_hwnd);
+		return HTCLIENT;
+	case HTCAPTION:
+		m_titleBar.MouseOn(HTNOWHERE, m_hwnd);
 		return ret;
-	}
-	else
-	{
+	default:
+		m_titleBar.MouseOn(HTNOWHERE, m_hwnd);
 		return HTCLIENT;
 	}
 }
 
-LRESULT Parthenos::OnSize()
+LRESULT Parthenos::OnSize(WPARAM wParam)
 {
+	if (wParam == SIZE_MAXIMIZED)
+		m_titleBar.Maximize(true);
+	else if (wParam == SIZE_RESTORED)
+		m_titleBar.Maximize(false);
 	if (m_d2.pRenderTarget != NULL)
 	{
 		RECT rc;
@@ -223,14 +242,6 @@ LRESULT Parthenos::OnPaint()
 	return 0;
 }
 
-LRESULT Parthenos::OnMouseMove(POINT cursor, DWORD flags)
-{
-	::SetCursor(hCursor);
-	//D2D1_POINT_2F point = DPIScale::PixelsToDips(mouse);
-
-	return 0;
-}
-
 
 LRESULT Parthenos::OnLButtonDown(POINT cursor, DWORD flags)
 {
@@ -252,34 +263,21 @@ LRESULT Parthenos::OnLButtonDown(POINT cursor, DWORD flags)
 	return 0;
 }
 
-/*
-void MainWindow::OnMouseMove(int pixelX, int pixelY, DWORD flags)
+LRESULT Parthenos::OnMouseMove(POINT cursor, DWORD flags)
 {
-	const float dipX = DPIScale::PixelsToDipsX(pixelX);
-	const float dipY = DPIScale::PixelsToDipsY(pixelY);
+	::SetCursor(hCursor);
+	m_mouseTrack.OnMouseMove(m_hwnd);  // Start tracking.
+	
+	//D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
 
-	if ((flags & MK_LBUTTON) && Selection())
-	{
-		if (mode == DrawMode)
-		{
-			// Resize the ellipse.
-			const float width = (dipX - ptMouseStart.x) / 2;
-			const float height = (dipY - ptMouseStart.y) / 2;
-			const float x1 = ptMouseStart.x + width;
-			const float y1 = ptMouseStart.y + height;
+	return 0;
 
-			Selection()->ellipse = D2D1::Ellipse(D2D1::Point2F(x1, y1), width, height);
-		}
-		else if (mode == DragMode)
-		{
-			// Move the ellipse.
-			Selection()->ellipse.point.x = dipX + ptMouseStart.x;
-			Selection()->ellipse.point.y = dipY + ptMouseStart.y;
-		}
-		InvalidateRect(m_hwnd, NULL, FALSE);
-	}
+
+
+	//if ((flags & MK_LBUTTON) && Selection())
 }
 
+/*
 void MainWindow::OnLButtonUp()
 {
 	if ((mode == DrawMode) && Selection())

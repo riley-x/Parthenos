@@ -11,6 +11,7 @@ class Parthenos : public BorderlessWindow<Parthenos>
 {
 	// Logical components
 	TitleBar m_titleBar;
+	MouseTrackEvents m_mouseTrack;
 
 	// Resource management.
 	D2Objects				m_d2;
@@ -21,7 +22,7 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	LRESULT	OnCreate();
 	LRESULT OnPaint();
 	LRESULT OnMouseMove(POINT cursor, DWORD flags);
-	LRESULT OnSize();
+	LRESULT OnSize(WPARAM wParam);
 	LRESULT OnNCHitTest(POINT cursor);
 	LRESULT	OnLButtonDown(POINT cursor, DWORD flags);
 	//void	OnLButtonUp();

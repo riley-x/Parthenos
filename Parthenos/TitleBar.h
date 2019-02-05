@@ -10,6 +10,8 @@ public:
 	void Paint(D2Objects const & d2);
 	void Resize(RECT pRect);
 	LRESULT HitTest(D2D1_POINT_2F cursor);
+	void Maximize(bool isMax) { m_maximized = isMax; }
+	void MouseOn(LRESULT button, HWND p_hwnd);
 
 	int left() const { return m_pixRect.left; }
 	int top() const { return m_pixRect.top; }
@@ -19,8 +21,10 @@ public:
 	int height() const { return m_pixRect.bottom - m_pixRect.top; }
 
 private:
-	static int const nIcons = 3;
-	static float const iconPad;
+	static int const	nIcons		= 3;
+	static float const	iconPad;
+	bool				m_maximized = false;
+	LRESULT				m_mouseOn	= HTNOWHERE; // for icon highlighting
 
 	RECT		m_pixRect; // pixels in main window client coordinates
 	D2D1_RECT_F m_dipRect; // DIPs in main window client coordinates
