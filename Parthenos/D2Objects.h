@@ -13,7 +13,7 @@ public:
 	IDWriteTextFormat		*pTextFormat			= NULL;
 
 	// WIC pointers
-	static const int nIcons = 4; // Close, Max, Min, Restore
+	static const int nIcons = 5; // Close, Max, Min, Restore, Parthenos
 	IWICImagingFactory      *pIWICFactory						= NULL;
 	IWICFormatConverter		*pConvertedSourceBitmaps[nIcons]	= {NULL}; 
 	ID2D1Bitmap				*pD2DBitmaps[nIcons]				= {NULL};

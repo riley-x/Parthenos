@@ -189,7 +189,7 @@
     <Image Include="Command Icons\Minimize.png" />
     <Image Include="Command Icons\Restore.png" />
     <Image Include="Parthenos.ico" />
-    <Image Include="small.ico" />
+    <Image Include="Parthenos_white.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -139,7 +139,7 @@ LRESULT Parthenos::OnNCHitTest(POINT cursor) {
 	//if (!::GetWindowRect(m_hwnd, &window)) Error("GetWindowRect failed");
 	if (!::ScreenToClient(m_hwnd, &cursor)) Error("ScreenToClient failed");
 
-	LRESULT ret = m_titleBar.HitTest(DPIScale::PixelsToDips(cursor));
+	LRESULT ret = m_titleBar.HitTest(cursor);
 	switch (ret)
 	{
 	case HTMINBUTTON:
@@ -197,6 +197,7 @@ void Parthenos::PreShow()
 {
 	RECT rc;
 	GetClientRect(m_hwnd, &rc);
+	m_titleBar.Init();
 	m_titleBar.Resize(rc);
 }
 
@@ -245,8 +246,7 @@ LRESULT Parthenos::OnPaint()
 
 LRESULT Parthenos::OnLButtonDown(POINT cursor, DWORD flags)
 {
-	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
-	LRESULT ret = m_titleBar.HitTest(dipCursor);
+	LRESULT ret = m_titleBar.HitTest(cursor);
 	switch (ret)
 	{
 	case HTMINBUTTON:

@@ -72,9 +72,6 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="small.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
     <Image Include="Parthenos.ico">
       <Filter>Resource Files</Filter>
     </Image>
@@ -89,6 +86,9 @@
     </Image>
     <Image Include="Command Icons\Restore.png">
       <Filter>Resource Files\Command Icons</Filter>
+    </Image>
+    <Image Include="Parthenos_white.png">
+      <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>
 </Project>
