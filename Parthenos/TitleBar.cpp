@@ -3,7 +3,7 @@
 #include "TitleBar.h"
 #include "utilities.h"
 
-float const TitleBar::iconPad = 2.0f;
+float const TitleBar::iconHPad = 6.0f;
 
 // This must be called AFTER DPIScale is initialized
 void TitleBar::Init()
@@ -19,8 +19,8 @@ void TitleBar::Init()
 	for (int i = 0; i < nIcons; i++)
 	{
 		float height = 24;
-		float pad = static_cast<int>((m_pixRect.bottom - height) / 2.0f); 
-		// cast to int, or else D2D fudges with pixels
+		float pad = ceil((m_pixRect.bottom - height) / 2.0f); 
+		// round or else D2D interpolates pixels
 		m_CommandIconRects[i] = D2D1::RectF(0, pad, 0, pad + height);
 	}
 
@@ -53,9 +53,9 @@ void TitleBar::Paint(D2Objects const & d2)
 	{
 		d2.pBrush->SetColor(D2D1::ColorF(0.25f, 0.25f, 0.25f, 1.0f));
 		d2.pRenderTarget->FillRectangle(D2D1::RectF(
-			m_CommandIconRects[mouse_on].left - iconPad,
+			m_CommandIconRects[mouse_on].left - iconHPad,
 			static_cast<float>(m_pixRect.top),
-			m_CommandIconRects[mouse_on].right + iconPad,
+			m_CommandIconRects[mouse_on].right + iconHPad,
 			static_cast<float>(m_pixRect.bottom)
 		), d2.pBrush);
 	}
@@ -92,7 +92,7 @@ void TitleBar::Resize(RECT pRect)
 	float width = 32;
 	for (int i = 0; i < nIcons; i++)
 	{
-		m_CommandIconRects[i].right = pRect.right - (width + 2*iconPad)*i - iconPad;
+		m_CommandIconRects[i].right = pRect.right - (width + 2*iconHPad)*i - iconHPad;
 		m_CommandIconRects[i].left = m_CommandIconRects[i].right - width;
 	}
 }
@@ -104,11 +104,11 @@ LRESULT TitleBar::HitTest(POINT cursor)
 {
 	if (cursor.y > m_pixRect.top && cursor.y < m_pixRect.bottom)
 	{
-		if (cursor.x > m_CommandIconRects[0].left - iconPad)
+		if (cursor.x > m_CommandIconRects[0].left - iconHPad)
 			return HTCLOSE;
-		else if (cursor.x > m_CommandIconRects[1].left - iconPad)
+		else if (cursor.x > m_CommandIconRects[1].left - iconHPad)
 			return HTMAXBUTTON;
-		else if (cursor.x > m_CommandIconRects[2].left - iconPad)
+		else if (cursor.x > m_CommandIconRects[2].left - iconHPad)
 			return HTMINBUTTON;
 		else
 			return HTCAPTION;

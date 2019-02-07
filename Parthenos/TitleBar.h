@@ -21,7 +21,7 @@ public:
 
 private:
 	static int const	nIcons		= 3;
-	static float const	iconPad;
+	static float const	iconHPad;
 	bool				m_maximized = false;
 	LRESULT				m_mouseOn	= HTNOWHERE; // for icon highlighting
 

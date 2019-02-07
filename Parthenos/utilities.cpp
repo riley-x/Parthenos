@@ -12,6 +12,20 @@ std::system_error Error(const std::string & msg)
 	DWORD error = GetLastError();
 	std::string outmsg = "Error " + std::to_string(error) + ": " + msg + "\n";
 	OutputDebugStringA(outmsg.c_str());
+
+	LPVOID lpMsgBuf;
+	DWORD dw = GetLastError();
+	FormatMessage(
+		FORMAT_MESSAGE_ALLOCATE_BUFFER |
+		FORMAT_MESSAGE_FROM_SYSTEM |
+		FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL,
+		dw,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		(LPWSTR)&lpMsgBuf,
+		0, NULL);
+	OutputDebugStringW((LPWSTR)lpMsgBuf);
+
 	return std::system_error(
 		std::error_code(::GetLastError(), std::system_category()),
 		outmsg
