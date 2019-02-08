@@ -31,37 +31,63 @@ public:
 	template <typename T>
 	std::vector<T> Read()
 	{
-		static const int bufferSize = 10000;
+		BOOL bErrorFlag;
+		LARGE_INTEGER fileSize_struct;
+		LONGLONG fileSize;
+
+		if (m_hFile == INVALID_HANDLE_VALUE)
+		{
+			OutputMessage(L"Handle not initialized!\n");
+			return std::vector<T>();
+		}
+
+		bErrorFlag = GetFileSizeEx(m_hFile, &fileSize_struct);
+		if (bErrorFlag == 0)
+		{
+			OutputMessage(L"Couldn't get filesize.\n");
+			return std::vector<T>();
+		}
+		fileSize = fileSize_struct.QuadPart;
+
+		char *ReadBuffer = new char[static_cast<UINT>(fileSize)];
 		DWORD dwBytesRead = 0;
-		char ReadBuffer[bufferSize] = { 0 };
 
 		if (m_access == GENERIC_READ)
 		{
 			OVERLAPPED ol = { 0 };
-			BOOL bErrorFlag = ReadFileEx(m_hFile, ReadBuffer, bufferSize - 1, &ol, CompletionRoutine);
+			bErrorFlag = ReadFileEx(m_hFile, ReadBuffer, static_cast<DWORD>(fileSize), &ol, CompletionRoutine);
 			if (bErrorFlag == FALSE)
 			{
-				OutputMessage(L"Unable to read from file.\n");
+				OutputError("Unable to read from file.\n");
+				delete[] ReadBuffer;
 				return std::vector<T>();
 			}
-			DWORD sleepResult = SleepEx(2000, TRUE); // 2 seconds
+
 			// Shouldn't sleep? Check https://docs.microsoft.com/en-us/windows/desktop/api/synchapi/nf-synchapi-sleepex
+			DWORD sleepResult = SleepEx(2000, TRUE); // 2 seconds
 			if (sleepResult == 0) // timeout
 			{
 				OutputMessage(L"Warning: sleep timed-out\n");
 			}
-			if (g_bytes > 0 && g_bytes <= bufferSize - 1)
+		}
+		else // Synchronous R/W
+		{
+			bErrorFlag = ReadFile(m_hFile, ReadBuffer, static_cast<DWORD>(fileSize), &g_bytes, NULL);
+			if (bErrorFlag == FALSE)
 			{
-				//ReadBuffer[g_bytes] = '\0';
-				//OutputDebugStringA(ReadBuffer);
-				//OutputMessage(L"\n%lu\n", g_bytes);
-
-				return std::vector<T>(reinterpret_cast<T*>(ReadBuffer), reinterpret_cast<T*>(ReadBuffer + g_bytes));
+				OutputError("Unable to read from file.\n");
+				delete[] ReadBuffer;
+				return std::vector<T>();
 			}
-
 		}
 
-		return std::vector<T>();
+		if (g_bytes != fileSize)
+		{
+			OutputMessage(L"Warning: Improper amount of bytes read: %lu out of %lld.\n", g_bytes, fileSize);
+		}
+		std::vector<T> out(reinterpret_cast<T*>(ReadBuffer), reinterpret_cast<T*>(ReadBuffer + g_bytes));
+		delete[] ReadBuffer;
+		return out;
 	}
 
 private:

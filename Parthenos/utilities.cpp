@@ -7,7 +7,7 @@ float DPIScale::scaleY = 1.0f;
 float DPIScale::dpiX = 96.0f;
 float DPIScale::dpiY = 96.0f;
 
-std::system_error Error(const std::string & msg)
+std::string OutputError(const std::string & msg)
 {
 	DWORD error = GetLastError();
 	std::string outmsg = "Error " + std::to_string(error) + ": " + msg + "\n";
@@ -26,9 +26,15 @@ std::system_error Error(const std::string & msg)
 		0, NULL);
 	OutputDebugStringW((LPWSTR)lpMsgBuf);
 
+	return outmsg;
+}
+
+
+std::system_error Error(const std::string & msg)
+{
 	return std::system_error(
 		std::error_code(::GetLastError(), std::system_category()),
-		outmsg
+		OutputError(msg)
 	);
 }
 

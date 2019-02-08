@@ -200,18 +200,9 @@ void Parthenos::PreShow()
 	m_titleBar.Init();
 	m_titleBar.Resize(rc);
 
-	/*char DataBuffer[] = { 0b00, 0b01, 0b10 };
-	DWORD dwBytesToWrite = (DWORD)strlen(DataBuffer);*/
-	int DataBuffer[] = { 82, 104, 105, 0x73727170 }; // srqp -> pqrs in chars ; good
-	DWORD dwBytesToWrite = 4*sizeof(int);
 	m_histFile.Init(L"fake.file", m_hwnd);
 	m_histFile.Open();
-	m_histFile.Write(reinterpret_cast<void*>(DataBuffer), dwBytesToWrite);
-	m_histFile.Close();
-
-	m_histFile.Open(GENERIC_READ);
 	std::vector<int> out = m_histFile.Read<int>();
-	OutputMessage(L"%d %d %d %d\n\n", out[0], out[1], out[2], out[3]);
 }
 
 LRESULT Parthenos::OnPaint()
@@ -284,8 +275,6 @@ LRESULT Parthenos::OnMouseMove(POINT cursor, DWORD flags)
 	//D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
 
 	return 0;
-
-
 
 	//if ((flags & MK_LBUTTON) && Selection())
 }

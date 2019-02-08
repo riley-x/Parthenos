@@ -9,6 +9,7 @@ template <class T> void SafeRelease(T **ppT)
 	}
 }
 
+std::string OutputError(const std::string & msg);
 std::system_error Error(const std::string & msg);
 void OutputMessage(const std::wstring format, ...);
 
