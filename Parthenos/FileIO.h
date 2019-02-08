@@ -58,7 +58,7 @@ public:
 			bErrorFlag = ReadFileEx(m_hFile, ReadBuffer, static_cast<DWORD>(fileSize), &ol, CompletionRoutine);
 			if (bErrorFlag == FALSE)
 			{
-				OutputError("Unable to read from file.\n");
+				OutputError(L"Unable to read from file.\n");
 				delete[] ReadBuffer;
 				return std::vector<T>();
 			}
@@ -75,7 +75,7 @@ public:
 			bErrorFlag = ReadFile(m_hFile, ReadBuffer, static_cast<DWORD>(fileSize), &g_bytes, NULL);
 			if (bErrorFlag == FALSE)
 			{
-				OutputError("Unable to read from file.\n");
+				OutputError(L"Unable to read from file.\n");
 				delete[] ReadBuffer;
 				return std::vector<T>();
 			}

@@ -73,7 +73,7 @@ bool FileIO::Write(LPCVOID data, DWORD nBytes)
 	BOOL bErrorFlag = SetFilePointerEx(m_hFile, zero, NULL, FILE_BEGIN);
 	if (bErrorFlag == FALSE)
 	{
-		OutputError("Seek failed");
+		OutputError(L"Seek failed");
 		return false;
 	}
 
@@ -88,19 +88,19 @@ bool FileIO::Write(LPCVOID data, DWORD nBytes)
 
 	if (bErrorFlag == FALSE)
 	{
-		OutputError("Unable to write to file.");
+		OutputError(L"Unable to write to file.");
 		return false;
 	}
 	else if (bytesWritten != nBytes)
 	{
-		OutputError("Error: dwBytesWritten != dwBytesToWrite");
+		OutputError(L"Error: dwBytesWritten != dwBytesToWrite");
 		return false;
 	}
 	
 	bErrorFlag = SetEndOfFile(m_hFile);
 	if (bErrorFlag == FALSE)
 	{
-		OutputError("Unable to truncate file.");
+		OutputError(L"Unable to truncate file.");
 		return false;
 	}
 

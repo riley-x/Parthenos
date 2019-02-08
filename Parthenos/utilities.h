@@ -9,8 +9,8 @@ template <class T> void SafeRelease(T **ppT)
 	}
 }
 
-std::string OutputError(const std::string & msg);
-std::system_error Error(const std::string & msg);
+std::wstring OutputError(const std::wstring & msg);
+std::system_error Error(const std::wstring & msg);
 void OutputMessage(const std::wstring format, ...);
 
 class DPIScale

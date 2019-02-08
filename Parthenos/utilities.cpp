@@ -7,11 +7,11 @@ float DPIScale::scaleY = 1.0f;
 float DPIScale::dpiX = 96.0f;
 float DPIScale::dpiY = 96.0f;
 
-std::string OutputError(const std::string & msg)
+std::wstring OutputError(const std::wstring & msg)
 {
 	DWORD error = GetLastError();
-	std::string outmsg = "Error " + std::to_string(error) + ": " + msg + "\n";
-	OutputDebugStringA(outmsg.c_str());
+	std::wstring outmsg = L"Error " + std::to_wstring(error) + L": " + msg + L"\n";
+	OutputDebugString(outmsg.c_str());
 
 	LPVOID lpMsgBuf;
 	DWORD dw = GetLastError();
@@ -30,11 +30,16 @@ std::string OutputError(const std::string & msg)
 }
 
 
-std::system_error Error(const std::string & msg)
+std::system_error Error(const std::wstring & msg)
 {
+	std::wstring outmsg = OutputError(msg);
+	size_t len = outmsg.size();
+	size_t bufferSize = len * sizeof(wchar_t);
+	char *msgBuffer = new char[bufferSize];
+	wcstombs_s(NULL, msgBuffer, bufferSize, outmsg.c_str(), _TRUNCATE);
+
 	return std::system_error(
-		std::error_code(::GetLastError(), std::system_category()),
-		OutputError(msg)
+		std::error_code(::GetLastError(), std::system_category()), msgBuffer
 	);
 }
 

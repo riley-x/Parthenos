@@ -137,7 +137,7 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 LRESULT Parthenos::OnNCHitTest(POINT cursor) {
 	//RECT window;
 	//if (!::GetWindowRect(m_hwnd, &window)) Error("GetWindowRect failed");
-	if (!::ScreenToClient(m_hwnd, &cursor)) Error("ScreenToClient failed");
+	if (!::ScreenToClient(m_hwnd, &cursor)) Error(L"ScreenToClient failed");
 
 	LRESULT ret = m_titleBar.HitTest(cursor);
 	switch (ret)
@@ -187,7 +187,7 @@ LRESULT Parthenos::OnCreate()
 	}
 	if (FAILED(hr))
 	{
-		throw Error("OnCreate failed!");
+		throw Error(L"OnCreate failed!");
 		return -1;  // Fail CreateWindowEx.
 	}
 	return 0;
