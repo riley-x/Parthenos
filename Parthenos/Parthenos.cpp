@@ -4,6 +4,7 @@
 #include "Parthenos.h"
 #include "utilities.h"
 #include "TitleBar.h"
+#include "HTTP.h"
 
 #include <windowsx.h>
 
@@ -200,9 +201,20 @@ void Parthenos::PreShow()
 	m_titleBar.Init();
 	m_titleBar.Resize(rc);
 
+	////
 	m_histFile.Init(L"fake.file", m_hwnd);
 	m_histFile.Open();
-	std::vector<int> out = m_histFile.Read<int>();
+
+	std::wstring outmsg = SendHTTPSRequest_GET(L"api.iextrading.com", L"1.0/stock/aapl/quote");
+	size_t len = outmsg.size();
+	size_t bufferSize = len * sizeof(wchar_t);
+	char *msgBuffer = new char[bufferSize];
+	wcstombs_s(NULL, msgBuffer, bufferSize, outmsg.c_str(), _TRUNCATE);
+	m_histFile.Write(reinterpret_cast<void*>(msgBuffer), strlen(msgBuffer));
+
+	delete[] msgBuffer;
+	m_histFile.Close();
+	//std::vector<int> out = m_histFile.Read<int>();
 }
 
 LRESULT Parthenos::OnPaint()

@@ -161,6 +161,7 @@
     <ClInclude Include="BorderlessWindow.h" />
     <ClInclude Include="D2Objects.h" />
     <ClInclude Include="FileIO.h" />
+    <ClInclude Include="HTTP.h" />
     <ClInclude Include="Parthenos.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
@@ -171,6 +172,7 @@
   <ItemGroup>
     <ClCompile Include="D2Objects.cpp" />
     <ClCompile Include="FileIO.cpp" />
+    <ClCompile Include="HTTP.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Parthenos.cpp" />
     <ClCompile Include="stdafx.cpp">

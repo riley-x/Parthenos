@@ -38,9 +38,12 @@ std::system_error Error(const std::wstring & msg)
 	char *msgBuffer = new char[bufferSize];
 	wcstombs_s(NULL, msgBuffer, bufferSize, outmsg.c_str(), _TRUNCATE);
 
-	return std::system_error(
+	auto out_error = std::system_error(
 		std::error_code(::GetLastError(), std::system_category()), msgBuffer
 	);
+
+	delete[] msgBuffer;
+	return out_error;
 }
 
 void OutputMessage(const std::wstring format, ...)
