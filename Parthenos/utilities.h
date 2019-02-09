@@ -1,5 +1,15 @@
 #pragma once
 
+
+std::wstring OutputError(const std::wstring & msg);
+std::system_error Error(const std::wstring & msg);
+void OutputMessage(const std::wstring format, ...);
+
+time_t TruncateToDay(time_t time);
+int GetDay(time_t time);
+std::wstring toWString(time_t time);
+
+
 template <class T> void SafeRelease(T **ppT)
 {
 	if (*ppT)
@@ -8,10 +18,6 @@ template <class T> void SafeRelease(T **ppT)
 		*ppT = NULL;
 	}
 }
-
-std::wstring OutputError(const std::wstring & msg);
-std::system_error Error(const std::wstring & msg);
-void OutputMessage(const std::wstring format, ...);
 
 class DPIScale
 {

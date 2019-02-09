@@ -18,6 +18,7 @@
 #include <tchar.h>
 #include <string>
 #include <vector>
+#include <ctime>
 
 
 // reference additional headers your program requires here

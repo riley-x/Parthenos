@@ -213,9 +213,15 @@ void Parthenos::PreShow()
 	//std::vector<int> out = m_histFile.Read<int>();
 
 	//std::vector<OHLC> adsf = GetOHLC(L"aapl", L"");
-	Quote quote = GetQuote(L"aapl");
-	OutputMessage(L"%lf %lf %lf %d %I64u %d %d\n", quote.open, quote.close, quote.latestPrice, quote.latestSource,
-		quote.latestUpdate, quote.latestVolume, quote.avgTotalVolume);
+	//Quote quote = GetQuote(L"aapl");
+	//OutputMessage(L"%lf %lf %lf %d %I64d %d %d\n", quote.open, quote.close, quote.latestPrice, quote.latestSource,
+	//	quote.latestUpdate, quote.latestVolume, quote.avgTotalVolume);
+
+	std::vector<OHLC> test = GetOHLC(L"aapl");
+	for (OHLC item : test)
+	{
+		OutputDebugString(item.to_string().c_str());
+	}
 }
 
 LRESULT Parthenos::OnPaint()

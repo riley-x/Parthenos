@@ -29,7 +29,6 @@ std::wstring OutputError(const std::wstring & msg)
 	return outmsg;
 }
 
-
 std::system_error Error(const std::wstring & msg)
 {
 	std::wstring outmsg = OutputError(msg);
@@ -56,3 +55,39 @@ void OutputMessage(const std::wstring format, ...)
 
 	OutputDebugString(msg);
 }
+
+time_t TruncateToDay(time_t time)
+{
+	struct tm out;
+	errno_t err = localtime_s(&out, &time);
+	if (err != 0) OutputMessage(L"Truncate localtime conversion failed: %d\n", err);
+
+	out.tm_sec = 0;
+	out.tm_min = 0;
+	out.tm_hour = 0;
+
+	return mktime(&out);
+}
+
+int GetDay(time_t time)
+{
+	struct tm out;
+	errno_t err = localtime_s(&out, &time);
+	if (err != 0) OutputMessage(L"GetDay localtime conversion failed: %d\n", err);
+
+	return 1000 * out.tm_year + out.tm_yday;
+}
+
+std::wstring toWString(time_t time)
+{
+	struct tm tm_time;
+	errno_t err = localtime_s(&tm_time, &time);
+	if (err != 0) OutputMessage(L"toWString localtime conversion failed: %d\n", err);
+
+	wchar_t buffer[30] = {};
+	size_t n = wcsftime(buffer, 30, L"%F", &tm_time);
+	if (n == 0) OutputMessage(L"toWstring buffer exceeded\n");
+	return std::wstring(buffer);
+}
+
+
