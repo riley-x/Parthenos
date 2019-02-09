@@ -61,7 +61,17 @@ void FileIO::Open(DWORD dwDesiredAccess)
 // Overwrites file, with truncating
 bool FileIO::Write(LPCVOID data, DWORD nBytes)
 {
-	// Currently overwrites
+	return _Write(data, nBytes, false);
+}
+
+// Appends data to current file
+bool FileIO::Append(LPCVOID data, DWORD nBytes)
+{
+	return _Write(data, nBytes, true);
+}
+
+bool FileIO::_Write(LPCVOID data, DWORD nBytes, bool append)
+{
 	if (m_hFile == INVALID_HANDLE_VALUE)
 	{
 		OutputMessage(L"Handle not initialized!\n");
@@ -74,7 +84,12 @@ bool FileIO::Write(LPCVOID data, DWORD nBytes)
 	}
 
 	LARGE_INTEGER zero; zero.QuadPart = 0;
-	BOOL bErrorFlag = SetFilePointerEx(m_hFile, zero, NULL, FILE_BEGIN);
+	BOOL bErrorFlag;
+	if (append)
+		bErrorFlag = SetFilePointerEx(m_hFile, zero, NULL, FILE_END);
+	else
+		bErrorFlag = SetFilePointerEx(m_hFile, zero, NULL, FILE_BEGIN);
+
 	if (bErrorFlag == FALSE)
 	{
 		OutputError(L"Seek failed");
@@ -82,7 +97,7 @@ bool FileIO::Write(LPCVOID data, DWORD nBytes)
 	}
 
 	DWORD bytesWritten;
-	bErrorFlag = WriteFile(
+	bErrorFlag = ::WriteFile(
 		m_hFile,			// open file handle
 		data,				// start of data to write
 		nBytes,				// number of bytes to write
@@ -100,12 +115,15 @@ bool FileIO::Write(LPCVOID data, DWORD nBytes)
 		OutputError(L"Error: dwBytesWritten != dwBytesToWrite");
 		return false;
 	}
-	
-	bErrorFlag = SetEndOfFile(m_hFile);
-	if (bErrorFlag == FALSE)
+
+	if (!append)
 	{
-		OutputError(L"Unable to truncate file.");
-		return false;
+		bErrorFlag = SetEndOfFile(m_hFile);
+		if (bErrorFlag == FALSE)
+		{
+			OutputError(L"Unable to truncate file.");
+			return false;
+		}
 	}
 
 	return true;

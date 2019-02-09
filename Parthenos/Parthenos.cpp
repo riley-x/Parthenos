@@ -202,9 +202,9 @@ void Parthenos::PreShow()
 	m_titleBar.Init();
 	m_titleBar.Resize(rc);
 
-	////
+	//
 	std::vector<OHLC> test = GetOHLC(L"aapl");
-	for (auto item = test.end() - 10; item != test.end(); item++)
+	for (auto item = test.end() - 20; item != test.end(); item++)
 	{
 		OutputDebugString((*item).to_wstring().c_str());
 	}

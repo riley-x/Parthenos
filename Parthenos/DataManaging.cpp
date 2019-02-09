@@ -44,7 +44,7 @@ OHLC parseIEXChartItem(std::string json)
 }
 
 
-std::vector<OHLC> parseIEXChart(std::string json, int latestDay)
+std::vector<OHLC> parseIEXChart(std::string json)
 {
 	std::vector<OHLC> out;
 	std::string token;
@@ -74,13 +74,12 @@ std::vector<OHLC> GetOHLC(std::wstring ticker)
 	ohlcFile.Open();
 
 	std::vector<OHLC> ohlcData;
-	int latestDay = 0;
 	int days_to_get = 0; // 0 indicates no existing data -> get 5Y
 
 	if (exists)
 	{
 		ohlcData = ohlcFile.Read<OHLC>();
-		latestDay = GetDay(ohlcData.back().time);
+		int latestDay = GetDay(ohlcData.back().time);
 		Quote quote = GetQuote(ticker);
 		int quoteDay = GetDay(quote.latestUpdate);
 		if (quoteDay > latestDay)
@@ -116,22 +115,27 @@ std::vector<OHLC> GetOHLC(std::wstring ticker)
 
 	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/" + ticker + L"/chart/" + chart_range,
 		L"filter=date,open,high,low,close,volume");
-	
-	std::vector<OHLC> extra = parseIEXChart(json, latestDay);
+	std::vector<OHLC> extra = parseIEXChart(json);
+
 	if (days_to_get != 0)
 	{
 		auto next = std::lower_bound(extra.begin(), extra.end(), ohlcData.back(), OHLC_Compare);
 		if (next == extra.end()) OutputMessage(L"lower_bound search found nothing...\n");
 		else if ((*next).time == ohlcData.back().time) next++;
 		if (next == extra.end()) OutputMessage(L"lower_bound search found nothing new...\n");
+
+		int ind = next - extra.begin();
+		bool err = ohlcFile.Append(reinterpret_cast<const void*>(extra.data() + ind), (extra.size() - ind) * sizeof(OHLC));
+		if (!err) OutputMessage(L"Append OHLC failed\n");
+
 		ohlcData.insert(ohlcData.end(), next, extra.end());
 	}
 	else
 	{
 		ohlcData = extra;
+		ohlcFile.Write(reinterpret_cast<const void*>(ohlcData.data()), sizeof(OHLC) * ohlcData.size());
 	}
 
-	ohlcFile.Write(reinterpret_cast<const void*>(ohlcData.data()), sizeof(OHLC) * ohlcData.size());
 	return ohlcData;
 }
 
@@ -154,7 +158,6 @@ Quote GetQuote(std::wstring ticker)
 	if (n != 7)
 	{
 		OutputMessage(L"sscanf_s failed! Only read %d/%d\n", n, 7);
-		//OutputDebugString(std::to_wstring(quote.latestUpdate).c_str()); OutputDebugString(L"\n");
 	}
 
 	if (strcmp(buffer, "IEX real time price") == 0)

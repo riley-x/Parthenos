@@ -29,6 +29,7 @@ public:
 	void Open(DWORD dwDesiredAccess = GENERIC_READ | GENERIC_WRITE);
 	void Close();
 	bool Write(LPCVOID data, DWORD nBytes);
+	bool Append(LPCVOID data, DWORD nBytes);
 
 	template <typename T>
 	std::vector<T> Read()
@@ -97,4 +98,5 @@ private:
 	HANDLE m_hFile;
 	DWORD m_access = 0;
 
+	bool _Write(LPCVOID data, DWORD nBytes, bool append);
 };
