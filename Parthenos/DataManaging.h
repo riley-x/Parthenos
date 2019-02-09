@@ -19,7 +19,7 @@ typedef struct OHLC_struct {
 	time_t time; // unix time.
 	uint64_t volume;
 
-	std::wstring to_string()
+	std::wstring to_wstring()
 	{
 		return L"Date: "	+ toWString(time)
 			+ L", Open: "	+ std::to_wstring(open)
@@ -40,6 +40,19 @@ typedef struct Quote_struct {
 	time_t latestUpdate;
 	int latestVolume;
 	int avgTotalVolume;
+
+	std::wstring to_wstring()
+	{
+		return L"Date: "			+ toWString(latestUpdate)
+			+ L", Open: "			+ std::to_wstring(open)
+			+ L", Close: "			+ std::to_wstring(close)
+			+ L", latestPrice: "	+ std::to_wstring(latestPrice)
+			+ L", latestSource: "	+ std::to_wstring(static_cast<int>(latestSource))
+			+ L", latestVolume: "	+ std::to_wstring(latestVolume)
+			+ L", avgTotalVolume: " + std::to_wstring(avgTotalVolume)
+			+ L", latestUpdate: "	+ std::to_wstring(latestUpdate)
+			+ L"\n";
+	}
 } Quote;
 
 std::vector<OHLC> GetOHLC(std::wstring ticker);

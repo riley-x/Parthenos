@@ -203,24 +203,10 @@ void Parthenos::PreShow()
 	m_titleBar.Resize(rc);
 
 	////
-	//m_histFile.Init(L"fake.file");
-	//m_histFile.Open();
-
-	//std::string outmsg = SendHTTPSRequest_GET(L"api.iextrading.com", L"1.0/stock/aapl/quote");
-	//m_histFile.Write(reinterpret_cast<const void*>(outmsg.c_str()), outmsg.size());
-
-	//m_histFile.Close();
-	//std::vector<int> out = m_histFile.Read<int>();
-
-	//std::vector<OHLC> adsf = GetOHLC(L"aapl", L"");
-	//Quote quote = GetQuote(L"aapl");
-	//OutputMessage(L"%lf %lf %lf %d %I64d %d %d\n", quote.open, quote.close, quote.latestPrice, quote.latestSource,
-	//	quote.latestUpdate, quote.latestVolume, quote.avgTotalVolume);
-
 	std::vector<OHLC> test = GetOHLC(L"aapl");
-	for (OHLC item : test)
+	for (auto item = test.end() - 10; item != test.end(); item++)
 	{
-		OutputDebugString(item.to_string().c_str());
+		OutputDebugString((*item).to_wstring().c_str());
 	}
 }
 

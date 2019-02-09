@@ -7,6 +7,11 @@
 const std::wstring ROOTDIR(L"C:/Users/Riley/Documents/Finances/Parthenos/"); // C:/Users/Riley/Documents/Finances/Parthenos/
 const std::wstring IEXHOST(L"api.iextrading.com"); // api.iextrading.com
 
+// Forward declarations
+
+bool OHLC_Compare(const OHLC & a, const OHLC & b);
+
+
  // With curly braces removed:
  // "date":"2018-12-31","open":157.8529,"high":158.6794,"low":155.8117,"close":157.0663,"volume":35003466
 OHLC parseIEXChartItem(std::string json)
@@ -75,7 +80,7 @@ std::vector<OHLC> GetOHLC(std::wstring ticker)
 	if (exists)
 	{
 		ohlcData = ohlcFile.Read<OHLC>();
-		latestDay = GetDay(ohlcData.at(ohlcData.size()-1).time);
+		latestDay = GetDay(ohlcData.back().time);
 		Quote quote = GetQuote(ticker);
 		int quoteDay = GetDay(quote.latestUpdate);
 		if (quoteDay > latestDay)
@@ -114,9 +119,17 @@ std::vector<OHLC> GetOHLC(std::wstring ticker)
 	
 	std::vector<OHLC> extra = parseIEXChart(json, latestDay);
 	if (days_to_get != 0)
-		ohlcData.insert(ohlcData.end(), extra.begin(), extra.end());
+	{
+		auto next = std::lower_bound(extra.begin(), extra.end(), ohlcData.back(), OHLC_Compare);
+		if (next == extra.end()) OutputMessage(L"lower_bound search found nothing...\n");
+		else if ((*next).time == ohlcData.back().time) next++;
+		if (next == extra.end()) OutputMessage(L"lower_bound search found nothing new...\n");
+		ohlcData.insert(ohlcData.end(), next, extra.end());
+	}
 	else
+	{
 		ohlcData = extra;
+	}
 
 	ohlcFile.Write(reinterpret_cast<const void*>(ohlcData.data()), sizeof(OHLC) * ohlcData.size());
 	return ohlcData;
@@ -159,3 +172,8 @@ Quote GetQuote(std::wstring ticker)
 	return quote;
 }
 
+// returns a.time < b.time
+bool OHLC_Compare(const OHLC & a, const OHLC & b)
+{
+	return a.time < b.time;
+}
