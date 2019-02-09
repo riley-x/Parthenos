@@ -3,6 +3,8 @@
 #include "stdafx.h"
 #include "utilities.h"
 
+bool FileExists(LPCTSTR szPath);
+
 namespace {
 	DWORD g_error = 0;
 	DWORD g_bytes = 0;
@@ -23,7 +25,7 @@ public:
 	~FileIO() { Close(); }
 
 
-	void Init(std::wstring filename, HWND phwnd);
+	void Init(std::wstring filename);
 	void Open(DWORD dwDesiredAccess = GENERIC_READ | GENERIC_WRITE);
 	void Close();
 	bool Write(LPCVOID data, DWORD nBytes);
@@ -91,7 +93,6 @@ public:
 	}
 
 private:
-	HWND m_phwnd;
 	std::wstring m_filename;
 	HANDLE m_hFile;
 	DWORD m_access = 0;

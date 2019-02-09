@@ -2,6 +2,14 @@
 #include "FileIO.h"
 #include "utilities.h"
 
+bool FileExists(LPCTSTR szPath)
+{
+	DWORD dwAttrib = GetFileAttributes(szPath);
+
+	return (dwAttrib != INVALID_FILE_ATTRIBUTES &&
+		!(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
+}
+
 void FileIO::Close()
 {
 	if (m_hFile != INVALID_HANDLE_VALUE)
@@ -11,10 +19,9 @@ void FileIO::Close()
 	}
 }
 
-void FileIO::Init(std::wstring filename, HWND phwnd)
+void FileIO::Init(std::wstring filename)
 {
 	m_filename = filename;
-	m_phwnd = phwnd;
 }
 
 void FileIO::Open(DWORD dwDesiredAccess)
@@ -47,10 +54,7 @@ void FileIO::Open(DWORD dwDesiredAccess)
 
 	if (m_hFile == INVALID_HANDLE_VALUE)
 	{
-		DWORD error = GetLastError();
-		std::wstring msg = L"File " + m_filename + L" can't be opened\n" +
-			L"Error: " + std::to_wstring(error);
-		MessageBox(m_phwnd, msg.c_str(), L"Parthenos", MB_OK);
+		OutputError(L"File " + m_filename + L" can't be opened");
 	}
 }
 

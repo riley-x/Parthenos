@@ -5,6 +5,7 @@
 #include "utilities.h"
 #include "TitleBar.h"
 #include "HTTP.h"
+#include "DataManaging.h"
 
 #include <windowsx.h>
 
@@ -202,19 +203,19 @@ void Parthenos::PreShow()
 	m_titleBar.Resize(rc);
 
 	////
-	m_histFile.Init(L"fake.file", m_hwnd);
-	m_histFile.Open();
+	//m_histFile.Init(L"fake.file");
+	//m_histFile.Open();
 
-	std::wstring outmsg = SendHTTPSRequest_GET(L"api.iextrading.com", L"1.0/stock/aapl/quote");
-	size_t len = outmsg.size();
-	size_t bufferSize = len * sizeof(wchar_t);
-	char *msgBuffer = new char[bufferSize];
-	wcstombs_s(NULL, msgBuffer, bufferSize, outmsg.c_str(), _TRUNCATE);
-	m_histFile.Write(reinterpret_cast<void*>(msgBuffer), strlen(msgBuffer));
+	//std::string outmsg = SendHTTPSRequest_GET(L"api.iextrading.com", L"1.0/stock/aapl/quote");
+	//m_histFile.Write(reinterpret_cast<const void*>(outmsg.c_str()), outmsg.size());
 
-	delete[] msgBuffer;
-	m_histFile.Close();
+	//m_histFile.Close();
 	//std::vector<int> out = m_histFile.Read<int>();
+
+	//std::vector<OHLC> adsf = GetOHLC(L"aapl", L"");
+	Quote quote = GetQuote(L"aapl");
+	OutputMessage(L"%lf %lf %lf %d %I64u %d %d\n", quote.open, quote.close, quote.latestPrice, quote.latestSource,
+		quote.latestUpdate, quote.latestVolume, quote.avgTotalVolume);
 }
 
 LRESULT Parthenos::OnPaint()

@@ -59,7 +59,7 @@ retry:
 
 
 // send https request
-std::wstring SendHTTPSRequest_GET(const std::wstring& _server,
+std::string SendHTTPSRequest_GET(const std::wstring& _server,
 	const std::wstring& _page,
 	const std::wstring& _params = L"")
 {
@@ -113,6 +113,7 @@ std::wstring SendHTTPSRequest_GET(const std::wstring& _server,
 		::InternetCloseHandle(hInternet);
 	}
 
-	return std::wstring(out.begin(), out.end());
+	return out;
+	//return std::wstring(out.begin(), out.end());
 }
 

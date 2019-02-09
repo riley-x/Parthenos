@@ -160,6 +160,7 @@
     <ClInclude Include="BaseWindow.h" />
     <ClInclude Include="BorderlessWindow.h" />
     <ClInclude Include="D2Objects.h" />
+    <ClInclude Include="DataManaging.h" />
     <ClInclude Include="FileIO.h" />
     <ClInclude Include="HTTP.h" />
     <ClInclude Include="Parthenos.h" />
@@ -171,6 +172,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="D2Objects.cpp" />
+    <ClCompile Include="DataManaging.cpp" />
     <ClCompile Include="FileIO.cpp" />
     <ClCompile Include="HTTP.cpp" />
     <ClCompile Include="main.cpp" />
