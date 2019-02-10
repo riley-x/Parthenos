@@ -181,7 +181,9 @@ LRESULT Parthenos::OnSize(WPARAM wParam)
 
 LRESULT Parthenos::OnCreate()
 {
+	m_d2.hwndParent = m_hwnd;
 	hCursor = LoadCursor(NULL, IDC_ARROW);
+
 	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 
 	if (SUCCEEDED(hr))
@@ -203,14 +205,16 @@ void Parthenos::PreShow()
 	m_titleBar.Init();
 	m_titleBar.Resize(rc);
 
-	m_chart.Init(350.0f);
+	m_chart.Init(m_hwnd, 350.0f);
 	m_chart.Resize(rc);
-
-	//std::vector<OHLC> test = GetOHLC(L"aapl");
+	std::vector<OHLC> test = GetOHLC(L"aapl");
 	//for (auto item : test)
 	//{
 	//	OutputDebugString(item.to_wstring().c_str());
 	//}
+	int n = 20;
+	OHLC const * data = test.data() + (test.size() - n);
+	m_chart.Line(data, n);
 }
 
 LRESULT Parthenos::OnPaint()

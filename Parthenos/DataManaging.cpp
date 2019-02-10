@@ -6,6 +6,7 @@
 
 const std::wstring ROOTDIR(L"C:/Users/Riley/Documents/Finances/Parthenos/"); // C:/Users/Riley/Documents/Finances/Parthenos/
 const std::wstring IEXHOST(L"api.iextrading.com"); // api.iextrading.com
+const std::wstring ALPHAKEY(L"FJHB2XGE0A43171J"); // FJHB2XGE0A43171J
 
 // Forward declarations
 

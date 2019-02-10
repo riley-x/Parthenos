@@ -4,6 +4,8 @@
 
 class D2Objects {
 public:
+	HWND					hwndParent				= NULL;
+
 	ID2D1Factory            *pFactory				= NULL;
 	ID2D1HwndRenderTarget   *pRenderTarget			= NULL;
 	ID2D1SolidColorBrush    *pBrush					= NULL;

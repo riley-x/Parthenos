@@ -19,7 +19,7 @@ typedef struct OHLC_struct {
 	date_t date;
 	uint32_t volume;
 
-	std::wstring to_wstring()
+	std::wstring to_wstring() const
 	{
 		return L"Date: "	+ DateToWString(date)
 			+ L", Open: "	+ std::to_wstring(open)
@@ -40,7 +40,7 @@ typedef struct Quote_struct {
 	int latestVolume;
 	int avgTotalVolume;
 
-	std::wstring to_wstring()
+	std::wstring to_wstring() const
 	{
 		return L"Date: "			+ TimeToWString(latestUpdate)
 			+ L", Open: "			+ std::to_wstring(open)
