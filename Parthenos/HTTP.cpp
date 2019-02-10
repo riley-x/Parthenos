@@ -75,10 +75,10 @@ std::string SendHTTPSRequest_GET(const std::wstring& _server,
 		if (hConnect != NULL)
 		{
 			std::wstring request = _page + (_params.empty() ? L"" : (L"?" + _params));
-			LPCWSTR rgpszAcceptTypes[] = { L"text/*", NULL };
+			//LPCWSTR rgpszAcceptTypes[] = { L"text/*", NULL }; // Alpha can't satisfy this accept type, NULL works though
 
 			// open request
-			HINTERNET hRequest = ::HttpOpenRequest(hConnect, L"GET", request.c_str(), L"HTTP/1.1", NULL, rgpszAcceptTypes, INTERNET_FLAG_SECURE, 1);
+			HINTERNET hRequest = ::HttpOpenRequest(hConnect, L"GET", request.c_str(), L"HTTP/1.1", NULL, NULL, INTERNET_FLAG_SECURE, 1);
 			if (hRequest != NULL)
 			{
 				// send request

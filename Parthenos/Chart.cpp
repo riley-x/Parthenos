@@ -123,7 +123,6 @@ void Axes::Line(OHLC const * ohlc, int n)
 
 	for (int i = 0; i < n; i++)
 	{
-		OutputDebugString(ohlc[i].to_wstring().c_str());
 		x[i] = linScale(i, 0, n, x_min, x_diff);
 		if (ohlc[i].close < close_min) close_min = ohlc[i].close;
 		else if (ohlc[i].close > close_max) close_max = ohlc[i].close;

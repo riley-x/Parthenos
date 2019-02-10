@@ -34,9 +34,30 @@ public:
 	template <typename T>
 	std::vector<T> Read()
 	{
+		return _Read<T>(0, true);
+	}
+
+	template <typename T>
+	std::vector<T> ReadEnd(size_t n)
+	{
+		DWORD bytesToRead = sizeof(T) * static_cast<DWORD>(n);
+		return _Read<T>(bytesToRead, false);
+	}
+
+	
+
+private:
+	std::wstring m_filename;
+	HANDLE m_hFile;
+	DWORD m_access = 0;
+
+	bool _Write(LPCVOID data, DWORD nBytes, bool append);
+
+	// Reads from end of file - bytesToRead
+	template <typename T>
+	std::vector<T> _Read(DWORD bytesToRead, bool all = false)
+	{
 		BOOL bErrorFlag;
-		LARGE_INTEGER fileSize_struct;
-		LONGLONG fileSize;
 
 		if (m_hFile == INVALID_HANDLE_VALUE)
 		{
@@ -44,21 +65,31 @@ public:
 			return std::vector<T>();
 		}
 
-		bErrorFlag = GetFileSizeEx(m_hFile, &fileSize_struct);
-		if (bErrorFlag == 0)
+		// Get file size
+		LONGLONG fileSize;
+		if (all || m_access == GENERIC_READ)
 		{
-			OutputMessage(L"Couldn't get filesize.\n");
-			return std::vector<T>();
-		}
-		fileSize = fileSize_struct.QuadPart;
+			LARGE_INTEGER fileSize_struct;
 
-		char *ReadBuffer = new char[static_cast<UINT>(fileSize)];
-		DWORD dwBytesRead = 0;
+			bErrorFlag = GetFileSizeEx(m_hFile, &fileSize_struct);
+			if (bErrorFlag == 0)
+			{
+				OutputMessage(L"Couldn't get filesize.\n");
+				return std::vector<T>();
+			}
+			fileSize = fileSize_struct.QuadPart;
+		}
+
+		if (all)
+			bytesToRead = static_cast<DWORD>(fileSize);
+		char *ReadBuffer = new char[bytesToRead];
 
 		if (m_access == GENERIC_READ)
 		{
 			OVERLAPPED ol = { 0 };
-			bErrorFlag = ReadFileEx(m_hFile, ReadBuffer, static_cast<DWORD>(fileSize), &ol, CompletionRoutine);
+			ol.Offset = static_cast<DWORD>(fileSize) - bytesToRead;
+			
+			bErrorFlag = ReadFileEx(m_hFile, ReadBuffer, bytesToRead, &ol, CompletionRoutine);
 			if (bErrorFlag == FALSE)
 			{
 				OutputError(L"Unable to read from file.\n");
@@ -75,7 +106,25 @@ public:
 		}
 		else // Synchronous R/W
 		{
-			bErrorFlag = ReadFile(m_hFile, ReadBuffer, static_cast<DWORD>(fileSize), &g_bytes, NULL);
+			// Set file pointer
+			LARGE_INTEGER offset; offset.QuadPart = 0;
+			if (all)
+			{
+				bErrorFlag = SetFilePointerEx(m_hFile, offset, NULL, FILE_BEGIN);
+			}
+			else
+			{
+				offset.QuadPart = -static_cast<LONGLONG>(bytesToRead);
+				bErrorFlag = SetFilePointerEx(m_hFile, offset, NULL, FILE_END);
+			}
+			if (bErrorFlag == FALSE)
+			{
+				OutputError(L"Seek failed");
+				return std::vector<T>();
+			}
+
+			// Do the read
+			bErrorFlag = ReadFile(m_hFile, ReadBuffer, bytesToRead, &g_bytes, NULL);
 			if (bErrorFlag == FALSE)
 			{
 				OutputError(L"Unable to read from file.\n");
@@ -84,19 +133,12 @@ public:
 			}
 		}
 
-		if (g_bytes != fileSize)
+		if (g_bytes != bytesToRead)
 		{
-			OutputMessage(L"Warning: Improper amount of bytes read: %lu out of %lld.\n", g_bytes, fileSize);
+			OutputMessage(L"Warning: Improper amount of bytes read: %lu out of %lu.\n", g_bytes, bytesToRead);
 		}
 		std::vector<T> out(reinterpret_cast<T*>(ReadBuffer), reinterpret_cast<T*>(ReadBuffer + g_bytes));
 		delete[] ReadBuffer;
 		return out;
 	}
-
-private:
-	std::wstring m_filename;
-	HANDLE m_hFile;
-	DWORD m_access = 0;
-
-	bool _Write(LPCVOID data, DWORD nBytes, bool append);
 };

@@ -3,6 +3,12 @@
 #include "stdafx.h"
 #include "utilities.h"
 
+enum class apiSource
+{
+	iex,
+	alpha
+};
+
 enum class iexLSource 
 {
 	real,
@@ -54,5 +60,5 @@ typedef struct Quote_struct {
 	}
 } Quote;
 
-std::vector<OHLC> GetOHLC(std::wstring ticker);
+std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source = apiSource::iex, size_t last_n = 0);
 Quote GetQuote(std::wstring ticker);
