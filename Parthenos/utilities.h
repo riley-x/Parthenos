@@ -5,10 +5,23 @@ std::wstring OutputError(const std::wstring & msg);
 std::system_error Error(const std::wstring & msg);
 void OutputMessage(const std::wstring format, ...);
 
+typedef uint32_t date_t; // 10000*yyyy + 100*mm + dd
 time_t TruncateToDay(time_t time);
-int GetDay(time_t time);
-std::wstring toWString(time_t time);
+std::wstring TimeToWString(time_t time);
+date_t GetDate(time_t time);
+date_t MkDate(int year, int month, int day);
+int ApproxDateDiff(date_t a, date_t b); // returns a-b
+std::wstring DateToWString(date_t date);
 
+enum class HitTest
+{
+	in,
+	left,
+	right,
+	above,
+	below,
+	nowhere
+};
 
 template <class T> void SafeRelease(T **ppT)
 {

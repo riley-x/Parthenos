@@ -18,7 +18,7 @@ OHLC parseIEXChartItem(std::string json)
 {
 	OHLC out;
 	char date_buffer[50] = { 0 };
-	const char format[] = R"("date":"%49[^"]","open":%lf,"high":%lf,"low":%lf,"close":%lf,"volume":%I64u)";
+	const char format[] = R"("date":"%49[^"]","open":%lf,"high":%lf,"low":%lf,"close":%lf,"volume":%I32u)";
 
 	int n = sscanf_s(json.c_str(), format, date_buffer, static_cast<unsigned>(_countof(date_buffer)), 
 		&out.open, &out.high, &out.low, &out.close, &out.volume);
@@ -28,18 +28,14 @@ OHLC parseIEXChartItem(std::string json)
 	}
 
 	// parse date
-	int year;
-	int month;
-	struct tm date = {};
-	n = sscanf_s(date_buffer, "%d-%d-%d", &year, &month, &date.tm_mday);
+	int year, month, date;
+	n = sscanf_s(date_buffer, "%d-%d-%d", &year, &month, &date);
 	if (n != 3)
 	{
 		OutputMessage(L"parseIEXChart sscanf_s 2 failed! Only read %d/%d\n", n, 3);
 	}
-	date.tm_year = year - 1900;
-	date.tm_mon = month - 1;
-	
-	out.time = mktime(&date);
+	out.date = MkDate(year, month, date);
+
 	return out;
 }
 
@@ -79,15 +75,17 @@ std::vector<OHLC> GetOHLC(std::wstring ticker)
 	if (exists)
 	{
 		ohlcData = ohlcFile.Read<OHLC>();
-		int latestDay = GetDay(ohlcData.back().time);
+		date_t latestDay = ohlcData.back().date;
+
 		Quote quote = GetQuote(ticker);
-		int quoteDay = GetDay(quote.latestUpdate);
+		date_t quoteDay = GetDate(quote.latestUpdate);
+
 		if (quoteDay > latestDay)
 		{
 			if (quote.latestSource == iexLSource::close) // When is prev close used?
-				days_to_get = quoteDay - latestDay;
+				days_to_get = ApproxDateDiff(quoteDay, latestDay);
 			else if (quoteDay - 1 > latestDay)
-				days_to_get = quoteDay - latestDay - 1;
+				days_to_get = ApproxDateDiff(quoteDay, latestDay) - 1;
 			else // one day ahead, not closed yet
 				return ohlcData;
 		}
@@ -121,7 +119,7 @@ std::vector<OHLC> GetOHLC(std::wstring ticker)
 	{
 		auto next = std::lower_bound(extra.begin(), extra.end(), ohlcData.back(), OHLC_Compare);
 		if (next == extra.end()) OutputMessage(L"lower_bound search found nothing...\n");
-		else if ((*next).time == ohlcData.back().time) next++;
+		else if ((*next).date == ohlcData.back().date) next++;
 		if (next == extra.end()) OutputMessage(L"lower_bound search found nothing new...\n");
 
 		int ind = next - extra.begin();
@@ -175,8 +173,8 @@ Quote GetQuote(std::wstring ticker)
 	return quote;
 }
 
-// returns a.time < b.time
+// returns a.date < b.date
 bool OHLC_Compare(const OHLC & a, const OHLC & b)
 {
-	return a.time < b.time;
+	return a.date < b.date;
 }

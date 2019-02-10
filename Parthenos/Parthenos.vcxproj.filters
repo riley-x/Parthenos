@@ -54,6 +54,9 @@
     <ClInclude Include="DataManaging.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Chart.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -81,6 +84,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="DataManaging.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Chart.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -6,12 +6,14 @@
 #include "D2Objects.h"
 #include "TitleBar.h"
 #include "FileIO.h"
+#include "Chart.h"
 
 
 class Parthenos : public BorderlessWindow<Parthenos>
 {
 	// Logical components
 	TitleBar m_titleBar;
+	Chart m_chart;
 	MouseTrackEvents m_mouseTrack;
 	FileIO m_histFile;
 

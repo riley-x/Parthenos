@@ -16,18 +16,17 @@ typedef struct OHLC_struct {
 	double high;
 	double low;
 	double close;
-	time_t time; // unix time.
-	uint64_t volume;
+	date_t date;
+	uint32_t volume;
 
 	std::wstring to_wstring()
 	{
-		return L"Date: "	+ toWString(time)
+		return L"Date: "	+ DateToWString(date)
 			+ L", Open: "	+ std::to_wstring(open)
 			+ L", High: "	+ std::to_wstring(high)
 			+ L", Low: "	+ std::to_wstring(low)
 			+ L", Close: "	+ std::to_wstring(close)
 			+ L", Volume: " + std::to_wstring(volume)
-			+ L", Time: "	+ std::to_wstring(time)
 			+ L"\n";
 	}
 } OHLC;
@@ -43,7 +42,7 @@ typedef struct Quote_struct {
 
 	std::wstring to_wstring()
 	{
-		return L"Date: "			+ toWString(latestUpdate)
+		return L"Date: "			+ TimeToWString(latestUpdate)
 			+ L", Open: "			+ std::to_wstring(open)
 			+ L", Close: "			+ std::to_wstring(close)
 			+ L", latestPrice: "	+ std::to_wstring(latestPrice)

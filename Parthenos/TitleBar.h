@@ -12,12 +12,7 @@ public:
 	void Maximize(bool isMax) { m_maximized = isMax; }
 	void MouseOn(LRESULT button, HWND p_hwnd);
 
-	int left() const { return m_pixRect.left; }
-	int top() const { return m_pixRect.top; }
-	int right() const { return m_pixRect.right; }
-	int bottom() const { return m_pixRect.bottom; }
-	int width() const { return m_pixRect.right - m_pixRect.left; }
-	int height() const { return m_pixRect.bottom - m_pixRect.top; }
+	static float const height; // 30 DIPs
 
 private:
 	static int const	nIcons		= 3;

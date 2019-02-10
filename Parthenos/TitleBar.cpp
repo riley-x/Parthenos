@@ -4,24 +4,25 @@
 #include "utilities.h"
 
 float const TitleBar::iconHPad = 6.0f;
+float const TitleBar::height = 30.0f;
 
 // This must be called AFTER DPIScale is initialized
 void TitleBar::Init()
 {
 	m_dipRect.left = 0;
 	m_dipRect.top = 0;
-	m_dipRect.bottom = 30;
+	m_dipRect.bottom = height;
 
 	m_pixRect.left = 0;
 	m_pixRect.top = 0;
-	m_pixRect.bottom = DPIScale::DipsToPixelsY(m_dipRect.bottom);
+	m_pixRect.bottom = DPIScale::DipsToPixelsY(height);
 
 	for (int i = 0; i < nIcons; i++)
 	{
-		float height = 24;
-		float pad = ceil((m_pixRect.bottom - height) / 2.0f); 
+		float icon_height = 24; // pixels
+		float pad = ceil((m_pixRect.bottom - icon_height) / 2.0f); 
 		// round or else D2D interpolates pixels
-		m_CommandIconRects[i] = D2D1::RectF(0, pad, 0, pad + height);
+		m_CommandIconRects[i] = D2D1::RectF(0, pad, 0, pad + icon_height);
 	}
 
 	m_TitleIconRect = D2D1::RectF(3.0f, 3.0f, 27.0f, 27.0f);

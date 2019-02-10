@@ -159,6 +159,7 @@
   <ItemGroup>
     <ClInclude Include="BaseWindow.h" />
     <ClInclude Include="BorderlessWindow.h" />
+    <ClInclude Include="Chart.h" />
     <ClInclude Include="D2Objects.h" />
     <ClInclude Include="DataManaging.h" />
     <ClInclude Include="FileIO.h" />
@@ -171,6 +172,7 @@
     <ClInclude Include="utilities.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Chart.cpp" />
     <ClCompile Include="D2Objects.cpp" />
     <ClCompile Include="DataManaging.cpp" />
     <ClCompile Include="FileIO.cpp" />

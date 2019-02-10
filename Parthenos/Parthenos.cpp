@@ -202,12 +202,14 @@ void Parthenos::PreShow()
 	m_titleBar.Init();
 	m_titleBar.Resize(rc);
 
-	//
-	std::vector<OHLC> test = GetOHLC(L"aapl");
-	for (auto item = test.end() - 20; item != test.end(); item++)
-	{
-		OutputDebugString((*item).to_wstring().c_str());
-	}
+	m_chart.Init(350.0f);
+	m_chart.Resize(rc);
+
+	//std::vector<OHLC> test = GetOHLC(L"aapl");
+	//for (auto item : test)
+	//{
+	//	OutputDebugString(item.to_wstring().c_str());
+	//}
 }
 
 LRESULT Parthenos::OnPaint()
@@ -222,6 +224,7 @@ LRESULT Parthenos::OnPaint()
 		m_d2.pRenderTarget->Clear(D2D1::ColorF(0.2f, 0.2f, 0.2f, 1.0f));
 
 		m_titleBar.Paint(m_d2);
+		m_chart.Paint(m_d2);
 
 		//D2D1_SIZE_F size = m_d2.pRenderTarget->GetSize();
 		//const float x = size.width;

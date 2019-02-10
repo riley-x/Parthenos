@@ -69,16 +69,17 @@ time_t TruncateToDay(time_t time)
 	return mktime(&out);
 }
 
-int GetDay(time_t time)
+date_t GetDate(time_t time)
 {
 	struct tm out;
 	errno_t err = localtime_s(&out, &time);
 	if (err != 0) OutputMessage(L"GetDay localtime conversion failed: %d\n", err);
 
-	return 1000 * out.tm_year + out.tm_yday;
+	return MkDate(out.tm_year + 1900, out.tm_mon + 1, out.tm_mday);
 }
 
-std::wstring toWString(time_t time)
+
+std::wstring TimeToWString(time_t time)
 {
 	struct tm tm_time;
 	errno_t err = localtime_s(&tm_time, &time);
@@ -90,4 +91,25 @@ std::wstring toWString(time_t time)
 	return std::wstring(buffer);
 }
 
+date_t MkDate(int year, int month, int day)
+{
+	return 10000 * year + 100 * month + day;
+}
 
+// APPROXIMATE DIFFERENCE IN DAYS
+// Typically larger than real difference
+// returns a-b
+int ApproxDateDiff(date_t a, date_t b)
+{
+	return (a / 10000 - b / 10000) * 365
+		+ ((a / 100) % 100 - (b / 100) % 100) * 31
+		+ (a % 100 - b % 100);
+}
+
+
+std::wstring DateToWString(date_t date)
+{
+	return std::to_wstring((date / 100) % 100) + L"/"
+		+ std::to_wstring(date % 100) + L"/"
+		+ std::to_wstring((date / 10000) % 100);
+}
