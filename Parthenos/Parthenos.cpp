@@ -172,6 +172,7 @@ LRESULT Parthenos::OnSize(WPARAM wParam)
 		D2D1_SIZE_U size = D2D1::SizeU(rc.right, rc.bottom);
 		m_d2.pRenderTarget->Resize(size);
 		m_titleBar.Resize(rc);
+		m_chart.Resize(rc);
 
 		InvalidateRect(m_hwnd, NULL, FALSE);
 	}
@@ -214,6 +215,10 @@ void Parthenos::PreShow()
 
 LRESULT Parthenos::OnPaint()
 {
+	RECT rect;
+	BOOL br = GetUpdateRect(m_hwnd, &rect, FALSE);
+	if (br == 0) return 0;
+	
 	HRESULT hr = m_d2.CreateGraphicsResources(m_hwnd);
 	if (SUCCEEDED(hr))
 	{
@@ -221,28 +226,36 @@ LRESULT Parthenos::OnPaint()
 		BeginPaint(m_hwnd, &ps);
 		m_d2.pRenderTarget->BeginDraw();
 
-		m_d2.pRenderTarget->Clear(D2D1::ColorF(0.2f, 0.2f, 0.2f, 1.0f));
+		if (rect.bottom <= m_titleBar.bottom())
+		{
+			m_titleBar.Paint(m_d2);
+		}
+		else
+		{
 
-		m_titleBar.Paint(m_d2);
-		m_chart.Paint(m_d2);
+			m_d2.pRenderTarget->Clear(D2D1::ColorF(0.2f, 0.2f, 0.2f, 1.0f));
 
-		//D2D1_SIZE_F size = m_d2.pRenderTarget->GetSize();
-		//const float x = size.width;
-		//const float y = size.height;
+			m_titleBar.Paint(m_d2);
+			m_chart.Paint(m_d2);
+
+			//D2D1_SIZE_F size = m_d2.pRenderTarget->GetSize();
+			//const float x = size.width;
+			//const float y = size.height;
 
 
-		//D2D1_RECT_F layoutRect = D2D1::RectF(0.f, 0.f, 200.f, 200.f);
-		//wchar_t msg[32];
-		//swprintf_s(msg, L"DPI: %3.1f %3.1f\n\n\n", DPIScale::dpiX, DPIScale::dpiY);
-		//OutputDebugString(msg);
-		////PCWSTR msg = L"Hellow World";
-		//m_d2.pRenderTarget->DrawText(
-		//	msg,
-		//	wcslen(msg),
-		//	pTextFormat,
-		//	layoutRect,
-		//	pBrush
-		//);
+			//D2D1_RECT_F layoutRect = D2D1::RectF(0.f, 0.f, 200.f, 200.f);
+			//wchar_t msg[32];
+			//swprintf_s(msg, L"DPI: %3.1f %3.1f\n\n\n", DPIScale::dpiX, DPIScale::dpiY);
+			//OutputDebugString(msg);
+			////PCWSTR msg = L"Hellow World";
+			//m_d2.pRenderTarget->DrawText(
+			//	msg,
+			//	wcslen(msg),
+			//	pTextFormat,
+			//	layoutRect,
+			//	pBrush
+			//);
+		}
 
 		hr = m_d2.pRenderTarget->EndDraw();
 		if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)

@@ -122,6 +122,6 @@ void TitleBar::MouseOn(LRESULT button, HWND p_hwnd)
 	if (m_mouseOn != button)
 	{
 		m_mouseOn = button;
-		InvalidateRect(p_hwnd, NULL, FALSE);
+		InvalidateRect(p_hwnd, &m_pixRect, FALSE);
 	}
 }

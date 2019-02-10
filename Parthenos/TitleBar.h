@@ -14,6 +14,8 @@ public:
 
 	static float const height; // 30 DIPs
 
+	int bottom() { return m_pixRect.bottom; }
+
 private:
 	static int const	nIcons		= 3;
 	static float const	iconHPad;
