@@ -209,7 +209,7 @@ void Parthenos::PreShow()
 	m_chart.Init(m_hwnd, 350.0f);
 	m_chart.Resize(rc);
 	std::vector<OHLC> test = GetOHLC(L"aapl", apiSource::alpha, 20);
-	m_chart.Line(test.data(), 20);
+	m_chart.Candlestick(test.data(), 20);
 
 	//std::string json = SendHTTPSRequest_GET(L"www.alphavantage.co", L"query",
 	//	L"function=TIME_SERIES_DAILY&symbol=MSFT&apikey=demo");
