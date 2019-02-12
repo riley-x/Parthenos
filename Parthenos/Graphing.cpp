@@ -16,9 +16,10 @@ void Axes::Clear()
 	m_rescaled = false;
 }
 
+// Converts all graph objects into DIPs. Call when axes are rescaled.
 void Axes::Make()
 {
-	if (m_rescaled)
+	if (m_rescaled) // remake everything
 	{
 		m_data_xdiff = static_cast<float>(m_dataRange[static_cast<int>(dataRange::xmax)]
 			- m_dataRange[static_cast<int>(dataRange::xmin)]);
@@ -41,9 +42,12 @@ void Axes::SetLabelSize(float ylabelWidth, float labelHeight)
 	m_labelHeight = labelHeight;
 }
 
+// May want to call clear before this
 void Axes::SetBoundingRect(float left, float top, float right, float bottom)
 {
-	Clear();
+	m_ismade = false;
+	m_imade = 0;
+	m_rescaled = true;
 
 	m_dipRect.left = left;
 	m_dipRect.top = top;
@@ -135,14 +139,14 @@ void Axes::Line(double const * data, int n, D2D1_COLOR_F color, float stroke_wid
 	m_ismade = false;
 }
 
-
+///////////////////////////////////////////////////////////////////////////////
 
 // Caculates the DIP coordinates for in_data (setting x values to [0,n) )
 // and adds line segments connecting the points
 void LineGraph::Make()
 {	
 	double const * data = reinterpret_cast<double const *>(m_data);
-	m_lines.reserve(m_n - 1);
+	m_lines.resize(m_n - 1);
 
 	float x = m_axes->XtoDIP(static_cast<double>(0));
 	float y = m_axes->YtoDIP(data[0]);
@@ -154,7 +158,7 @@ void LineGraph::Make()
 		x = m_axes->XtoDIP(static_cast<double>(i));
 		y = m_axes->YtoDIP(data[i]);
 		end = D2D1::Point2F(x, y);
-		m_lines.push_back({ start, end });
+		m_lines[i - 1] = { start, end };
 	}
 }
 
@@ -180,7 +184,10 @@ void CandlestickGraph::Make()
 	OHLC const * ohlc = reinterpret_cast<OHLC const *>(m_data);
 
 	// calculate DIP coordiantes
-	m_lines.reserve(m_n);
+	m_lines.resize(m_n);
+	m_up_rects.clear();
+	m_down_rects.clear();
+	m_no_change.clear();
 	m_up_rects.reserve(m_n/2);
 	m_down_rects.reserve(m_n/2);
 
@@ -197,7 +204,7 @@ void CandlestickGraph::Make()
 		float y2 = m_axes->YtoDIP(ohlc[i].high);
 		D2D1_POINT_2F start = D2D1::Point2F(x, y1);
 		D2D1_POINT_2F end = D2D1::Point2F(x, y2);
-		m_lines.push_back({ start, end });
+		m_lines[i] = { start, end };
 
 		D2D1_RECT_F temp = D2D1::RectF(
 			x - m_boxHalfWidth,
@@ -232,7 +239,6 @@ void CandlestickGraph::Paint(D2Objects const & d2)
 	for (auto line : m_lines)
 		d2.pRenderTarget->DrawLine(line.start, line.end, d2.pBrush);
 
-	d2.pBrush->SetColor(D2D1::ColorF(0.5f, 0.5f, 0.5f, 1.0f));
 	for (auto line : m_no_change)
 		d2.pRenderTarget->DrawLine(line.start, line.end, d2.pBrush);
 

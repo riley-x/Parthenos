@@ -26,7 +26,6 @@ protected:
 	void const *m_data;
 	int m_n;
 public:
-	// pointer must remain valid until Make is called!!!
 	Graph(Axes *axes, void const *data, int n) : m_axes(axes), m_data(data), m_n(n) {};
 	virtual void Make() = 0;
 	virtual void Paint(D2Objects const & d2) = 0;
@@ -73,6 +72,7 @@ public:
 	void SetBoundingRect(float left, float top, float right, float bottom);
 	void Paint(D2Objects const & d2);
 
+	// Pointers to these functions should remain valid until the next Clear() call
 	void Candlestick(OHLC const * ohlc, int n);
 	void Line(double const * data, int n, 
 		D2D1_COLOR_F color = D2D1::ColorF(0.8f, 0.0f, 0.5f, 1.0f), 
@@ -100,11 +100,11 @@ private:
 
 	// Flags and state variables
 	bool m_ismade		= true;  // check to make sure everything is made
+	bool m_rescaled		= false;
 	size_t m_imade		= 0;	 // stores an index into m_graphObjects. Objects < i already made
 	double m_dataRange[4] = { nan(""), nan(""), nan(""), nan("") }; // Numerical range of data: x_min, x_max, y_min, y_max
 	float m_data_xdiff;
 	float m_data_ydiff;
-	bool m_rescaled = false;
 
 	// Rects and location
 	std::vector<float> m_xTicks; // locations of x ticks

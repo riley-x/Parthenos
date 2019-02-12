@@ -51,9 +51,6 @@ void Chart::Resize(RECT pRect)
 		m_dipRect.right, 
 		m_dipRect.bottom
 	);
-
-	if (m_currentMChart != MainChartType::none) // i.e. on startup
-		DrawSavedState();
 }
 
 bool Chart::OnLButtonDown(D2D1_POINT_2F cursor)
