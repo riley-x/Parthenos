@@ -17,17 +17,16 @@ void Chart::Init(HWND hwndParent, float leftOffset)
 void Chart::Load(std::wstring ticker, int range)
 {
 	m_OHLC = GetOHLC(ticker, apiSource::alpha, range);
-	Candlestick(Timeframe::year1); // TODO change to generic draw function calling m_Current...
-	// draw on load, default candlestick 1-year
+	DrawSavedState(); // draw on load, default candlestick 1-year
 
 	//for (int i = 0; i < 10; i++)
 	//{
-	//	OutputDebugString(test[i].to_wstring().c_str());
+	//	OutputDebugString(m_OHLC[i].to_wstring().c_str());
 	//}
-	//OutputMessage(L"Size: %u\n", test.size());
-	//for (size_t i = test.size() - 10; i < test.size(); i++)
+	//OutputMessage(L"Size: %u\n", m_OHLC.size());
+	//for (size_t i = m_OHLC.size() - 10; i < m_OHLC.size(); i++)
 	//{
-	//	OutputDebugString(test[i].to_wstring().c_str());
+	//	OutputDebugString(m_OHLC[i].to_wstring().c_str());
 	//}
 }
 
@@ -52,21 +51,62 @@ void Chart::Resize(RECT pRect)
 		m_dipRect.bottom
 	);
 
-	if (m_currentMChart != MainChartType::none)
-		Candlestick(m_currentTimeframe); // todo change to what is currently drawn
+	if (m_currentMChart != MainChartType::none) // i.e. on startup
+		DrawSavedState();
 }
 
-// TODO: Add button highlight, etc. here?
-void Chart::Candlestick(Timeframe timeframe)
+bool Chart::OnLButtonDown(D2D1_POINT_2F cursor)
+{
+	if (cursor.x > m_dipRect.left &&
+		cursor.x < m_dipRect.right &&
+		cursor.y > m_dipRect.top &&
+		cursor.y < m_dipRect.bottom)
+	{
+		if (m_currentMChart == MainChartType::line)
+			DrawMainChart(MainChartType::candlestick, m_currentTimeframe);
+		else if (m_currentMChart == MainChartType::candlestick)
+			DrawMainChart(MainChartType::line, m_currentTimeframe);
+		return true;
+	}
+	return false;
+}
+
+void Chart::DrawMainChart(MainChartType type, Timeframe timeframe)
+{
+	if (timeframe == Timeframe::none) timeframe = Timeframe::year1;
+
+	switch (type)
+	{
+	case MainChartType::line:
+		Line(timeframe);
+		break;
+	case MainChartType::candlestick:
+	case MainChartType::none:
+	default:
+		Candlestick(timeframe);
+		break;
+	}
+}
+
+// Call this when the chart needs to be completely redrawn but nothing's changed,
+// i.e. on resize
+void Chart::DrawSavedState()
+{
+	DrawMainChart(m_currentMChart, m_currentTimeframe);
+}
+
+// Finds the starting date in OHLC data given 'timeframe', returning the pointer in 'data'.
+// Returns the number of days / data points.
+int Chart::FindStart(Timeframe timeframe, OHLC* & data)
 {
 	if (m_OHLC.empty())
 	{
 		OutputMessage(L"No data!\n");
-		return;
+		return 0;
 	}
 
-	OHLC *data = nullptr;
-	int n = 0;
+	data = nullptr;
+	int n;
 
 	switch (timeframe)
 	{
@@ -78,7 +118,7 @@ void Chart::Candlestick(Timeframe timeframe)
 		if (it == m_OHLC.end())
 		{
 			OutputMessage(L"Didn't find data for candlestick\n");
-			return;
+			return -1;
 		}
 		data = &(*it);
 		n = m_OHLC.end() - it;
@@ -87,22 +127,48 @@ void Chart::Candlestick(Timeframe timeframe)
 	default:
 	{
 		OutputMessage(L"Timeframe %s not implemented\n", timeframe);
-		return;
+		return -1;
 	}
 	}
+
+	return n;
+}
+
+// TODO: Add button highlight, etc. here?
+// Sets the current state members.
+void Chart::Candlestick(Timeframe timeframe)
+{
+	OHLC *data;
+	int n = FindStart(timeframe, data);
 
 	m_currentMChart = MainChartType::candlestick;
 	m_currentTimeframe = timeframe;
 
+	m_axes.Clear(); // FIXME
 	m_axes.Candlestick(data, n); 
 	InvalidateRect(m_hwndParent, NULL, FALSE);
 }
 
 
-
-void Chart::Line(OHLC const * ohlc, int n)
+void Chart::Line(Timeframe timeframe)
 { 
-	m_axes.Line(ohlc, n); 
+	OHLC *data;
+	int n = FindStart(timeframe, data);
+	if (n != m_closes.size()) // data may already exist! TODO: zooming needs to clear
+	{
+		m_closes.resize(n);
+		int size = m_OHLC.size();
+		for (int i = 0; i < n; i++)
+		{
+			m_closes[i] = m_OHLC[size - n + i].close;
+		}
+	}
+
+	m_currentMChart = MainChartType::line;
+	m_currentTimeframe = timeframe;
+
+	m_axes.Clear(); // FIXME
+	m_axes.Line(m_closes.data(), n); 
 	InvalidateRect(m_hwndParent, NULL, FALSE);
 }
 

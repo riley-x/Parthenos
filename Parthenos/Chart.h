@@ -16,7 +16,7 @@ public:
 	void Load(std::wstring ticker, int range = 1260); // range in days. default to 5 years 
 	void Paint(D2Objects const & d2);
 	void Resize(RECT pRect);
-
+	bool OnLButtonDown(D2D1_POINT_2F cursor);
 
 private:
 	// base
@@ -25,6 +25,7 @@ private:
 
 	// data
 	std::vector<OHLC>	m_OHLC;
+	std::vector<double> m_closes; // todo turn this into a vector of lines, with colors?
 
 	// drawing
 	enum class MainChartType { none, line, candlestick, envelope };
@@ -33,8 +34,11 @@ private:
 	MainChartType		m_currentMChart = MainChartType::none;
 	Timeframe			m_currentTimeframe = Timeframe::none;
 
+	void DrawMainChart(MainChartType type, Timeframe timeframe);
+	void DrawSavedState();
+	int FindStart(Timeframe timeframe, OHLC* & data);
 	void Candlestick(Timeframe timeframe);
-	void Line(OHLC const * ohlc, int n);
+	void Line(Timeframe timeframe);
 	void Envelope(std::vector<OHLC> const & ohlc);
 };
 

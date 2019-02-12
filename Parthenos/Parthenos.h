@@ -22,6 +22,8 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	//D2D1_POINT_2F			ptMouseStart;
 	HCURSOR					hCursor;
 
+	// Data memebers
+	float m_leftPanelWidth = 350.0f; // in DIPs
 
 	LRESULT	OnCreate();
 	LRESULT OnPaint();

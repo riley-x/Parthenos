@@ -61,11 +61,6 @@ void Axes::Paint(D2Objects const & d2)
 	{
 		d2.pRenderTarget->DrawLine(line.start, line.end, d2.pBrush);
 	}
-	d2.pBrush->SetColor(D2D1::ColorF(0.8f, 0.0f, 0.5f, 1.0f));
-	for (auto line : m_misc_lines)
-	{
-		d2.pRenderTarget->DrawLine(line.start, line.end, d2.pBrush, 1.0f);
-	}
 
 	for (auto graph : m_graphObjects)
 		graph->Paint(d2);
@@ -96,58 +91,73 @@ void Axes::Candlestick(OHLC const * ohlc, int n)
 }
 
 
-void Axes::Line(OHLC const * ohlc, int n)
+void Axes::Line(double const * data, int n)
 {
-	// first pass get min/max of data to scale data appropriately
-	double close_min = ohlc[0].close;
-	double close_max = -1;
-
+	// get min/max of data to scale data appropriately
+	// sets x values to [0, n-1)
+	double min = data[0];
+	double max = data[0];
 	for (int i = 0; i < n; i++)
 	{
-		if (ohlc[i].close < close_min) close_min = ohlc[i].close;
-		else if (ohlc[i].close > close_max) close_max = ohlc[i].close;
+		if (data[i] < min) min = data[i];
+		else if (data[i] > max) max = data[i];
 	}
 
-	// second pass calculate DIP coordiantes
-	std::vector<float> x(n);
-	std::vector<float> y(n);
+	setDataRange(dataRange::xmin, 0);
+	setDataRange(dataRange::xmax, n - 1);
+	setDataRange(dataRange::ymin, min);
+	setDataRange(dataRange::ymax, max);
 
+	auto graph = new LineGraph(m_dataRect, m_dataRange);
+	graph->Make(data, n);
+	m_graphObjects.push_back(graph);
+}
+
+
+// Caculates the DIP coordinates for in_data (setting x values to [0,n) )
+// and adds line segments connecting the points
+void LineGraph::Make(void const * in_data, int n)
+{
 	float x_diff = m_dataRect.right - m_dataRect.left;
 	float y_diff = m_dataRect.top - m_dataRect.bottom; // flip so origin is bottom-left
-	double close_diff = close_max - close_min;
+	
+	double data_xmin = m_dataRange[static_cast<int>(dataRange::xmin)];
+	double data_xdiff = m_dataRange[static_cast<int>(dataRange::xmax)] - data_xmin;
+	double data_ymin = m_dataRange[static_cast<int>(dataRange::ymin)];
+	double data_ydiff = m_dataRange[static_cast<int>(dataRange::ymax)] - data_ymin;
 
-	for (int i = 0; i < n; i++)
-	{
-		x[i] = linScale(i, 0, n - 1, m_dataRect.left, x_diff);
-		y[i] = linScale(ohlc[i].close, close_min, close_diff, m_dataRect.bottom, y_diff);
-	}
+	double const * data = reinterpret_cast<double const *>(in_data);
+	m_lines.reserve(n - 1);
 
-	RawLine(x, y);
-}
-
-
-// Pushes to m_misc_lines a series of line segments made by connecting
-// the points (x[i], y[i])
-void Axes::RawLine(std::vector<float> x, std::vector<float> y)
-{
-	m_misc_lines.reserve(m_misc_lines.size() + x.size() - 1);
-
+	float x = linScale(static_cast<double>(0), data_xmin, data_xdiff, m_dataRect.left, x_diff);
+	float y = linScale(data[0], data_ymin, data_ydiff, m_dataRect.bottom, y_diff);
 	D2D1_POINT_2F start;
-	D2D1_POINT_2F end = D2D1::Point2F(x[0], y[0]);
-
-	for (size_t i = 0; i < x.size() - 1; i++)
+	D2D1_POINT_2F end = D2D1::Point2F(x, y);
+	for (int i = 1; i < n; i++)
 	{
 		start = end;
-		end = D2D1::Point2F(x[i + 1], y[i + 1]);
-		m_misc_lines.push_back({ start, end });
+		x = linScale(static_cast<double>(i), data_xmin, data_xdiff, m_dataRect.left, x_diff);
+		y = linScale(data[i], data_ymin, data_ydiff, m_dataRect.bottom, y_diff);
+		end = D2D1::Point2F(x, y);
+		m_lines.push_back({ start, end });
 	}
 }
+
+void LineGraph::Paint(D2Objects const & d2)
+{
+	d2.pBrush->SetColor(D2D1::ColorF(0.8f, 0.0f, 0.5f, 1.0f));
+	for (auto line : m_lines)
+	{
+		d2.pRenderTarget->DrawLine(line.start, line.end, d2.pBrush, 1.0f);
+	}
+}
+
 
 void CandlestickGraph::Make(void const * data, int n)
 {
 	OHLC const * ohlc = reinterpret_cast<OHLC const *>(data);
 
-	// second pass calculate DIP coordiantes
+	// calculate DIP coordiantes
 	m_lines.reserve(n);
 	m_up_rects.reserve(n);
 	m_down_rects.reserve(n);
@@ -160,15 +170,15 @@ void CandlestickGraph::Make(void const * data, int n)
 	}
 
 	double data_xmin = m_dataRange[static_cast<int>(dataRange::xmin)];
-	double x_data_diff = m_dataRange[static_cast<int>(dataRange::xmax)] - data_xmin;
+	double data_xdiff = m_dataRange[static_cast<int>(dataRange::xmax)] - data_xmin;
 	double data_ymin = m_dataRange[static_cast<int>(dataRange::ymin)];
-	double y_data_diff = m_dataRange[static_cast<int>(dataRange::ymax)] - data_ymin;
+	double data_ydiff = m_dataRange[static_cast<int>(dataRange::ymax)] - data_ymin;
 
 	for (int i = 0; i < n; i++)
 	{
-		float x = linScale(static_cast<double>(i), data_xmin, x_data_diff, m_dataRect.left, x_diff);
-		float y1 = linScale(ohlc[i].low, data_ymin, y_data_diff, m_dataRect.bottom, y_diff);
-		float y2 = linScale(ohlc[i].high, data_ymin, y_data_diff, m_dataRect.bottom, y_diff);
+		float x = linScale(static_cast<double>(i), data_xmin, data_xdiff, m_dataRect.left, x_diff);
+		float y1 = linScale(ohlc[i].low, data_ymin, data_ydiff, m_dataRect.bottom, y_diff);
+		float y2 = linScale(ohlc[i].high, data_ymin, data_ydiff, m_dataRect.bottom, y_diff);
 		D2D1_POINT_2F start = D2D1::Point2F(x, y1);
 		D2D1_POINT_2F end = D2D1::Point2F(x, y2);
 		m_lines.push_back({ start, end });
@@ -181,14 +191,14 @@ void CandlestickGraph::Make(void const * data, int n)
 		);
 		if (ohlc[i].close > ohlc[i].open)
 		{
-			temp.top = linScale(ohlc[i].close, data_ymin, y_data_diff, m_dataRect.bottom, y_diff);
-			temp.bottom = linScale(ohlc[i].open, data_ymin, y_data_diff, m_dataRect.bottom, y_diff);
+			temp.top = linScale(ohlc[i].close, data_ymin, data_ydiff, m_dataRect.bottom, y_diff);
+			temp.bottom = linScale(ohlc[i].open, data_ymin, data_ydiff, m_dataRect.bottom, y_diff);
 			m_up_rects.push_back(temp);
 		}
 		else if (ohlc[i].close < ohlc[i].open)
 		{
-			temp.top = linScale(ohlc[i].open, data_ymin, y_data_diff, m_dataRect.bottom, y_diff);
-			temp.bottom = linScale(ohlc[i].close, data_ymin, y_data_diff, m_dataRect.bottom, y_diff);
+			temp.top = linScale(ohlc[i].open, data_ymin, data_ydiff, m_dataRect.bottom, y_diff);
+			temp.bottom = linScale(ohlc[i].close, data_ymin, data_ydiff, m_dataRect.bottom, y_diff);
 			m_down_rects.push_back(temp);
 		}
 		else
@@ -219,3 +229,4 @@ void CandlestickGraph::Paint(D2Objects const & d2)
 		d2.pRenderTarget->FillRectangle(rect, d2.pBrush);
 
 }
+

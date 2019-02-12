@@ -206,7 +206,7 @@ void Parthenos::PreShow()
 	m_titleBar.Init();
 	m_titleBar.Resize(rc);
 
-	m_chart.Init(m_hwnd, 350.0f);
+	m_chart.Init(m_hwnd, m_leftPanelWidth);
 	m_chart.Resize(rc);
 	m_chart.Load(L"aapl");
 
@@ -278,15 +278,20 @@ LRESULT Parthenos::OnLButtonDown(POINT cursor, DWORD flags)
 	{
 	case HTMINBUTTON:
 		ShowWindow(m_hwnd, SW_MINIMIZE);
-		break;
+		return 0;
 	case HTMAXBUTTON:
 		if (maximized()) ShowWindow(m_hwnd, SW_RESTORE);
 		else ShowWindow(m_hwnd, SW_MAXIMIZE);
-		break;
+		return 0;
 	case HTCLOSE:
 		SendMessage(m_hwnd, WM_CLOSE, 0, 0);
-		break;
+		return 0;
 	}
+
+	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
+	if (dipCursor.x > m_leftPanelWidth)
+		m_chart.OnLButtonDown(dipCursor); //TODO fix this
+	
 	return 0;
 }
 

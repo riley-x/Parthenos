@@ -25,6 +25,16 @@ public:
 	virtual void Paint(D2Objects const & d2) = 0;
 };
 
+class LineGraph : public Graph
+{
+public:
+	using Graph::Graph;
+	void Make(void const * data, int n);
+	void Paint(D2Objects const & d2);
+private:
+	std::vector<Line_t> m_lines; // line segments
+};
+
 
 class CandlestickGraph : public Graph
 {
@@ -51,7 +61,7 @@ public:
 	void SetBoundingRect(float left, float top, float right, float bottom);
 	void Paint(D2Objects const & d2);
 	void Candlestick(OHLC const * ohlc, int n);
-	void Line(OHLC const * ohlc, int n);
+	void Line(double const * ohlc, int n);
 	void Envelope(std::vector<OHLC> const & ohlc);
 
 private:
@@ -69,7 +79,6 @@ private:
 
 	std::vector<Line_t> m_axes_lines;
 	std::vector<Line_t> m_grid_lines;
-	std::vector<Line_t> m_misc_lines; // other lines to draw
 
 	std::vector<Graph*> m_graphObjects; // THESE NEED TO BE REMADE WHEN RENDER TARGET CHANGES
 
