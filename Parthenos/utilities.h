@@ -1,11 +1,12 @@
 #pragma once
 
-
 std::wstring OutputError(const std::wstring & msg);
 std::system_error Error(const std::wstring & msg);
 void OutputMessage(const std::wstring format, ...);
 
 typedef uint32_t date_t; // 10000*yyyy + 100*mm + dd
+time_t const DATE_T_1YR = 10000;
+
 time_t TruncateToDay(time_t time);
 std::wstring TimeToWString(time_t time);
 date_t GetDate(time_t time);

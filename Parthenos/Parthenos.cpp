@@ -208,30 +208,11 @@ void Parthenos::PreShow()
 
 	m_chart.Init(m_hwnd, 350.0f);
 	m_chart.Resize(rc);
-	std::vector<OHLC> test = GetOHLC(L"aapl", apiSource::alpha, 20);
-	m_chart.Candlestick(test.data(), 20);
+	m_chart.Load(L"aapl");
 
 	//std::string json = SendHTTPSRequest_GET(L"www.alphavantage.co", L"query",
 	//	L"function=TIME_SERIES_DAILY&symbol=MSFT&apikey=demo");
 	//OutputDebugStringA(display_string.c_str());
-
-	//std::vector<OHLC> test = GetOHLC(L"msft", apiSource::alpha);
-	//const std::wstring ROOTDIR(L"C:/Users/Riley/Documents/Finances/Parthenos/");
-	//std::wstring filename = ROOTDIR + L"msft.alpha.ohlc";
-	//FileIO ohlcFile;
-	//ohlcFile.Init(filename);
-	//ohlcFile.Open(GENERIC_READ);
-	//std::vector<OHLC> test = ohlcFile.ReadEnd<OHLC>(20);
-
-	for (int i = 0; i < 10; i++)
-	{
-		OutputDebugString(test[i].to_wstring().c_str());
-	}
-	OutputMessage(L"Size: %u\n", test.size());
-	for (size_t i = test.size()-10; i < test.size(); i++)
-	{
-		OutputDebugString(test[i].to_wstring().c_str());
-	}
 }
 
 LRESULT Parthenos::OnPaint()

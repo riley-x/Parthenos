@@ -62,3 +62,4 @@ typedef struct Quote_struct {
 
 std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source = apiSource::iex, size_t last_n = 0);
 Quote GetQuote(std::wstring ticker);
+bool OHLC_Compare(const OHLC & a, const OHLC & b);

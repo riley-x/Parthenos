@@ -163,6 +163,7 @@
     <ClInclude Include="D2Objects.h" />
     <ClInclude Include="DataManaging.h" />
     <ClInclude Include="FileIO.h" />
+    <ClInclude Include="Graphing.h" />
     <ClInclude Include="HTTP.h" />
     <ClInclude Include="Parthenos.h" />
     <ClInclude Include="Resource.h" />
@@ -176,6 +177,7 @@
     <ClCompile Include="D2Objects.cpp" />
     <ClCompile Include="DataManaging.cpp" />
     <ClCompile Include="FileIO.cpp" />
+    <ClCompile Include="Graphing.cpp" />
     <ClCompile Include="HTTP.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Parthenos.cpp" />

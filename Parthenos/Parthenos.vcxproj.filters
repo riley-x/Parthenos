@@ -57,6 +57,9 @@
     <ClInclude Include="Chart.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Graphing.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -87,6 +90,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Chart.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphing.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

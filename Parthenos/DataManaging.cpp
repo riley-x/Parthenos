@@ -3,8 +3,6 @@
 #include "FileIO.h"
 #include "HTTP.h"
 
-#include <algorithm>
-
 const std::wstring ROOTDIR(L"C:/Users/Riley/Documents/Finances/Parthenos/"); // C:/Users/Riley/Documents/Finances/Parthenos/
 const std::wstring IEXHOST(L"api.iextrading.com"); // api.iextrading.com
 const std::wstring ALPHAHOST(L"www.alphavantage.co");
@@ -259,10 +257,14 @@ std::vector<OHLC> parseAlphaChart(std::string json, date_t latestDate)
 		OHLC temp = parseAlphaChartItem(json.substr(start, end - start));
 		if (latestDate == 0 || temp.date > latestDate)
 			out.push_back(temp);
+		else // done reading new data
+			return out;
 		start = end + delim.length();
 		end = json.find(delim, start);
 	}
-	out.push_back(parseAlphaChartItem(json.substr(start, json.size())));
+	OHLC temp = parseAlphaChartItem(json.substr(start, json.size()));
+	if (latestDate == 0 || temp.date > latestDate)
+		out.push_back(temp);
 
 	return out;
 }

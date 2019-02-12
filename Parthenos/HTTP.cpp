@@ -6,7 +6,6 @@
 #include "utilities.h"
 
 
-// Retrieving Headers Using a Constant
 BOOL PrintRequestHeader(HINTERNET hHttp)
 {
 	LPVOID lpOutBuffer = NULL;
@@ -67,6 +66,7 @@ std::string SendHTTPSRequest_GET(const std::wstring& _server,
 	std::string out("");
 
 	// initialize WinInet
+	// This probably only needs to be done once and the handle stored
 	HINTERNET hInternet = ::InternetOpen(L"WinInet Test", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
 	if (hInternet != NULL)
 	{
