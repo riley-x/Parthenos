@@ -1,11 +1,6 @@
 #include "stdafx.h"
 #include "Graphing.h"
 
-template <typename T>
-inline float linScale(T val, T val_min, T val_diff, float new_min, float new_diff)
-{
-	return new_min + (static_cast<float>(val - val_min) / static_cast<float>(val_diff)) * new_diff;
-}
 
 
 void Axes::Clear()
@@ -14,6 +9,30 @@ void Axes::Clear()
 		if (item) delete item;
 	}
 	m_graphObjects.clear();
+	m_ismade = true;
+	m_imade = 0;
+	for (int i = 0; i < 4; i++)
+		m_dataRange[i] = nan("");
+	m_rescaled = false;
+}
+
+void Axes::Make()
+{
+	if (m_rescaled)
+	{
+		m_data_xdiff = static_cast<float>(m_dataRange[static_cast<int>(dataRange::xmax)]
+			- m_dataRange[static_cast<int>(dataRange::xmin)]);
+		m_data_ydiff = static_cast<float>(m_dataRange[static_cast<int>(dataRange::ymax)]
+			- m_dataRange[static_cast<int>(dataRange::ymin)]);
+
+		m_imade = 0;
+		m_rescaled = false;
+	}
+
+	for (m_imade; m_imade < m_graphObjects.size(); m_imade++)
+		m_graphObjects[m_imade]->Make();
+
+	m_ismade = true;
 }
 
 void Axes::SetLabelSize(float ylabelWidth, float labelHeight)
@@ -49,10 +68,15 @@ void Axes::SetBoundingRect(float left, float top, float right, float bottom)
 	m_dataRect.top = m_axesRect.top + m_dataPad;
 	m_dataRect.right = m_axesRect.right - m_dataPad;
 	m_dataRect.bottom = m_axesRect.bottom - m_dataPad;
+
+	m_rect_xdiff = m_dataRect.right - m_dataRect.left;
+	m_rect_ydiff = m_dataRect.top - m_dataRect.bottom; // flip so origin is bottom-left
 }
 
 void Axes::Paint(D2Objects const & d2)
 {
+	if (!m_ismade) Make();
+
 	d2.pBrush->SetColor(D2D1::ColorF(0.15f, 0.15f, 0.15f, 1.0f));
 	d2.pRenderTarget->FillRectangle(m_dipRect, d2.pBrush);
 
@@ -66,7 +90,6 @@ void Axes::Paint(D2Objects const & d2)
 		graph->Paint(d2);
 }
 
-
 void Axes::Candlestick(OHLC const * ohlc, int n)
 {
 	// get min/max of data to scale data appropriately
@@ -79,14 +102,14 @@ void Axes::Candlestick(OHLC const * ohlc, int n)
 		else if (ohlc[i].high > high_max) high_max = ohlc[i].high;
 	}
 
-	setDataRange(dataRange::xmin, 0);
-	setDataRange(dataRange::xmax, n - 1);
-	setDataRange(dataRange::ymin, low_min);
-	setDataRange(dataRange::ymax, high_max);
+	m_rescaled = setDataRange(dataRange::xmin, 0) || m_rescaled;
+	m_rescaled = setDataRange(dataRange::xmax, n - 1) || m_rescaled;
+	m_rescaled = setDataRange(dataRange::ymin, low_min) || m_rescaled;
+	m_rescaled = setDataRange(dataRange::ymax, high_max) || m_rescaled;
 
-	auto graph = new CandlestickGraph(m_dataRect, m_dataRange);
-	graph->Make(ohlc, n);
+	auto graph = new CandlestickGraph(this, ohlc, n);
 	m_graphObjects.push_back(graph);
+	m_ismade = false;
 }
 
 void Axes::Line(double const * data, int n, D2D1_COLOR_F color, float stroke_width, ID2D1StrokeStyle * pStyle)
@@ -101,64 +124,35 @@ void Axes::Line(double const * data, int n, D2D1_COLOR_F color, float stroke_wid
 		else if (data[i] > max) max = data[i];
 	}
 
-	setDataRange(dataRange::xmin, 0);
-	setDataRange(dataRange::xmax, n - 1);
-	setDataRange(dataRange::ymin, min);
-	setDataRange(dataRange::ymax, max);
+	m_rescaled = setDataRange(dataRange::xmin, 0) || m_rescaled;
+	m_rescaled = setDataRange(dataRange::xmax, n - 1) || m_rescaled;
+	m_rescaled = setDataRange(dataRange::ymin, min) || m_rescaled;
+	m_rescaled = setDataRange(dataRange::ymax, max) || m_rescaled;
 
-	auto graph = new LineGraph(m_dataRect, m_dataRange);
-	graph->Make(data, n);
+	auto graph = new LineGraph(this, data, n);
 	graph->SetLineProperties(color, stroke_width, pStyle);
 	m_graphObjects.push_back(graph);
+	m_ismade = false;
 }
 
-//void Axes::Envelope(OHLC const * ohlc, int n)
-//{
-//	// get min/max of data to scale data appropriately
-//	// set x values to [0, n-1)
-//	double low_min = ohlc[0].low;
-//	double high_max = -1;
-//	for (int i = 0; i < n; i++)
-//	{
-//		if (ohlc[i].low < low_min) low_min = ohlc[i].low;
-//		else if (ohlc[i].high > high_max) high_max = ohlc[i].high;
-//	}
-//
-//	setDataRange(dataRange::xmin, 0);
-//	setDataRange(dataRange::xmax, n - 1);
-//	setDataRange(dataRange::ymin, low_min);
-//	setDataRange(dataRange::ymax, high_max);
-//
-//	auto graph1 = new LineGraph(m_dataRect, m_dataRange);
-//	graph->Make(ohlc, n);
-//	m_graphObjects.push_back(graph);
-//}
 
 
 // Caculates the DIP coordinates for in_data (setting x values to [0,n) )
 // and adds line segments connecting the points
-void LineGraph::Make(void const * in_data, int n)
-{
-	float x_diff = m_dataRect.right - m_dataRect.left;
-	float y_diff = m_dataRect.top - m_dataRect.bottom; // flip so origin is bottom-left
-	
-	double data_xmin = m_dataRange[static_cast<int>(dataRange::xmin)];
-	double data_xdiff = m_dataRange[static_cast<int>(dataRange::xmax)] - data_xmin;
-	double data_ymin = m_dataRange[static_cast<int>(dataRange::ymin)];
-	double data_ydiff = m_dataRange[static_cast<int>(dataRange::ymax)] - data_ymin;
+void LineGraph::Make()
+{	
+	double const * data = reinterpret_cast<double const *>(m_data);
+	m_lines.reserve(m_n - 1);
 
-	double const * data = reinterpret_cast<double const *>(in_data);
-	m_lines.reserve(n - 1);
-
-	float x = linScale(static_cast<double>(0), data_xmin, data_xdiff, m_dataRect.left, x_diff);
-	float y = linScale(data[0], data_ymin, data_ydiff, m_dataRect.bottom, y_diff);
+	float x = m_axes->XtoDIP(static_cast<double>(0));
+	float y = m_axes->YtoDIP(data[0]);
 	D2D1_POINT_2F start;
 	D2D1_POINT_2F end = D2D1::Point2F(x, y);
-	for (int i = 1; i < n; i++)
+	for (int i = 1; i < m_n; i++)
 	{
 		start = end;
-		x = linScale(static_cast<double>(i), data_xmin, data_xdiff, m_dataRect.left, x_diff);
-		y = linScale(data[i], data_ymin, data_ydiff, m_dataRect.bottom, y_diff);
+		x = m_axes->XtoDIP(static_cast<double>(i));
+		y = m_axes->YtoDIP(data[i]);
 		end = D2D1::Point2F(x, y);
 		m_lines.push_back({ start, end });
 	}
@@ -181,32 +175,26 @@ void LineGraph::SetLineProperties(D2D1_COLOR_F color, float stroke_width, ID2D1S
 }
 
 
-void CandlestickGraph::Make(void const * data, int n)
+void CandlestickGraph::Make()
 {
-	OHLC const * ohlc = reinterpret_cast<OHLC const *>(data);
+	OHLC const * ohlc = reinterpret_cast<OHLC const *>(m_data);
 
 	// calculate DIP coordiantes
-	m_lines.reserve(n);
-	m_up_rects.reserve(n);
-	m_down_rects.reserve(n);
+	m_lines.reserve(m_n);
+	m_up_rects.reserve(m_n/2);
+	m_down_rects.reserve(m_n/2);
 
-	float x_diff = m_dataRect.right - m_dataRect.left;
-	float y_diff = m_dataRect.top - m_dataRect.bottom; // flip so origin is bottom-left
 	if (isnan(m_boxHalfWidth))
 	{
-		m_boxHalfWidth = min(15.0f, 0.4f * x_diff / n);
+		float x_diff = m_axes->GetDataRectXDiff();
+		m_boxHalfWidth = min(15.0f, 0.4f * x_diff / m_n);
 	}
 
-	double data_xmin = m_dataRange[static_cast<int>(dataRange::xmin)];
-	double data_xdiff = m_dataRange[static_cast<int>(dataRange::xmax)] - data_xmin;
-	double data_ymin = m_dataRange[static_cast<int>(dataRange::ymin)];
-	double data_ydiff = m_dataRange[static_cast<int>(dataRange::ymax)] - data_ymin;
-
-	for (int i = 0; i < n; i++)
+	for (int i = 0; i < m_n; i++)
 	{
-		float x = linScale(static_cast<double>(i), data_xmin, data_xdiff, m_dataRect.left, x_diff);
-		float y1 = linScale(ohlc[i].low, data_ymin, data_ydiff, m_dataRect.bottom, y_diff);
-		float y2 = linScale(ohlc[i].high, data_ymin, data_ydiff, m_dataRect.bottom, y_diff);
+		float x = m_axes->XtoDIP(static_cast<double>(i));
+		float y1 = m_axes->YtoDIP(ohlc[i].low);
+		float y2 = m_axes->YtoDIP(ohlc[i].high);
 		D2D1_POINT_2F start = D2D1::Point2F(x, y1);
 		D2D1_POINT_2F end = D2D1::Point2F(x, y2);
 		m_lines.push_back({ start, end });
@@ -219,14 +207,14 @@ void CandlestickGraph::Make(void const * data, int n)
 		);
 		if (ohlc[i].close > ohlc[i].open)
 		{
-			temp.top = linScale(ohlc[i].close, data_ymin, data_ydiff, m_dataRect.bottom, y_diff);
-			temp.bottom = linScale(ohlc[i].open, data_ymin, data_ydiff, m_dataRect.bottom, y_diff);
+			temp.top = m_axes->YtoDIP(ohlc[i].close);
+			temp.bottom = m_axes->YtoDIP(ohlc[i].open);
 			m_up_rects.push_back(temp);
 		}
 		else if (ohlc[i].close < ohlc[i].open)
 		{
-			temp.top = linScale(ohlc[i].open, data_ymin, data_ydiff, m_dataRect.bottom, y_diff);
-			temp.bottom = linScale(ohlc[i].close, data_ymin, data_ydiff, m_dataRect.bottom, y_diff);
+			temp.top = m_axes->YtoDIP(ohlc[i].open);
+			temp.bottom = m_axes->YtoDIP(ohlc[i].close);
 			m_down_rects.push_back(temp);
 		}
 		else
