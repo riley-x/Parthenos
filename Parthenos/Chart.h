@@ -12,7 +12,7 @@
 class Chart
 {
 public:
-	void Init(HWND hwndParent, float leftOffset);
+	void Init(HWND hwndParent, D2Objects d2, float leftOffset);
 	void Load(std::wstring ticker, int range = 1260); // range in days. default to 5 years 
 	void Paint(D2Objects const & d2);
 	void Resize(RECT pRect);
@@ -22,10 +22,14 @@ private:
 	// base
 	HWND				m_hwndParent;
 	D2D1_RECT_F			m_dipRect; // DIPs in main window client coordinates
+	D2Objects			m_d2;
+
 
 	// data
 	std::vector<OHLC>	m_OHLC;
 	std::vector<double> m_closes; // todo turn this into a vector of lines, with colors?
+	std::vector<double> m_highs;
+	std::vector<double> m_lows;
 
 	// drawing
 	enum class MainChartType { none, line, candlestick, envelope };
@@ -39,7 +43,7 @@ private:
 	int FindStart(Timeframe timeframe, OHLC* & data);
 	void Candlestick(Timeframe timeframe);
 	void Line(Timeframe timeframe);
-	void Envelope(std::vector<OHLC> const & ohlc);
+	void Envelope(Timeframe timeframe);
 };
 
 

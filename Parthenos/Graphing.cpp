@@ -84,14 +84,12 @@ void Axes::Candlestick(OHLC const * ohlc, int n)
 	setDataRange(dataRange::ymin, low_min);
 	setDataRange(dataRange::ymax, high_max);
 
-
 	auto graph = new CandlestickGraph(m_dataRect, m_dataRange);
 	graph->Make(ohlc, n);
 	m_graphObjects.push_back(graph);
 }
 
-
-void Axes::Line(double const * data, int n)
+void Axes::Line(double const * data, int n, D2D1_COLOR_F color, float stroke_width, ID2D1StrokeStyle * pStyle)
 {
 	// get min/max of data to scale data appropriately
 	// sets x values to [0, n-1)
@@ -110,8 +108,31 @@ void Axes::Line(double const * data, int n)
 
 	auto graph = new LineGraph(m_dataRect, m_dataRange);
 	graph->Make(data, n);
+	graph->SetLineProperties(color, stroke_width, pStyle);
 	m_graphObjects.push_back(graph);
 }
+
+//void Axes::Envelope(OHLC const * ohlc, int n)
+//{
+//	// get min/max of data to scale data appropriately
+//	// set x values to [0, n-1)
+//	double low_min = ohlc[0].low;
+//	double high_max = -1;
+//	for (int i = 0; i < n; i++)
+//	{
+//		if (ohlc[i].low < low_min) low_min = ohlc[i].low;
+//		else if (ohlc[i].high > high_max) high_max = ohlc[i].high;
+//	}
+//
+//	setDataRange(dataRange::xmin, 0);
+//	setDataRange(dataRange::xmax, n - 1);
+//	setDataRange(dataRange::ymin, low_min);
+//	setDataRange(dataRange::ymax, high_max);
+//
+//	auto graph1 = new LineGraph(m_dataRect, m_dataRange);
+//	graph->Make(ohlc, n);
+//	m_graphObjects.push_back(graph);
+//}
 
 
 // Caculates the DIP coordinates for in_data (setting x values to [0,n) )
@@ -145,11 +166,18 @@ void LineGraph::Make(void const * in_data, int n)
 
 void LineGraph::Paint(D2Objects const & d2)
 {
-	d2.pBrush->SetColor(D2D1::ColorF(0.8f, 0.0f, 0.5f, 1.0f));
+	d2.pBrush->SetColor(m_color);
 	for (auto line : m_lines)
 	{
-		d2.pRenderTarget->DrawLine(line.start, line.end, d2.pBrush, 1.0f);
+		d2.pRenderTarget->DrawLine(line.start, line.end, d2.pBrush, m_stroke_width, m_pStyle);
 	}
+}
+
+void LineGraph::SetLineProperties(D2D1_COLOR_F color, float stroke_width, ID2D1StrokeStyle * pStyle)
+{
+	m_color = color;
+	m_stroke_width = stroke_width;
+	m_pStyle = pStyle;
 }
 
 

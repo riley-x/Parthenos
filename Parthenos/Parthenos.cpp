@@ -83,7 +83,6 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	//	}
 	//	return 0;
 	//}
-
 	//case WM_CLOSE: {
 	//	if (MessageBox(m_hwnd, L"Really quit?", L"Parthenos", MB_OKCANCEL) == IDOK)
 	//	{
@@ -93,7 +92,7 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	//}
 	case WM_DESTROY:
 		m_d2.DiscardGraphicsResources();
-		m_d2.DiscardFactories();
+		m_d2.DiscardDeviceIndependentResources();
 		CoUninitialize();
 		PostQuitMessage(0);
 		return 0;
@@ -189,7 +188,7 @@ LRESULT Parthenos::OnCreate()
 
 	if (SUCCEEDED(hr))
 	{
-		hr = m_d2.CreateFactories();
+		hr = m_d2.CreateDeviceIndependentResources();
 	}
 	if (FAILED(hr))
 	{
@@ -206,7 +205,7 @@ void Parthenos::PreShow()
 	m_titleBar.Init();
 	m_titleBar.Resize(rc);
 
-	m_chart.Init(m_hwnd, m_leftPanelWidth);
+	m_chart.Init(m_hwnd, m_d2, m_leftPanelWidth);
 	m_chart.Resize(rc);
 	m_chart.Load(L"aapl");
 

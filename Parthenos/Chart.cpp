@@ -7,9 +7,10 @@
 
 
 // Chart is flush right, with fixed-width offset in DIPs on left
-void Chart::Init(HWND hwndParent, float leftOffset)
+void Chart::Init(HWND hwndParent, D2Objects d2, float leftOffset)
 {
 	m_hwndParent   = hwndParent;
+	m_d2		   = d2;
 	m_dipRect.left = leftOffset; 
 	m_dipRect.top  = TitleBar::height;
 }
@@ -62,10 +63,12 @@ bool Chart::OnLButtonDown(D2D1_POINT_2F cursor)
 		cursor.y > m_dipRect.top &&
 		cursor.y < m_dipRect.bottom)
 	{
-		if (m_currentMChart == MainChartType::line)
+		if (m_currentMChart == MainChartType::envelope)
 			DrawMainChart(MainChartType::candlestick, m_currentTimeframe);
 		else if (m_currentMChart == MainChartType::candlestick)
 			DrawMainChart(MainChartType::line, m_currentTimeframe);
+		else if (m_currentMChart == MainChartType::line)
+			DrawMainChart(MainChartType::envelope, m_currentTimeframe);
 		return true;
 	}
 	return false;
@@ -79,6 +82,9 @@ void Chart::DrawMainChart(MainChartType type, Timeframe timeframe)
 	{
 	case MainChartType::line:
 		Line(timeframe);
+		break;
+	case MainChartType::envelope:
+		Envelope(timeframe);
 		break;
 	case MainChartType::candlestick:
 	case MainChartType::none:
@@ -144,7 +150,7 @@ void Chart::Candlestick(Timeframe timeframe)
 	m_currentMChart = MainChartType::candlestick;
 	m_currentTimeframe = timeframe;
 
-	m_axes.Clear(); // FIXME
+	m_axes.Clear(); // todo FIXME
 	m_axes.Candlestick(data, n); 
 	InvalidateRect(m_hwndParent, NULL, FALSE);
 }
@@ -167,8 +173,50 @@ void Chart::Line(Timeframe timeframe)
 	m_currentMChart = MainChartType::line;
 	m_currentTimeframe = timeframe;
 
-	m_axes.Clear(); // FIXME
+	m_axes.Clear(); // todo FIXME
 	m_axes.Line(m_closes.data(), n); 
+	InvalidateRect(m_hwndParent, NULL, FALSE);
+}
+
+void Chart::Envelope(Timeframe timeframe)
+{
+	OHLC *data;
+	int n = FindStart(timeframe, data);
+	if (n != m_closes.size()) // data may already exist! TODO: zooming needs to clear
+	{
+		m_closes.resize(n);
+		int size = m_OHLC.size();
+		for (int i = 0; i < n; i++)
+		{
+			m_closes[i] = m_OHLC[size - n + i].close;
+		}
+	}
+	if (n != m_highs.size()) 
+	{
+		m_highs.resize(n);
+		int size = m_OHLC.size();
+		for (int i = 0; i < n; i++)
+		{
+			m_highs[i] = m_OHLC[size - n + i].high;
+		}
+	}
+	if (n != m_lows.size())
+	{
+		m_lows.resize(n);
+		int size = m_OHLC.size();
+		for (int i = 0; i < n; i++)
+		{
+			m_lows[i] = m_OHLC[size - n + i].low;
+		}
+	}
+
+	m_currentMChart = MainChartType::envelope;
+	m_currentTimeframe = timeframe;
+
+	m_axes.Clear(); // todo FIXME
+	m_axes.Line(m_closes.data(), n);
+	m_axes.Line(m_highs.data(), n, D2D1::ColorF(0.8f, 0.0f, 0.5f), 0.6f, m_d2.pDashedStyle);
+	m_axes.Line(m_lows.data(), n, D2D1::ColorF(0.8f, 0.0f, 0.5f), 0.6f, m_d2.pDashedStyle);
 	InvalidateRect(m_hwndParent, NULL, FALSE);
 }
 

@@ -31,8 +31,12 @@ public:
 	using Graph::Graph;
 	void Make(void const * data, int n);
 	void Paint(D2Objects const & d2);
+	void SetLineProperties(D2D1_COLOR_F color, float stroke_width, ID2D1StrokeStyle * pStyle);
 private:
 	std::vector<Line_t> m_lines; // line segments
+	D2D1_COLOR_F m_color = D2D1::ColorF(0.8f, 0.0f, 0.5f, 1.0f);
+	float m_stroke_width = 1.0f;
+	ID2D1StrokeStyle * m_pStyle = NULL;
 };
 
 
@@ -61,8 +65,11 @@ public:
 	void SetBoundingRect(float left, float top, float right, float bottom);
 	void Paint(D2Objects const & d2);
 	void Candlestick(OHLC const * ohlc, int n);
-	void Line(double const * ohlc, int n);
-	void Envelope(std::vector<OHLC> const & ohlc);
+	void Line(double const * data, int n, 
+		D2D1_COLOR_F color = D2D1::ColorF(0.8f, 0.0f, 0.5f, 1.0f), 
+		float stroke_width = 1.0f,
+		ID2D1StrokeStyle * pStyle = NULL);
+	//void Envelope(double const * ohlc, int n);
 
 private:
 

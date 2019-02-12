@@ -3,7 +3,7 @@
 #include "utilities.h"
 #include "resource.h"
 
-HRESULT D2Objects::CreateFactories()
+HRESULT D2Objects::CreateDeviceIndependentResources()
 {
 	// Create a Direct2D factory
 	HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &pFactory);
@@ -11,6 +11,21 @@ HRESULT D2Objects::CreateFactories()
 	if (SUCCEEDED(hr))
 	{
 		DPIScale::Initialize(pFactory);
+	}
+	// Create dashed strokey style
+	if (SUCCEEDED(hr))
+	{
+		D2D1_STROKE_STYLE_PROPERTIES strokeStyleProperties = D2D1::StrokeStyleProperties(
+			D2D1_CAP_STYLE_FLAT,		// The start cap.
+			D2D1_CAP_STYLE_FLAT,		// The end cap.
+			D2D1_CAP_STYLE_FLAT,		// The dash cap.
+			D2D1_LINE_JOIN_MITER,		// The line join.
+			10.0f,						// The miter limit.
+			D2D1_DASH_STYLE_DASH,		// The dash style.
+			0.0f						// The dash offset.
+		);
+
+		hr = pFactory->CreateStrokeStyle(strokeStyleProperties, NULL, 0, &pDashedStyle);
 	}
 	// Create a DirectWrite factory
 	if (SUCCEEDED(hr))
@@ -173,12 +188,13 @@ HRESULT D2Objects::CreateGraphicsResources(HWND hwnd)
 }
 
 
-void D2Objects::DiscardFactories()
+void D2Objects::DiscardDeviceIndependentResources()
 {
 	SafeRelease(&pFactory);
 	SafeRelease(&pDWriteFactory);
 	SafeRelease(&pTextFormat);
 	SafeRelease(&pIWICFactory);
+	SafeRelease(&pDashedStyle);
 
 	for (int i = 0; i < nIcons; i++)
 	{
