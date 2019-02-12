@@ -8,6 +8,7 @@ void Axes::Clear()
 	for (Graph *item : m_graphObjects) {
 		if (item) delete item;
 	}
+	m_grid_lines.clear();
 	m_graphObjects.clear();
 	m_ismade = true;
 	m_imade = 0;
@@ -19,16 +20,7 @@ void Axes::Clear()
 // Converts all graph objects into DIPs. Call when axes are rescaled.
 void Axes::Make()
 {
-	if (m_rescaled) // remake everything
-	{
-		m_data_xdiff = static_cast<float>(m_dataRange[static_cast<int>(dataRange::xmax)]
-			- m_dataRange[static_cast<int>(dataRange::xmin)]);
-		m_data_ydiff = static_cast<float>(m_dataRange[static_cast<int>(dataRange::ymax)]
-			- m_dataRange[static_cast<int>(dataRange::ymin)]);
-
-		m_imade = 0;
-		m_rescaled = false;
-	}
+	if (m_rescaled) Rescale(); // sets m_imade = 0
 
 	for (m_imade; m_imade < m_graphObjects.size(); m_imade++)
 		m_graphObjects[m_imade]->Make();
@@ -84,6 +76,12 @@ void Axes::Paint(D2Objects const & d2)
 	d2.pBrush->SetColor(D2D1::ColorF(0.15f, 0.15f, 0.15f, 1.0f));
 	d2.pRenderTarget->FillRectangle(m_dipRect, d2.pBrush);
 
+	d2.pBrush->SetColor(D2D1::ColorF(0.25f, 0.25f, 0.25f, 1.0f));
+	for (auto line : m_grid_lines)
+	{
+		d2.pRenderTarget->DrawLine(line.start, line.end, d2.pBrush, 0.8f, d2.pDashedStyle);
+	}
+
 	d2.pBrush->SetColor(D2D1::ColorF(0.5f, 0.5f, 0.5f, 1.0f));
 	for (auto line : m_axes_lines)
 	{
@@ -137,6 +135,76 @@ void Axes::Line(double const * data, int n, D2D1_COLOR_F color, float stroke_wid
 	graph->SetLineProperties(color, stroke_width, pStyle);
 	m_graphObjects.push_back(graph);
 	m_ismade = false;
+}
+
+void Axes::Rescale()
+{
+	m_data_xdiff = static_cast<float>(m_dataRange[static_cast<int>(dataRange::xmax)]
+		- m_dataRange[static_cast<int>(dataRange::xmin)]);
+	m_data_ydiff = static_cast<float>(m_dataRange[static_cast<int>(dataRange::ymax)]
+		- m_dataRange[static_cast<int>(dataRange::ymin)]);
+
+	CalculateYTickLocs();
+
+	m_imade = 0; // remake everything
+	m_rescaled = false;
+}
+
+// Gets human-friendly yticks
+void Axes::CalculateYTickLocs()
+{
+	int nmax = static_cast<int>(-m_rect_ydiff / (2.0f * m_labelHeight));
+	double step = 1.0;
+	double ex_step = m_data_ydiff / static_cast<double>(nmax);
+
+	// TODO implement smaller check
+	while (ex_step > 0.0) // while true
+	{
+		if (ex_step < 0.9)
+		{
+			step = 1.0;
+			break;
+		}
+		else if (ex_step < 1.9)
+		{
+			step = 2.0;
+			break;
+		}
+		else if (ex_step < 4.8)
+		{
+			step = 5.0;
+			break;
+		}
+		else
+		{
+			step *= 10.0;
+			ex_step /= 10.0;
+		}
+	}
+
+	double ymin = m_dataRange[static_cast<int>(dataRange::ymin)];
+	double ymax = m_dataRange[static_cast<int>(dataRange::ymax)];
+	double start;
+	if (signbit(ymin) != signbit(ymax)) start = 0;
+	else start = ceil(ymin / step) * step;
+
+	m_grid_lines.clear();
+	for (double y = start; y < ymax; y += step)
+	{
+		float ydip = YtoDIP(y);
+		m_grid_lines.push_back(
+			{D2D1::Point2F(m_axesRect.left, ydip),
+			D2D1::Point2F(m_axesRect.right, ydip)}
+		);
+	}
+	for (double y = start - step; y > ymin; y -= step)
+	{
+		float ydip = YtoDIP(y);
+		m_grid_lines.push_back(
+			{D2D1::Point2F(m_axesRect.left, ydip),
+			D2D1::Point2F(m_axesRect.right, ydip)}
+		);
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////

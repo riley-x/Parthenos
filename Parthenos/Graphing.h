@@ -146,5 +146,8 @@ private:
 		return out;
 	}
 
+	void Rescale();
+	void CalculateYTickLocs();
+
 };
 
