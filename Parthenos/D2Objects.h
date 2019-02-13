@@ -13,7 +13,7 @@ public:
 
 	// Direct Write pointers
 	IDWriteFactory          *pDWriteFactory			= NULL;
-	IDWriteTextFormat		*pTextFormat			= NULL;
+	IDWriteTextFormat		*pTextFormat_10p		= NULL; // 10 point (DIPs)
 
 	// WIC pointers
 	static const int nIcons = 5; // Close, Max, Min, Restore, Parthenos

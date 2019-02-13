@@ -96,6 +96,24 @@ void Axes::Paint(D2Objects const & d2)
 		d2.pRenderTarget->DrawLine(line.start, line.end, d2.pBrush);
 	}
 
+	d2.pBrush->SetColor(D2D1::ColorF(0.8f, 0.8f, 0.8f, 1.0f));
+	for (auto tick : m_xTicks)
+	{
+		float loc = std::get<0>(tick);
+		std::wstring label = std::get<2>(tick);
+
+		d2.pRenderTarget->DrawText(
+			label.c_str(),
+			label.size(),
+			d2.pTextFormat_10p,
+			D2D1::RectF(loc, 
+				m_axesRect.bottom + m_labelPad, 
+				loc + 4.0f * m_labelHeight, 
+				m_axesRect.bottom + m_labelPad + 2.0f * m_labelHeight),
+			d2.pBrush
+		);
+	}
+
 	for (auto graph : m_graphObjects)
 		graph->Paint(d2);
 }
@@ -187,12 +205,29 @@ void Axes::CalculateXTicks()
 	size_t step = (m_dates.size() + nmax - 1) / nmax; // round up
 	float xdip = XtoDIP(0);
 	float spacing = XtoDIP(step) - xdip;
+	int last_month = -1;
 
 	m_xTicks.clear();
 	m_grid_lines[0].clear();
 	for (size_t i = 0; i < m_dates.size(); i += step)
 	{
-		m_xTicks.push_back({ xdip, m_dates[i] });
+		wchar_t buffer[20] = {};
+		date_t date = m_dates[i];
+		int month = GetMonth(date);
+		if (month != last_month)
+		{
+			if (GetMonth(date) == 1) 
+				swprintf_s(buffer, _countof(buffer), L"%d\n%d", GetYear(date), GetDay(date));
+			else 
+				swprintf_s(buffer, _countof(buffer), L"%s\n%d", toMonthWString_Short(date).c_str(), GetDay(date));
+			last_month = month;
+		}
+		else
+		{
+			swprintf_s(buffer, _countof(buffer), L"%d", GetDay(date));
+		}
+
+		m_xTicks.push_back({ xdip, m_dates[i], std::wstring(buffer) });
 		m_grid_lines[0].push_back(
 			{ D2D1::Point2F(xdip, m_axesRect.top),
 			D2D1::Point2F(xdip, m_axesRect.bottom) }
@@ -223,17 +258,17 @@ void Axes::CalculateYTicks()
 	{
 		if (ex_step < 0.9)
 		{
-			step = 1.0;
+			step *= 1.0;
 			break;
 		}
 		else if (ex_step < 1.9)
 		{
-			step = 2.0;
+			step *= 2.0;
 			break;
 		}
 		else if (ex_step < 4.8)
 		{
-			step = 5.0;
+			step *= 5.0;
 			break;
 		}
 		else
@@ -260,7 +295,9 @@ void Axes::CalculateYTicks()
 	float ydip = start_dip;
 	while (ydip > m_axesRect.top)
 	{
-		m_yTicks.push_back({ ydip, y });
+		wchar_t buffer[20] = {};
+		swprintf_s(buffer, _countof(buffer), L"%.2f", y);
+		m_yTicks.push_back({ ydip, y, std::wstring(buffer) });
 		m_grid_lines[1].push_back(
 			{D2D1::Point2F(m_axesRect.left, ydip),
 			D2D1::Point2F(m_axesRect.right, ydip)}
@@ -273,7 +310,9 @@ void Axes::CalculateYTicks()
 	ydip = start_dip - diff;
 	while (ydip < m_axesRect.bottom)
 	{
-		m_yTicks.push_back({ ydip, y });
+		wchar_t buffer[20] = {};
+		swprintf_s(buffer, _countof(buffer), L"%.2f", y);
+		m_yTicks.push_back({ ydip, y, std::wstring(buffer) });
 		m_grid_lines[1].push_back(
 			{ D2D1::Point2F(m_axesRect.left, ydip),
 			D2D1::Point2F(m_axesRect.right, ydip) }

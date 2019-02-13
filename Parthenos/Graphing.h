@@ -103,6 +103,7 @@ private:
 	float m_ylabelWidth = 40.0f; // width of y tick labels in DIPs.
 	float m_labelHeight = 14.0f; // height of tick labels in DIPs.
 	float m_dataPad		= 20.0f; // padding between datapoints and border
+	float m_labelPad	= 2.0f;
 
 	// Flags and state variables
 	bool m_ismade		= true;  // check to make sure everything is made
@@ -113,8 +114,8 @@ private:
 	double m_data_ydiff;
 
 	// Rects and location
-	std::vector<std::pair<float, date_t>> m_xTicks; // DIP, date pair
-	std::vector<std::pair<float, double>> m_yTicks; // DIP, value pair
+	std::vector<std::tuple<float, date_t, std::wstring>> m_xTicks; // DIP, date pair, label
+	std::vector<std::tuple<float, double, std::wstring>> m_yTicks; // DIP, value pair, label
 	std::vector<date_t> m_dates; // actual date values (plotted as x = [0, n-1))
 	D2D1_RECT_F m_dipRect;  // bounding rect DIPs in main window client coordinates
 	D2D1_RECT_F m_axesRect; // rect for the actual axes

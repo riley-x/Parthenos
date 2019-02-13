@@ -10,9 +10,44 @@ time_t const DATE_T_1YR = 10000;
 time_t TruncateToDay(time_t time);
 std::wstring TimeToWString(time_t time);
 date_t GetDate(time_t time);
-date_t MkDate(int year, int month, int day);
+date_t MkDate(int year, int month, int day); // make inline?
+inline int GetYear(date_t date) { return (date / 10000); }
+inline int GetMonth(date_t date) { return (date / 100) % 100; }
+inline int GetDay(date_t date) { return date % 100; }
 int ApproxDateDiff(date_t a, date_t b); // returns a-b
 std::wstring DateToWString(date_t date);
+inline std::wstring toMonthWString_Short(date_t date)
+{
+	switch (GetMonth(date))
+	{
+	case 1:
+		return L"Jan";
+	case 2:
+		return L"Feb";
+	case 3:
+		return L"Mar";
+	case 4:
+		return L"Apr";
+	case 5:
+		return L"May";
+	case 6:
+		return L"Jun";
+	case 7:
+		return L"Jul";
+	case 8:
+		return L"Aug";
+	case 9:
+		return L"Sep";
+	case 10:
+		return L"Oct";
+	case 11:
+		return L"Nov";
+	case 12:
+		return L"Dec";
+	default:
+		return L"NUL";
+	}
+}
 
 enum class HitTest
 {

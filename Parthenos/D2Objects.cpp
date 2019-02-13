@@ -40,15 +40,22 @@ HRESULT D2Objects::CreateDeviceIndependentResources()
 	if (SUCCEEDED(hr))
 	{
 		hr = pDWriteFactory->CreateTextFormat(
-			L"Arial",
+			L"Calibri",
 			NULL,
 			DWRITE_FONT_WEIGHT_NORMAL,
 			DWRITE_FONT_STYLE_NORMAL,
 			DWRITE_FONT_STRETCH_NORMAL,
-			12.0f * 96.0f / 72.0f,
+			10.0f, // font size. this can't be changed dynamically?
 			L"", //locale
-			&pTextFormat
+			&pTextFormat_10p
 		);
+
+	}
+	// Set default alignment
+	if (SUCCEEDED(hr))
+	{
+		pTextFormat_10p->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+		pTextFormat_10p->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
 	}
 	// Create WIC factory
 	if (SUCCEEDED(hr))
@@ -192,7 +199,7 @@ void D2Objects::DiscardDeviceIndependentResources()
 {
 	SafeRelease(&pFactory);
 	SafeRelease(&pDWriteFactory);
-	SafeRelease(&pTextFormat);
+	SafeRelease(&pTextFormat_10p);
 	SafeRelease(&pIWICFactory);
 	SafeRelease(&pDashedStyle);
 
