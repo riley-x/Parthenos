@@ -8,7 +8,11 @@ void Axes::Clear()
 	for (Graph *item : m_graphObjects) {
 		if (item) delete item;
 	}
-	m_grid_lines.clear();
+	m_xTicks.clear();
+	m_yTicks.clear();
+	m_dates.clear();
+	m_grid_lines[0].clear();
+	m_grid_lines[1].clear();
 	m_graphObjects.clear();
 	m_ismade = true;
 	m_imade = 0;
@@ -77,7 +81,11 @@ void Axes::Paint(D2Objects const & d2)
 	d2.pRenderTarget->FillRectangle(m_dipRect, d2.pBrush);
 
 	d2.pBrush->SetColor(D2D1::ColorF(0.25f, 0.25f, 0.25f, 1.0f));
-	for (auto line : m_grid_lines)
+	for (auto line : m_grid_lines[0]) // x lines
+	{
+		d2.pRenderTarget->DrawLine(line.start, line.end, d2.pBrush, 0.8f, d2.pDashedStyle);
+	}
+	for (auto line : m_grid_lines[1]) // y lines
 	{
 		d2.pRenderTarget->DrawLine(line.start, line.end, d2.pBrush, 0.8f, d2.pDashedStyle);
 	}
@@ -94,18 +102,32 @@ void Axes::Paint(D2Objects const & d2)
 
 void Axes::Candlestick(OHLC const * ohlc, int n)
 {
+	bool get_dates = m_dates.empty();
+	if (!get_dates)
+	{
+		if (m_dates.size() != n || m_dates.front() != ohlc[0].date || m_dates.back() != ohlc[n - 1].date)
+			OutputMessage(L"Error: Dates don't line up\n");
+	}
+	else
+	{
+		m_dates.reserve(n);
+	}
+
 	// get min/max of data to scale data appropriately
 	// set x values to [0, n-1)
+	double xmin = 0;
+	double xmax = n - 1;
 	double low_min = ohlc[0].low;
-	double high_max = -1;
+	double high_max = ohlc[0].high;
 	for (int i = 0; i < n; i++)
 	{
+		if (get_dates) m_dates.push_back(ohlc[i].date);
 		if (ohlc[i].low < low_min) low_min = ohlc[i].low;
 		else if (ohlc[i].high > high_max) high_max = ohlc[i].high;
 	}
 
-	m_rescaled = setDataRange(dataRange::xmin, 0) || m_rescaled;
-	m_rescaled = setDataRange(dataRange::xmax, n - 1) || m_rescaled;
+	m_rescaled = setDataRange(dataRange::xmin, xmin) || m_rescaled;
+	m_rescaled = setDataRange(dataRange::xmax, xmax) || m_rescaled;
 	m_rescaled = setDataRange(dataRange::ymin, low_min) || m_rescaled;
 	m_rescaled = setDataRange(dataRange::ymax, high_max) || m_rescaled;
 
@@ -114,24 +136,31 @@ void Axes::Candlestick(OHLC const * ohlc, int n)
 	m_ismade = false;
 }
 
-void Axes::Line(double const * data, int n, D2D1_COLOR_F color, float stroke_width, ID2D1StrokeStyle * pStyle)
+void Axes::Line(date_t const * dates, double const * ydata, int n, 
+	D2D1_COLOR_F color, float stroke_width, ID2D1StrokeStyle * pStyle)
 {
+	if (m_dates.empty()) m_dates = std::vector<date_t>(dates, dates + n);
+	else if (m_dates.size() != n || m_dates.front() != dates[0] || m_dates.back() != dates[n - 1])
+		OutputMessage(L"Error: Dates don't line up\n");
+	
 	// get min/max of data to scale data appropriately
 	// sets x values to [0, n-1)
-	double min = data[0];
-	double max = data[0];
+	double xmin = 0;
+	double xmax = n - 1;
+	double ymin = ydata[0];
+	double ymax = ydata[0];
 	for (int i = 0; i < n; i++)
 	{
-		if (data[i] < min) min = data[i];
-		else if (data[i] > max) max = data[i];
+		if (ydata[i] < ymin) ymin = ydata[i];
+		else if (ydata[i] > ymax) ymax = ydata[i];
 	}
 
-	m_rescaled = setDataRange(dataRange::xmin, 0) || m_rescaled;
-	m_rescaled = setDataRange(dataRange::xmax, n - 1) || m_rescaled;
-	m_rescaled = setDataRange(dataRange::ymin, min) || m_rescaled;
-	m_rescaled = setDataRange(dataRange::ymax, max) || m_rescaled;
+	m_rescaled = setDataRange(dataRange::xmin, xmin) || m_rescaled;
+	m_rescaled = setDataRange(dataRange::xmax, xmax) || m_rescaled;
+	m_rescaled = setDataRange(dataRange::ymin, ymin) || m_rescaled;
+	m_rescaled = setDataRange(dataRange::ymax, ymax) || m_rescaled;
 
-	auto graph = new LineGraph(this, data, n);
+	auto graph = new LineGraph(this, ydata, n);
 	graph->SetLineProperties(color, stroke_width, pStyle);
 	m_graphObjects.push_back(graph);
 	m_ismade = false;
@@ -139,25 +168,57 @@ void Axes::Line(double const * data, int n, D2D1_COLOR_F color, float stroke_wid
 
 void Axes::Rescale()
 {
-	m_data_xdiff = static_cast<float>(m_dataRange[static_cast<int>(dataRange::xmax)]
-		- m_dataRange[static_cast<int>(dataRange::xmin)]);
-	m_data_ydiff = static_cast<float>(m_dataRange[static_cast<int>(dataRange::ymax)]
-		- m_dataRange[static_cast<int>(dataRange::ymin)]);
+	m_data_xdiff = m_dataRange[static_cast<int>(dataRange::xmax)]
+		- m_dataRange[static_cast<int>(dataRange::xmin)];
+	m_data_ydiff = m_dataRange[static_cast<int>(dataRange::ymax)]
+		- m_dataRange[static_cast<int>(dataRange::ymin)];
 
-	CalculateYTickLocs();
+	CalculateXTicks();
+	CalculateYTicks();
 
 	m_imade = 0; // remake everything
 	m_rescaled = false;
 }
 
+
+void Axes::CalculateXTicks()
+{
+	size_t nmax = static_cast<size_t>(m_rect_xdiff / (3.0f * m_labelHeight));
+	size_t step = (m_dates.size() + nmax - 1) / nmax; // round up
+	float xdip = XtoDIP(0);
+	float spacing = XtoDIP(step) - xdip;
+
+	m_xTicks.clear();
+	m_grid_lines[0].clear();
+	for (size_t i = 0; i < m_dates.size(); i += step)
+	{
+		m_xTicks.push_back({ xdip, m_dates[i] });
+		m_grid_lines[0].push_back(
+			{ D2D1::Point2F(xdip, m_axesRect.top),
+			D2D1::Point2F(xdip, m_axesRect.bottom) }
+		);
+		xdip += spacing;
+	}
+	// Add extra lines to the right if space is available.
+	// Don't push to xTicks since no date value available.
+	while (xdip < m_axesRect.right)
+	{
+		m_grid_lines[0].push_back(
+			{ D2D1::Point2F(xdip, m_axesRect.top),
+			D2D1::Point2F(xdip, m_axesRect.bottom) }
+		);
+		xdip += spacing;
+	}
+}
+
 // Gets human-friendly yticks
-void Axes::CalculateYTickLocs()
+void Axes::CalculateYTicks()
 {
 	int nmax = static_cast<int>(-m_rect_ydiff / (2.0f * m_labelHeight));
 	double step = 1.0;
 	double ex_step = m_data_ydiff / static_cast<double>(nmax);
 
-	// TODO implement smaller check
+	// TODO implement step < 1.0 check
 	while (ex_step > 0.0) // while true
 	{
 		if (ex_step < 0.9)
@@ -184,26 +245,41 @@ void Axes::CalculateYTickLocs()
 
 	double ymin = m_dataRange[static_cast<int>(dataRange::ymin)];
 	double ymax = m_dataRange[static_cast<int>(dataRange::ymax)];
+	
 	double start;
 	if (signbit(ymin) != signbit(ymax)) start = 0;
 	else start = ceil(ymin / step) * step;
+	float start_dip = YtoDIP(start);
+	float diff = YtoDIP(start + step) - start_dip; // this is negative: moving upwards
 
-	m_grid_lines.clear();
-	for (double y = start; y < ymax; y += step)
+	m_yTicks.clear();
+	m_grid_lines[1].clear();
+
+	// Add lines moving up from start
+	double y = start;
+	float ydip = start_dip;
+	while (ydip > m_axesRect.top)
 	{
-		float ydip = YtoDIP(y);
-		m_grid_lines.push_back(
+		m_yTicks.push_back({ ydip, y });
+		m_grid_lines[1].push_back(
 			{D2D1::Point2F(m_axesRect.left, ydip),
 			D2D1::Point2F(m_axesRect.right, ydip)}
 		);
+		y += step;
+		ydip += diff;
 	}
-	for (double y = start - step; y > ymin; y -= step)
+	// Add lines moving down from start
+	y = start - step;
+	ydip = start_dip - diff;
+	while (ydip < m_axesRect.bottom)
 	{
-		float ydip = YtoDIP(y);
-		m_grid_lines.push_back(
-			{D2D1::Point2F(m_axesRect.left, ydip),
-			D2D1::Point2F(m_axesRect.right, ydip)}
+		m_yTicks.push_back({ ydip, y });
+		m_grid_lines[1].push_back(
+			{ D2D1::Point2F(m_axesRect.left, ydip),
+			D2D1::Point2F(m_axesRect.right, ydip) }
 		);
+		y -= step;
+		ydip -= diff;
 	}
 }
 

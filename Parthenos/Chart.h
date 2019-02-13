@@ -27,7 +27,8 @@ private:
 
 	// data
 	std::vector<OHLC>	m_OHLC;
-	std::vector<double> m_closes; // todo turn this into a vector of lines, with colors?
+	std::vector<date_t> m_dates;
+	std::vector<double> m_closes;
 	std::vector<double> m_highs;
 	std::vector<double> m_lows;
 

@@ -72,22 +72,28 @@ public:
 	void SetBoundingRect(float left, float top, float right, float bottom);
 	void Paint(D2Objects const & d2);
 
-	// Pointers to these functions should remain valid until the next Clear() call
+	// Data pointers to these functions should remain valid until the next Clear() call
 	void Candlestick(OHLC const * ohlc, int n);
-	void Line(double const * data, int n, 
+	void Line(date_t const * dates, double const * ydata, int n, 
 		D2D1_COLOR_F color = D2D1::ColorF(0.8f, 0.0f, 0.5f, 1.0f), 
 		float stroke_width = 1.0f,
 		ID2D1StrokeStyle * pStyle = NULL);
 
-	inline float XtoDIP(double val, int axis = 0)
+
+	const inline float XtoDIP(double val)
 	{
 		double data_xmin = m_dataRange[static_cast<int>(dataRange::xmin)];
-		return m_dataRect.left + (static_cast<float>(val - data_xmin) / m_data_xdiff) * m_rect_xdiff;
+		return m_dataRect.left + static_cast<float>((val - data_xmin) / m_data_xdiff) * m_rect_xdiff;
 	}
-	inline float YtoDIP(double val, int axis = 0)
+	const inline float YtoDIP(double val)
 	{
 		double data_ymin = m_dataRange[static_cast<int>(dataRange::ymin)];
-		return m_dataRect.bottom + (static_cast<float>(val - data_ymin) / m_data_ydiff) * m_rect_ydiff;
+		return m_dataRect.bottom + static_cast<float>((val - data_ymin) / m_data_ydiff) * m_rect_ydiff;
+	}
+	const inline double DIPtoY(float val)
+	{
+		double data_ymin = m_dataRange[static_cast<int>(dataRange::ymin)];
+		return data_ymin + ((val - m_dataRect.bottom) / m_rect_ydiff) * m_data_ydiff;
 	}
 
 	inline float GetDataRectXDiff() { return m_rect_xdiff; }
@@ -103,22 +109,22 @@ private:
 	bool m_rescaled		= false;
 	size_t m_imade		= 0;	 // stores an index into m_graphObjects. Objects < i already made
 	double m_dataRange[4] = { nan(""), nan(""), nan(""), nan("") }; // Numerical range of data: x_min, x_max, y_min, y_max
-	float m_data_xdiff;
-	float m_data_ydiff;
+	double m_data_xdiff;
+	double m_data_ydiff;
 
 	// Rects and location
-	std::vector<float> m_xTicks; // locations of x ticks
-	std::vector<float> m_yTicks; // locations of y ticks
+	std::vector<std::pair<float, date_t>> m_xTicks; // DIP, date pair
+	std::vector<std::pair<float, double>> m_yTicks; // DIP, value pair
+	std::vector<date_t> m_dates; // actual date values (plotted as x = [0, n-1))
 	D2D1_RECT_F m_dipRect;  // bounding rect DIPs in main window client coordinates
 	D2D1_RECT_F m_axesRect; // rect for the actual axes
 	D2D1_RECT_F m_dataRect; // rect for drawable space for data points
 	float m_rect_xdiff;		// m_dataRect.right - m_dataRect.left
 	float m_rect_ydiff;		// m_dataRect.top - m_dataRect.bottom, flip so origin is bottom-left
 
-
 	// Graphing objects
 	std::vector<Line_t> m_axes_lines;
-	std::vector<Line_t> m_grid_lines;
+	std::vector<Line_t> m_grid_lines[2]; // x, y
 	std::vector<Graph*> m_graphObjects; // THESE NEED TO BE REMADE WHEN RENDER TARGET CHANGES
 
 	// Functions
@@ -147,7 +153,8 @@ private:
 	}
 
 	void Rescale();
-	void CalculateYTickLocs();
+	void CalculateXTicks();
+	void CalculateYTicks();
 
 };
 

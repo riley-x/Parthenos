@@ -157,12 +157,16 @@ void Chart::Line(Timeframe timeframe)
 { 
 	OHLC *data;
 	int n = FindStart(timeframe, data);
-	if (n != m_closes.size()) // data may already exist! TODO: zooming needs to clear
+	
+	// data may already exist! TODO: zooming needs to clear
+	if (n != m_closes.size() || n != m_dates.size()) 
 	{
+		m_dates.resize(n);
 		m_closes.resize(n);
 		int size = m_OHLC.size();
 		for (int i = 0; i < n; i++)
 		{
+			m_dates[i] = m_OHLC[size - n + i].date;
 			m_closes[i] = m_OHLC[size - n + i].close;
 		}
 	}
@@ -171,7 +175,7 @@ void Chart::Line(Timeframe timeframe)
 	m_currentTimeframe = timeframe;
 
 	m_axes.Clear(); // todo FIXME
-	m_axes.Line(m_closes.data(), n); 
+	m_axes.Line(m_dates.data(), m_closes.data(), n); 
 	InvalidateRect(m_hwndParent, NULL, FALSE);
 }
 
@@ -179,30 +183,20 @@ void Chart::Envelope(Timeframe timeframe)
 {
 	OHLC *data;
 	int n = FindStart(timeframe, data);
-	if (n != m_closes.size()) // data may already exist! TODO: zooming needs to clear
+
+	// data may already exist! TODO: zooming needs to clear
+	if (n != m_closes.size() || n != m_highs.size()
+		|| n != m_lows.size() || n != m_dates.size()) 
 	{
 		m_closes.resize(n);
-		int size = m_OHLC.size();
-		for (int i = 0; i < n; i++)
-		{
-			m_closes[i] = m_OHLC[size - n + i].close;
-		}
-	}
-	if (n != m_highs.size()) 
-	{
 		m_highs.resize(n);
-		int size = m_OHLC.size();
-		for (int i = 0; i < n; i++)
-		{
-			m_highs[i] = m_OHLC[size - n + i].high;
-		}
-	}
-	if (n != m_lows.size())
-	{
 		m_lows.resize(n);
 		int size = m_OHLC.size();
 		for (int i = 0; i < n; i++)
 		{
+			m_dates[i] = m_OHLC[size - n + i].date;
+			m_closes[i] = m_OHLC[size - n + i].close;
+			m_highs[i] = m_OHLC[size - n + i].high;
 			m_lows[i] = m_OHLC[size - n + i].low;
 		}
 	}
@@ -211,9 +205,9 @@ void Chart::Envelope(Timeframe timeframe)
 	m_currentTimeframe = timeframe;
 
 	m_axes.Clear(); // todo FIXME
-	m_axes.Line(m_closes.data(), n);
-	m_axes.Line(m_highs.data(), n, D2D1::ColorF(0.8f, 0.0f, 0.5f), 0.6f, m_d2.pDashedStyle);
-	m_axes.Line(m_lows.data(), n, D2D1::ColorF(0.8f, 0.0f, 0.5f), 0.6f, m_d2.pDashedStyle);
+	m_axes.Line(m_dates.data(), m_closes.data(), n);
+	m_axes.Line(m_dates.data(), m_highs.data(), n, D2D1::ColorF(0.8f, 0.0f, 0.5f), 0.6f, m_d2.pDashedStyle);
+	m_axes.Line(m_dates.data(), m_lows.data(), n, D2D1::ColorF(0.8f, 0.0f, 0.5f), 0.6f, m_d2.pDashedStyle);
 	InvalidateRect(m_hwndParent, NULL, FALSE);
 }
 
