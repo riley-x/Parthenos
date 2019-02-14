@@ -7,7 +7,7 @@ class TitleBar : public AppItem
 public:
 	using AppItem::AppItem;
 	void Init();
-	void Paint();
+	void Paint(D2D1_RECT_F updateRect);
 	void Resize(RECT pRect, D2D1_RECT_F pDipRect);
 	LRESULT HitTest(POINT cursor);
 	void Maximize(bool isMax) { m_maximized = isMax; }
@@ -23,7 +23,6 @@ private:
 	bool				m_maximized = false;
 	LRESULT				m_mouseOn	= HTNOWHERE; // for icon highlighting
 
-	RECT		m_pixRect; // pixels in main window client coordinates
 	D2D1_RECT_F	m_CommandIconRects[nIcons]; // 32x24 command icons. These are PIXEL coordinates, not DIPs!!!
 	D2D1_RECT_F m_TitleIconRect; // 48x48 Parthenos icon. In DIP coordinates.
 

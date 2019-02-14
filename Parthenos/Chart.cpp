@@ -6,11 +6,25 @@
 #include <algorithm>
 
 
+Chart::Chart(HWND hwnd, D2Objects const & d2)
+	: AppItem(hwnd, d2), m_axes(hwnd, d2), m_tickerBox(hwnd, d2) 
+{
+	for (int i = 0; i < 8; i++)
+		m_iconButtons.push_back(new IconButton(hwnd, d2));
+}
+Chart::~Chart()
+{
+	for (auto button : m_iconButtons)
+		if (button) delete button;
+}
+
 // Chart is flush right, with fixed-width offset in DIPs on left
 void Chart::Init(float leftOffset)
 {
 	m_dipRect.left = leftOffset; 
 	m_dipRect.top  = TitleBar::height;
+	m_pixRect.left = DPIScale::DipsToPixelsX(m_dipRect.left);
+	m_pixRect.top = DPIScale::DipsToPixelsY(m_dipRect.top);
 }
 
 void Chart::Load(std::wstring ticker, int range)
@@ -29,25 +43,57 @@ void Chart::Load(std::wstring ticker, int range)
 	//}
 }
 
-void Chart::Paint()
+void Chart::Paint(D2D1_RECT_F updateRect)
 {
-	m_d2.pBrush->SetColor(D2D1::ColorF(0.8f, 0.0f, 0.0f, 1.0f));
-	m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 1.0, NULL);
+	// when invalidating, converts to pixels then back to DIPs -> updateRect has smaller values
+	// then when invalidated.
+	if (updateRect.bottom <= m_dipRect.top || updateRect.right <= m_dipRect.left) return;
 
-	m_axes.Paint();
+	m_d2.pBrush->SetColor(D2D1::ColorF(0.8f, 0.0f, 0.0f, 1.0f));
+	//m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 1.0, NULL);
+
+	m_axes.Paint(updateRect);
+	m_tickerBox.Paint(updateRect);
+	for (auto icon : m_iconButtons)
+		icon->Paint(updateRect);
 }
 
 void Chart::Resize(RECT pRect, D2D1_RECT_F pDipRect)
 {
 	m_dipRect.right  = pDipRect.right;
 	m_dipRect.bottom = pDipRect.bottom;
+	m_pixRect.right  = pRect.right;
+	m_pixRect.bottom = pRect.bottom;
 
-	m_axes.SetSize(D2D1::Rect(
+	m_axes.SetSize(D2D1::RectF(
 		m_dipRect.left, 
 		m_dipRect.top + m_menuHeight, 
 		m_dipRect.right, 
 		m_dipRect.bottom
 	));
+
+	float m_commandHPad = 5.0f;
+	float m_commandSize = 20.0f;
+	float m_labelBoxWidth = 100.0f;
+	float top = m_dipRect.top + (m_menuHeight - m_commandSize) / 2.0f;
+	m_tickerBox.SetSize(D2D1::RectF(
+		m_dipRect.left + m_commandHPad,
+		top,
+		m_dipRect.left + m_commandHPad + m_labelBoxWidth,
+		top + m_commandSize
+	));
+
+	
+	for (size_t i = 0; i < m_iconButtons.size(); i++)
+	{
+		float left = m_dipRect.left + m_labelBoxWidth + m_commandHPad * (i + 2) + m_commandSize * i;
+		m_iconButtons[i]->SetSize(D2D1::RectF(
+			left,
+			top,
+			left + m_commandSize,
+			top + m_commandSize
+		));
+	}
 }
 
 void Chart::OnLButtonDown(D2D1_POINT_2F cursor)
@@ -144,7 +190,8 @@ void Chart::Candlestick(Timeframe timeframe)
 
 	m_axes.Clear(); // todo FIXME
 	m_axes.Candlestick(data, n); 
-	InvalidateRect(m_hwnd, NULL, FALSE);
+
+	InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 }
 
 
@@ -171,7 +218,7 @@ void Chart::Line(Timeframe timeframe)
 
 	m_axes.Clear(); // todo FIXME
 	m_axes.Line(m_dates.data(), m_closes.data(), n); 
-	InvalidateRect(m_hwnd, NULL, FALSE);
+	InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 }
 
 void Chart::Envelope(Timeframe timeframe)
@@ -203,6 +250,6 @@ void Chart::Envelope(Timeframe timeframe)
 	m_axes.Line(m_dates.data(), m_closes.data(), n);
 	m_axes.Line(m_dates.data(), m_highs.data(), n, D2D1::ColorF(0.8f, 0.0f, 0.5f), 0.6f, m_d2.pDashedStyle);
 	m_axes.Line(m_dates.data(), m_lows.data(), n, D2D1::ColorF(0.8f, 0.0f, 0.5f), 0.6f, m_d2.pDashedStyle);
-	InvalidateRect(m_hwnd, NULL, FALSE);
+	InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 }
 

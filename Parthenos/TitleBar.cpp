@@ -30,9 +30,11 @@ void TitleBar::Init()
 }
 
 
-void TitleBar::Paint()
+void TitleBar::Paint(D2D1_RECT_F updateRect)
 {
-
+	// when invalidating, converts to pixels then back to DIPs -> updateRect has smaller values
+	// then when invalidated. Add 1 to adjust.
+	if (updateRect.top + 1 > m_dipRect.bottom) return;
 	m_d2.pBrush->SetColor(D2D1::ColorF(0.15f, 0.16f, 0.15f, 1.0f));
 	m_d2.pRenderTarget->FillRectangle(m_dipRect, m_d2.pBrush);
 

@@ -69,7 +69,7 @@ public:
 	void Clear();
 	void Make();
 	void SetSize(D2D1_RECT_F dipRect);
-	void Paint();
+	void Paint(D2D1_RECT_F updateRect);
 	void SetLabelSize(float ylabelWidth, float labelHeight);
 
 	// Data pointers to these functions should remain valid until the next Clear() call

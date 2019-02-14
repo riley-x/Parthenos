@@ -4,17 +4,19 @@
 #include "AppItem.h"
 #include "DataManaging.h"
 #include "Graphing.h"
-
+#include "TextBox.h"
+#include "Button.h"
 
 // Main plotting window for stock price charts.
 // Includes drawing command bar.
 class Chart : public AppItem
 {
 public:
-	Chart(HWND hwnd, D2Objects const & d2) : AppItem(hwnd, d2), m_axes(hwnd, d2) {};
+	Chart(HWND hwnd, D2Objects const & d2);
+	~Chart();
 	void Init(float leftOffset);
 	void Load(std::wstring ticker, int range = 1260); // range in days. default to 5 years 
-	void Paint();
+	void Paint(D2D1_RECT_F updateRect);
 	void Resize(RECT pRect, D2D1_RECT_F pDipRect);
 	void OnLButtonDown(D2D1_POINT_2F cursor);
 
@@ -30,10 +32,14 @@ private:
 	std::vector<double> m_highs;
 	std::vector<double> m_lows;
 
+	// child objects
+	Axes				m_axes;
+	TextBox				m_tickerBox;
+	std::vector<IconButton*> m_iconButtons;
+
 	// drawing
 	enum class MainChartType { none, line, candlestick, envelope };
 	enum class Timeframe { none, year1 };
-	Axes				m_axes;
 	MainChartType		m_currentMChart = MainChartType::none;
 	Timeframe			m_currentTimeframe = Timeframe::none;
 

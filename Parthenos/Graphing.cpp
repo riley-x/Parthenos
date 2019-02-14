@@ -70,7 +70,7 @@ void Axes::SetSize(D2D1_RECT_F dipRect)
 	m_rect_ydiff = m_dataRect.top - m_dataRect.bottom; // flip so origin is bottom-left
 }
 
-void Axes::Paint()
+void Axes::Paint(D2D1_RECT_F updateRect)
 {
 	if (!m_ismade) Make();
 

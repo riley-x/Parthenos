@@ -77,48 +77,58 @@ class DPIScale
 
 public:
 
-	static void Initialize(ID2D1Factory *pFactory)
+	static inline void Initialize(ID2D1Factory *pFactory)
 	{
 		pFactory->GetDesktopDpi(&dpiX, &dpiY);
 		scaleX = dpiX / 96.0f;
 		scaleY = dpiY / 96.0f;
 	}
 
-	static D2D1_POINT_2F PixelsToDips(POINT p)
+	static inline D2D1_POINT_2F PixelsToDips(POINT p)
 	{
 		return D2D1::Point2F(static_cast<float>(p.x) / scaleX, static_cast<float>(p.y) / scaleY);
 	}
 
-	static D2D1_RECT_F PixelsToDips(RECT rc)
+	static inline D2D1_RECT_F PixelsToDips(RECT rc)
 	{
 		return D2D1::RectF(
-			DPIScale::PixelsToDipsX(rc.left),
-			DPIScale::PixelsToDipsY(rc.top),
-			DPIScale::PixelsToDipsX(rc.right),
-			DPIScale::PixelsToDipsY(rc.bottom)
+			PixelsToDipsX(rc.left),
+			PixelsToDipsY(rc.top),
+			PixelsToDipsX(rc.right),
+			PixelsToDipsY(rc.bottom)
 		);
 	}
 
 	template <typename T>
-	static float PixelsToDipsX(T x)
+	static inline float PixelsToDipsX(T x)
 	{
 		return static_cast<float>(x) / scaleX;
 	}
 
 	template <typename T>
-	static float PixelsToDipsY(T y)
+	static inline float PixelsToDipsY(T y)
 	{
 		return static_cast<float>(y) / scaleY;
 	}
 
+	static inline RECT DipsToPixels(D2D1_RECT_F rect)
+	{
+		RECT out;
+		out.left = DipsToPixelsX(rect.left);
+		out.top = DipsToPixelsY(rect.top);
+		out.right = DipsToPixelsX(rect.right);
+		out.bottom = DipsToPixelsY(rect.bottom);
+		return out;
+	}
+
 	template <typename T>
-	static int DipsToPixelsX(T x)
+	static inline int DipsToPixelsX(T x)
 	{
 		return static_cast<int>(static_cast<float>(x) * scaleX);
 	}
 
 	template <typename T>
-	static int DipsToPixelsY(T y)
+	static inline int DipsToPixelsY(T y)
 	{
 		return static_cast<int>(static_cast<float>(y) * scaleY);
 	}

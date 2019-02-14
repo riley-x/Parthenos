@@ -16,17 +16,17 @@
     <Filter Include="Resource Files\Command Icons">
       <UniqueIdentifier>{858ab203-08a3-475b-919a-2993121782f9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\AppItems">
+      <UniqueIdentifier>{bd4cc175-4022-4f29-9acb-739bb715d47b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\AppItems">
+      <UniqueIdentifier>{c6191a8a-288d-4b97-a4ee-2100d778a3f5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\VS">
+      <UniqueIdentifier>{34148477-50ed-4e8b-8a90-b98189ead491}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="stdafx.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="targetver.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="utilities.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -37,9 +37,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="BaseWindow.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="TitleBar.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D2Objects.h">
@@ -54,20 +51,32 @@
     <ClInclude Include="DataManaging.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Chart.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphing.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="AppItem.h">
+      <Filter>Header Files\AppItems</Filter>
     </ClInclude>
     <ClInclude Include="Button.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\AppItems</Filter>
+    </ClInclude>
+    <ClInclude Include="Chart.h">
+      <Filter>Header Files\AppItems</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphing.h">
+      <Filter>Header Files\AppItems</Filter>
     </ClInclude>
     <ClInclude Include="TextBox.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\AppItems</Filter>
     </ClInclude>
-    <ClInclude Include="AppItem.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="TitleBar.h">
+      <Filter>Header Files\AppItems</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>Header Files\VS</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>Header Files\VS</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>Header Files\VS</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -78,9 +87,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="TitleBar.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="utilities.cpp">
@@ -99,10 +105,16 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Chart.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\AppItems</Filter>
+    </ClCompile>
+    <ClCompile Include="TextBox.cpp">
+      <Filter>Source Files\AppItems</Filter>
+    </ClCompile>
+    <ClCompile Include="TitleBar.cpp">
+      <Filter>Source Files\AppItems</Filter>
     </ClCompile>
     <ClCompile Include="Graphing.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\AppItems</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

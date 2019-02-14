@@ -216,7 +216,8 @@ LRESULT Parthenos::OnCreate()
 void Parthenos::PreShow()
 {
 	RECT rc;
-	GetClientRect(m_hwnd, &rc);
+	BOOL bErr = GetClientRect(m_hwnd, &rc);
+	if (bErr == 0) OutputError(L"GetClientRect failed");
 	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
 
 	for (auto item : m_allItems)
@@ -228,55 +229,48 @@ void Parthenos::PreShow()
 		item->Resize(rc, dipRect);
 	}
 	m_chart->Load(L"aapl");
-
-	//std::string json = SendHTTPSRequest_GET(L"www.alphavantage.co", L"query",
-	//	L"function=TIME_SERIES_DAILY&symbol=MSFT&apikey=demo");
-	//OutputDebugStringA(display_string.c_str());
 }
 
 LRESULT Parthenos::OnPaint()
 {
-	RECT rect;
-	BOOL br = GetUpdateRect(m_hwnd, &rect, FALSE);
-	if (br == 0) return 0;
-	
+	RECT rc;
+	BOOL bErr = GetClientRect(m_hwnd, &rc);
+	if (bErr == 0) OutputError(L"GetClientRect failed");
+
 	HRESULT hr = m_d2.CreateGraphicsResources(m_hwnd);
 	if (SUCCEEDED(hr))
 	{
 		PAINTSTRUCT ps;
 		BeginPaint(m_hwnd, &ps);
+		D2D1_RECT_F dipRect = DPIScale::PixelsToDips(ps.rcPaint);
 		m_d2.pRenderTarget->BeginDraw();
 
-		if (rect.bottom <= m_titleBar->bottom())
+		if (ps.rcPaint.left == 0 && ps.rcPaint.top == 0 &&
+			ps.rcPaint.right == rc.right && ps.rcPaint.bottom == rc.bottom)
 		{
-			m_titleBar->Paint();
-		}
-		else
-		{
-
 			m_d2.pRenderTarget->Clear(D2D1::ColorF(0.2f, 0.2f, 0.2f, 1.0f));
-
-			for (auto item : m_activeItems)
-				item->Paint();
-
-			//D2D1_SIZE_F size = m_d2.pRenderTarget->GetSize();
-			//const float x = size.width;
-			//const float y = size.height;
-
-
-			//D2D1_RECT_F layoutRect = D2D1::RectF(0.f, 0.f, 200.f, 200.f);
-			//wchar_t msg[32];
-			//swprintf_s(msg, L"DPI: %3.1f %3.1f\n\n\n", DPIScale::dpiX, DPIScale::dpiY);
-			//OutputDebugString(msg);
-			////PCWSTR msg = L"Hellow World";
-			//m_d2.pRenderTarget->DrawText(
-			//	msg,
-			//	wcslen(msg),
-			//	pTextFormat,
-			//	layoutRect,
-			//	pBrush
-			//);
 		}
+
+		for (auto item : m_activeItems)
+			item->Paint(dipRect);
+
+		//D2D1_SIZE_F size = m_d2.pRenderTarget->GetSize();
+		//const float x = size.width;
+		//const float y = size.height;
+
+
+		//D2D1_RECT_F layoutRect = D2D1::RectF(0.f, 0.f, 200.f, 200.f);
+		//wchar_t msg[32];
+		//swprintf_s(msg, L"DPI: %3.1f %3.1f\n\n\n", DPIScale::dpiX, DPIScale::dpiY);
+		//OutputDebugString(msg);
+		////PCWSTR msg = L"Hellow World";
+		//m_d2.pRenderTarget->DrawText(
+		//	msg,
+		//	wcslen(msg),
+		//	pTextFormat,
+		//	layoutRect,
+		//	pBrush
+		//);
 
 		hr = m_d2.pRenderTarget->EndDraw();
 		if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
