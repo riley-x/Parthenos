@@ -6,6 +6,9 @@
 float const TitleBar::iconHPad = 6.0f;
 float const TitleBar::height = 30.0f;
 
+TitleBar::TitleBar(HWND hwnd, D2Objects const & d2)
+	: m_hwnd(hwnd), m_d2(d2) {};
+
 // This must be called AFTER DPIScale is initialized
 void TitleBar::Init()
 {
@@ -28,23 +31,24 @@ void TitleBar::Init()
 	m_TitleIconRect = D2D1::RectF(3.0f, 3.0f, 27.0f, 27.0f);
 }
 
-void TitleBar::Paint(D2Objects const & d2)
+
+void TitleBar::Paint()
 {
 
-	d2.pBrush->SetColor(D2D1::ColorF(0.15f, 0.16f, 0.15f, 1.0f));
-	d2.pRenderTarget->FillRectangle(m_dipRect, d2.pBrush);
+	m_d2.pBrush->SetColor(D2D1::ColorF(0.15f, 0.16f, 0.15f, 1.0f));
+	m_d2.pRenderTarget->FillRectangle(m_dipRect, m_d2.pBrush);
 
 	// Paint titlebar icon
-	if (d2.pD2DBitmaps[4])
+	if (m_d2.pD2DBitmaps[4])
 	{
-		d2.pRenderTarget->DrawBitmap(
-			d2.pD2DBitmaps[4],
+		m_d2.pRenderTarget->DrawBitmap(
+			m_d2.pD2DBitmaps[4],
 			m_TitleIconRect
 		);
 	}
 
 	// Paint highlight of command icons
-	d2.pRenderTarget->SetDpi(96.0f, 96.0f); // paint pixels, not DIPs
+	m_d2.pRenderTarget->SetDpi(96.0f, 96.0f); // paint pixels, not DIPs
 
 	int mouse_on = -1;
 	if (m_mouseOn == HTCLOSE) mouse_on = 0;
@@ -52,26 +56,26 @@ void TitleBar::Paint(D2Objects const & d2)
 	else if (m_mouseOn == HTMINBUTTON) mouse_on = 2;
 	if (mouse_on >= 0)
 	{
-		d2.pBrush->SetColor(D2D1::ColorF(0.25f, 0.25f, 0.25f, 1.0f));
-		d2.pRenderTarget->FillRectangle(D2D1::RectF(
+		m_d2.pBrush->SetColor(D2D1::ColorF(0.25f, 0.25f, 0.25f, 1.0f));
+		m_d2.pRenderTarget->FillRectangle(D2D1::RectF(
 			m_CommandIconRects[mouse_on].left - iconHPad,
 			static_cast<float>(m_pixRect.top),
 			m_CommandIconRects[mouse_on].right + iconHPad,
 			static_cast<float>(m_pixRect.bottom)
-		), d2.pBrush);
+		), m_d2.pBrush);
 	}
 
 	// Paint command icons
 	int bitmap_ind[2][3] = { {0,1,2}, {0,3,2} }; // index into d2.pD2DBitmaps depending on max vs. restore
 	for (int i = 0; i < nIcons; i++)
 	{
-		if (d2.pD2DBitmaps[i])
-			d2.pRenderTarget->DrawBitmap(
-				d2.pD2DBitmaps[bitmap_ind[static_cast<int>(m_maximized)][i]], 
+		if (m_d2.pD2DBitmaps[i])
+			m_d2.pRenderTarget->DrawBitmap(
+				m_d2.pD2DBitmaps[bitmap_ind[static_cast<int>(m_maximized)][i]], 
 				m_CommandIconRects[i]
 			);
 	}
-	d2.pRenderTarget->SetDpi(0, 0); // restore DIPs
+	m_d2.pRenderTarget->SetDpi(0, 0); // restore DIPs
 
 	//D2D1_SIZE_U size = d2.pD2DBitmaps[0]->GetPixelSize();
 	//OutputMessage(L"%u %u\n\n", size.width, size.height);
@@ -117,11 +121,11 @@ LRESULT TitleBar::HitTest(POINT cursor)
 	return HTCLIENT;
 }
 
-void TitleBar::MouseOn(LRESULT button, HWND p_hwnd)
+void TitleBar::MouseOn(LRESULT button)
 {
 	if (m_mouseOn != button)
 	{
 		m_mouseOn = button;
-		InvalidateRect(p_hwnd, &m_pixRect, FALSE);
+		InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 	}
 }

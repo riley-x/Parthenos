@@ -12,8 +12,8 @@
 class Parthenos : public BorderlessWindow<Parthenos>
 {
 	// Logical components
-	TitleBar m_titleBar;
-	Chart m_chart;
+	TitleBar				*m_titleBar;
+	Chart					*m_chart;
 	MouseTrackEvents m_mouseTrack;
 	FileIO m_histFile;
 
@@ -40,6 +40,7 @@ public:
 
 	Parthenos() : BorderlessWindow() {}
 	Parthenos(PCWSTR szClassName) : BorderlessWindow(szClassName) {}
+	~Parthenos();
 
 	LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);
 	// Handle initializations here instead of create

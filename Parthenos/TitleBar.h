@@ -5,18 +5,22 @@
 class TitleBar
 {
 public:
+	TitleBar(HWND hwnd, D2Objects const & d2);
 	void Init();
-	void Paint(D2Objects const & d2);
+	void Paint();
 	void Resize(RECT pRect);
 	LRESULT HitTest(POINT cursor);
 	void Maximize(bool isMax) { m_maximized = isMax; }
-	void MouseOn(LRESULT button, HWND p_hwnd);
+	void MouseOn(LRESULT button);
 
 	static float const height; // 30 DIPs
 
 	int bottom() { return m_pixRect.bottom; }
 
 private:
+	HWND m_hwnd;
+	D2Objects const &m_d2;
+
 	static int const	nIcons		= 3;
 	static float const	iconHPad;
 	bool				m_maximized = false;

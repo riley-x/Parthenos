@@ -33,6 +33,12 @@ namespace {
 	}
 }
 
+Parthenos::~Parthenos()
+{
+	if (m_titleBar) delete m_titleBar;
+	if (m_chart) delete m_chart;
+}
+
 LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	LRESULT ret = 0;
@@ -116,7 +122,7 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	//case WM_LBUTTONDBLCLK:
 	//	return 0;
 	case WM_MOUSELEAVE:
-		m_titleBar.MouseOn(HTNOWHERE, m_hwnd);
+		m_titleBar->MouseOn(HTNOWHERE);
 		m_mouseTrack.Reset(m_hwnd);
 		return 0;
 	case WM_MOUSEHOVER:
@@ -141,19 +147,19 @@ LRESULT Parthenos::OnNCHitTest(POINT cursor) {
 	//if (!::GetWindowRect(m_hwnd, &window)) Error("GetWindowRect failed");
 	if (!::ScreenToClient(m_hwnd, &cursor)) Error(L"ScreenToClient failed");
 
-	LRESULT ret = m_titleBar.HitTest(cursor);
+	LRESULT ret = m_titleBar->HitTest(cursor);
 	switch (ret)
 	{
 	case HTMINBUTTON:
 	case HTMAXBUTTON:
 	case HTCLOSE:
-		m_titleBar.MouseOn(ret, m_hwnd);
+		m_titleBar->MouseOn(ret);
 		return HTCLIENT;
 	case HTCAPTION:
-		m_titleBar.MouseOn(HTNOWHERE, m_hwnd);
+		m_titleBar->MouseOn(HTNOWHERE);
 		return ret;
 	default:
-		m_titleBar.MouseOn(HTNOWHERE, m_hwnd);
+		m_titleBar->MouseOn(HTNOWHERE);
 		return HTCLIENT;
 	}
 }
@@ -161,9 +167,9 @@ LRESULT Parthenos::OnNCHitTest(POINT cursor) {
 LRESULT Parthenos::OnSize(WPARAM wParam)
 {
 	if (wParam == SIZE_MAXIMIZED)
-		m_titleBar.Maximize(true);
+		m_titleBar->Maximize(true);
 	else if (wParam == SIZE_RESTORED)
-		m_titleBar.Maximize(false);
+		m_titleBar->Maximize(false);
 	if (m_d2.pRenderTarget != NULL)
 	{
 		RECT rc;
@@ -171,8 +177,8 @@ LRESULT Parthenos::OnSize(WPARAM wParam)
 
 		D2D1_SIZE_U size = D2D1::SizeU(rc.right, rc.bottom);
 		m_d2.pRenderTarget->Resize(size);
-		m_titleBar.Resize(rc);
-		m_chart.Resize(rc);
+		m_titleBar->Resize(rc);
+		m_chart->Resize(rc);
 
 		InvalidateRect(m_hwnd, NULL, FALSE);
 	}
@@ -182,6 +188,9 @@ LRESULT Parthenos::OnSize(WPARAM wParam)
 LRESULT Parthenos::OnCreate()
 {
 	m_d2.hwndParent = m_hwnd;
+	m_titleBar = new TitleBar(m_hwnd, m_d2);
+	m_chart = new Chart(m_hwnd, m_d2, m_leftPanelWidth);
+
 	hCursor = LoadCursor(NULL, IDC_ARROW);
 
 	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
@@ -202,12 +211,11 @@ void Parthenos::PreShow()
 {
 	RECT rc;
 	GetClientRect(m_hwnd, &rc);
-	m_titleBar.Init();
-	m_titleBar.Resize(rc);
+	m_titleBar->Init();
+	m_titleBar->Resize(rc);
 
-	m_chart.Init(m_hwnd, m_d2, m_leftPanelWidth);
-	m_chart.Resize(rc);
-	m_chart.Load(L"aapl");
+	m_chart->Resize(rc);
+	m_chart->Load(L"aapl");
 
 	//std::string json = SendHTTPSRequest_GET(L"www.alphavantage.co", L"query",
 	//	L"function=TIME_SERIES_DAILY&symbol=MSFT&apikey=demo");
@@ -227,17 +235,17 @@ LRESULT Parthenos::OnPaint()
 		BeginPaint(m_hwnd, &ps);
 		m_d2.pRenderTarget->BeginDraw();
 
-		if (rect.bottom <= m_titleBar.bottom())
+		if (rect.bottom <= m_titleBar->bottom())
 		{
-			m_titleBar.Paint(m_d2);
+			m_titleBar->Paint();
 		}
 		else
 		{
 
 			m_d2.pRenderTarget->Clear(D2D1::ColorF(0.2f, 0.2f, 0.2f, 1.0f));
 
-			m_titleBar.Paint(m_d2);
-			m_chart.Paint(m_d2);
+			m_titleBar->Paint();
+			m_chart->Paint();
 
 			//D2D1_SIZE_F size = m_d2.pRenderTarget->GetSize();
 			//const float x = size.width;
@@ -272,7 +280,7 @@ LRESULT Parthenos::OnPaint()
 
 LRESULT Parthenos::OnLButtonDown(POINT cursor, DWORD flags)
 {
-	LRESULT ret = m_titleBar.HitTest(cursor);
+	LRESULT ret = m_titleBar->HitTest(cursor);
 	switch (ret)
 	{
 	case HTMINBUTTON:
@@ -289,7 +297,7 @@ LRESULT Parthenos::OnLButtonDown(POINT cursor, DWORD flags)
 
 	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
 	if (dipCursor.x > m_leftPanelWidth)
-		m_chart.OnLButtonDown(dipCursor); //TODO fix this
+		m_chart->OnLButtonDown(dipCursor); //TODO fix this
 	
 	return 0;
 }

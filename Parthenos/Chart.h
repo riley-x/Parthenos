@@ -6,24 +6,25 @@
 #include "Graphing.h"
 
 
-
 // Main plotting window for stock price charts.
 // Includes drawing command bar.
 class Chart
 {
 public:
-	void Init(HWND hwndParent, D2Objects d2, float leftOffset);
+	Chart(HWND hwnd, D2Objects & d2, float leftOffset);
 	void Load(std::wstring ticker, int range = 1260); // range in days. default to 5 years 
-	void Paint(D2Objects const & d2);
+	void Paint();
 	void Resize(RECT pRect);
-	bool OnLButtonDown(D2D1_POINT_2F cursor);
+	void OnLButtonDown(D2D1_POINT_2F cursor);
 
 private:
 	// base
-	HWND				m_hwndParent;
+	HWND				m_hwnd;
 	D2D1_RECT_F			m_dipRect; // DIPs in main window client coordinates
-	D2Objects			m_d2;
+	D2Objects			&m_d2;
 
+	// parameters
+	float				m_menuHeight = 25.0f;
 
 	// data
 	std::vector<OHLC>	m_OHLC;
@@ -39,6 +40,7 @@ private:
 	MainChartType		m_currentMChart = MainChartType::none;
 	Timeframe			m_currentTimeframe = Timeframe::none;
 
+	// helper functions
 	void DrawMainChart(MainChartType type, Timeframe timeframe);
 	void DrawSavedState();
 	int FindStart(Timeframe timeframe, OHLC* & data);

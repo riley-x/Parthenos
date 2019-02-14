@@ -113,6 +113,22 @@ void Axes::Paint(D2Objects const & d2)
 			d2.pBrush
 		);
 	}
+	for (auto tick : m_yTicks)
+	{
+		float loc = std::get<0>(tick);
+		std::wstring label = std::get<2>(tick);
+
+		d2.pRenderTarget->DrawText(
+			label.c_str(),
+			label.size(),
+			d2.pTextFormat_10p,
+			D2D1::RectF(m_axesRect.right + m_labelPad,
+				loc - m_labelHeight/2.0f,
+				m_dipRect.right,
+				loc + m_labelHeight/2.0f),
+			d2.pBrush
+		);
+	}
 
 	for (auto graph : m_graphObjects)
 		graph->Paint(d2);
@@ -296,7 +312,7 @@ void Axes::CalculateYTicks()
 	while (ydip > m_axesRect.top)
 	{
 		wchar_t buffer[20] = {};
-		swprintf_s(buffer, _countof(buffer), L"%.2f", y);
+		swprintf_s(buffer, _countof(buffer), L"%.2lf", y);
 		m_yTicks.push_back({ ydip, y, std::wstring(buffer) });
 		m_grid_lines[1].push_back(
 			{D2D1::Point2F(m_axesRect.left, ydip),
@@ -311,7 +327,7 @@ void Axes::CalculateYTicks()
 	while (ydip < m_axesRect.bottom)
 	{
 		wchar_t buffer[20] = {};
-		swprintf_s(buffer, _countof(buffer), L"%.2f", y);
+		swprintf_s(buffer, _countof(buffer), L"%.2lf", y);
 		m_yTicks.push_back({ ydip, y, std::wstring(buffer) });
 		m_grid_lines[1].push_back(
 			{ D2D1::Point2F(m_axesRect.left, ydip),

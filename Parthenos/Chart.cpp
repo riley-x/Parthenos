@@ -7,12 +7,12 @@
 
 
 // Chart is flush right, with fixed-width offset in DIPs on left
-void Chart::Init(HWND hwndParent, D2Objects d2, float leftOffset)
+Chart::Chart(HWND hwnd, D2Objects & d2, float leftOffset)
+	: m_hwnd(hwnd), m_d2(d2)
 {
-	m_hwndParent   = hwndParent;
-	m_d2		   = d2;
 	m_dipRect.left = leftOffset; 
 	m_dipRect.top  = TitleBar::height;
+
 }
 
 void Chart::Load(std::wstring ticker, int range)
@@ -31,12 +31,12 @@ void Chart::Load(std::wstring ticker, int range)
 	//}
 }
 
-void Chart::Paint(D2Objects const & d2)
+void Chart::Paint()
 {
-	d2.pBrush->SetColor(D2D1::ColorF(0.8f, 0.0f, 0.0f, 1.0f));
-	d2.pRenderTarget->DrawRectangle(m_dipRect, d2.pBrush, 1.0, NULL);
+	m_d2.pBrush->SetColor(D2D1::ColorF(0.8f, 0.0f, 0.0f, 1.0f));
+	m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 1.0, NULL);
 
-	m_axes.Paint(d2);
+	m_axes.Paint(m_d2);
 }
 
 void Chart::Resize(RECT pRect)
@@ -44,7 +44,6 @@ void Chart::Resize(RECT pRect)
 	m_dipRect.right  = DPIScale::PixelsToDipsX(pRect.right);
 	m_dipRect.bottom = DPIScale::PixelsToDipsY(pRect.bottom);
 
-	float m_menuHeight = 30;
 	m_axes.SetBoundingRect(
 		m_dipRect.left, 
 		m_dipRect.top + m_menuHeight, 
@@ -53,7 +52,7 @@ void Chart::Resize(RECT pRect)
 	);
 }
 
-bool Chart::OnLButtonDown(D2D1_POINT_2F cursor)
+void Chart::OnLButtonDown(D2D1_POINT_2F cursor)
 {
 	if (cursor.x > m_dipRect.left &&
 		cursor.x < m_dipRect.right &&
@@ -66,9 +65,7 @@ bool Chart::OnLButtonDown(D2D1_POINT_2F cursor)
 			DrawMainChart(MainChartType::line, m_currentTimeframe);
 		else if (m_currentMChart == MainChartType::line)
 			DrawMainChart(MainChartType::envelope, m_currentTimeframe);
-		return true;
 	}
-	return false;
 }
 
 void Chart::DrawMainChart(MainChartType type, Timeframe timeframe)
@@ -149,7 +146,7 @@ void Chart::Candlestick(Timeframe timeframe)
 
 	m_axes.Clear(); // todo FIXME
 	m_axes.Candlestick(data, n); 
-	InvalidateRect(m_hwndParent, NULL, FALSE);
+	InvalidateRect(m_hwnd, NULL, FALSE);
 }
 
 
@@ -176,7 +173,7 @@ void Chart::Line(Timeframe timeframe)
 
 	m_axes.Clear(); // todo FIXME
 	m_axes.Line(m_dates.data(), m_closes.data(), n); 
-	InvalidateRect(m_hwndParent, NULL, FALSE);
+	InvalidateRect(m_hwnd, NULL, FALSE);
 }
 
 void Chart::Envelope(Timeframe timeframe)
@@ -208,6 +205,6 @@ void Chart::Envelope(Timeframe timeframe)
 	m_axes.Line(m_dates.data(), m_closes.data(), n);
 	m_axes.Line(m_dates.data(), m_highs.data(), n, D2D1::ColorF(0.8f, 0.0f, 0.5f), 0.6f, m_d2.pDashedStyle);
 	m_axes.Line(m_dates.data(), m_lows.data(), n, D2D1::ColorF(0.8f, 0.0f, 0.5f), 0.6f, m_d2.pDashedStyle);
-	InvalidateRect(m_hwndParent, NULL, FALSE);
+	InvalidateRect(m_hwnd, NULL, FALSE);
 }
 
