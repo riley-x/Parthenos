@@ -11,7 +11,7 @@
 class Chart : public AppItem
 {
 public:
-	using AppItem::AppItem;
+	Chart(HWND hwnd, D2Objects const & d2) : AppItem(hwnd, d2), m_axes(hwnd, d2) {};
 	void Init(float leftOffset);
 	void Load(std::wstring ticker, int range = 1260); // range in days. default to 5 years 
 	void Paint();

@@ -34,7 +34,7 @@ void Chart::Paint()
 	m_d2.pBrush->SetColor(D2D1::ColorF(0.8f, 0.0f, 0.0f, 1.0f));
 	m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 1.0, NULL);
 
-	m_axes.Paint(m_d2);
+	m_axes.Paint();
 }
 
 void Chart::Resize(RECT pRect, D2D1_RECT_F pDipRect)
@@ -42,12 +42,12 @@ void Chart::Resize(RECT pRect, D2D1_RECT_F pDipRect)
 	m_dipRect.right  = pDipRect.right;
 	m_dipRect.bottom = pDipRect.bottom;
 
-	m_axes.SetBoundingRect(
+	m_axes.SetSize(D2D1::Rect(
 		m_dipRect.left, 
 		m_dipRect.top + m_menuHeight, 
 		m_dipRect.right, 
 		m_dipRect.bottom
-	);
+	));
 }
 
 void Chart::OnLButtonDown(D2D1_POINT_2F cursor)

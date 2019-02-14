@@ -8,7 +8,8 @@ class AppItem
 public:
 	AppItem(HWND hwnd, D2Objects const & d2) : m_hwnd(hwnd), m_d2(d2) {}
 	virtual void Init() { return; }
-	virtual void Resize(RECT pRect, D2D1_RECT_F pDipRect) { return; }
+	virtual void Resize(RECT pRect, D2D1_RECT_F pDipRect) { return; } // provide parent rect
+	virtual void SetSize(D2D1_RECT_F dipRect) { return; } // provide item's rect
 	virtual void Paint() { return; }
 
 	virtual void OnMouseMove(D2D1_POINT_2F cursor) { return; }

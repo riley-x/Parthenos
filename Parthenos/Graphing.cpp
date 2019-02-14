@@ -39,22 +39,19 @@ void Axes::SetLabelSize(float ylabelWidth, float labelHeight)
 }
 
 // May want to call clear before this
-void Axes::SetBoundingRect(float left, float top, float right, float bottom)
+void Axes::SetSize(D2D1_RECT_F dipRect)
 {
 	m_ismade = false;
 	m_imade = 0;
 	m_rescaled = true;
 
-	m_dipRect.left = left;
-	m_dipRect.top = top;
-	m_dipRect.right = right;
-	m_dipRect.bottom = bottom;
+	m_dipRect = dipRect;
 
 	float pad = 14.0;
-	m_axesRect.left = left;
-	m_axesRect.top = top;
-	m_axesRect.right = right - m_ylabelWidth - pad;
-	m_axesRect.bottom = bottom - m_labelHeight - pad;
+	m_axesRect.left = dipRect.left;
+	m_axesRect.top = dipRect.top;
+	m_axesRect.right = dipRect.right - m_ylabelWidth - pad;
+	m_axesRect.bottom = dipRect.bottom - m_labelHeight - pad;
 
 	Line_t xline = { D2D1::Point2F(m_axesRect.left,  m_axesRect.bottom),
 					 D2D1::Point2F(m_axesRect.right, m_axesRect.bottom) };
@@ -73,44 +70,44 @@ void Axes::SetBoundingRect(float left, float top, float right, float bottom)
 	m_rect_ydiff = m_dataRect.top - m_dataRect.bottom; // flip so origin is bottom-left
 }
 
-void Axes::Paint(D2Objects const & d2)
+void Axes::Paint()
 {
 	if (!m_ismade) Make();
 
-	d2.pBrush->SetColor(D2D1::ColorF(0.15f, 0.15f, 0.15f, 1.0f));
-	d2.pRenderTarget->FillRectangle(m_dipRect, d2.pBrush);
+	m_d2.pBrush->SetColor(D2D1::ColorF(0.15f, 0.15f, 0.15f, 1.0f));
+	m_d2.pRenderTarget->FillRectangle(m_dipRect, m_d2.pBrush);
 
-	d2.pBrush->SetColor(D2D1::ColorF(0.25f, 0.25f, 0.25f, 1.0f));
+	m_d2.pBrush->SetColor(D2D1::ColorF(0.25f, 0.25f, 0.25f, 1.0f));
 	for (auto line : m_grid_lines[0]) // x lines
 	{
-		d2.pRenderTarget->DrawLine(line.start, line.end, d2.pBrush, 0.8f, d2.pDashedStyle);
+		m_d2.pRenderTarget->DrawLine(line.start, line.end, m_d2.pBrush, 0.8f, m_d2.pDashedStyle);
 	}
 	for (auto line : m_grid_lines[1]) // y lines
 	{
-		d2.pRenderTarget->DrawLine(line.start, line.end, d2.pBrush, 0.8f, d2.pDashedStyle);
+		m_d2.pRenderTarget->DrawLine(line.start, line.end, m_d2.pBrush, 0.8f, m_d2.pDashedStyle);
 	}
 
-	d2.pBrush->SetColor(D2D1::ColorF(0.5f, 0.5f, 0.5f, 1.0f));
+	m_d2.pBrush->SetColor(D2D1::ColorF(0.5f, 0.5f, 0.5f, 1.0f));
 	for (auto line : m_axes_lines)
 	{
-		d2.pRenderTarget->DrawLine(line.start, line.end, d2.pBrush);
+		m_d2.pRenderTarget->DrawLine(line.start, line.end, m_d2.pBrush);
 	}
 
-	d2.pBrush->SetColor(D2D1::ColorF(0.8f, 0.8f, 0.8f, 1.0f));
+	m_d2.pBrush->SetColor(D2D1::ColorF(0.8f, 0.8f, 0.8f, 1.0f));
 	for (auto tick : m_xTicks)
 	{
 		float loc = std::get<0>(tick);
 		std::wstring label = std::get<2>(tick);
 
-		d2.pRenderTarget->DrawText(
+		m_d2.pRenderTarget->DrawText(
 			label.c_str(),
 			label.size(),
-			d2.pTextFormat_10p,
+			m_d2.pTextFormat_10p,
 			D2D1::RectF(loc, 
 				m_axesRect.bottom + m_labelPad, 
 				loc + 4.0f * m_labelHeight, 
 				m_axesRect.bottom + m_labelPad + 2.0f * m_labelHeight),
-			d2.pBrush
+			m_d2.pBrush
 		);
 	}
 	for (auto tick : m_yTicks)
@@ -118,20 +115,20 @@ void Axes::Paint(D2Objects const & d2)
 		float loc = std::get<0>(tick);
 		std::wstring label = std::get<2>(tick);
 
-		d2.pRenderTarget->DrawText(
+		m_d2.pRenderTarget->DrawText(
 			label.c_str(),
 			label.size(),
-			d2.pTextFormat_10p,
+			m_d2.pTextFormat_10p,
 			D2D1::RectF(m_axesRect.right + m_labelPad,
 				loc - m_labelHeight/2.0f,
 				m_dipRect.right,
 				loc + m_labelHeight/2.0f),
-			d2.pBrush
+			m_d2.pBrush
 		);
 	}
 
 	for (auto graph : m_graphObjects)
-		graph->Paint(d2);
+		graph->Paint(m_d2);
 }
 
 void Axes::Candlestick(OHLC const * ohlc, int n)

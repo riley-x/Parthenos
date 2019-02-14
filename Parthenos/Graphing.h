@@ -1,7 +1,7 @@
 #pragma once
 
 #include "stdafx.h"
-#include "D2Objects.h"
+#include "AppItem.h"
 #include "DataManaging.h"
 
 
@@ -61,16 +61,16 @@ private:
 	std::vector<D2D1_RECT_F> m_down_rects; // red boxes
 };
 
-class Axes
+class Axes : public AppItem
 {
 public:
+	using AppItem::AppItem;
 	~Axes() { Clear(); }
 	void Clear();
-
 	void Make();
+	void SetSize(D2D1_RECT_F dipRect);
+	void Paint();
 	void SetLabelSize(float ylabelWidth, float labelHeight);
-	void SetBoundingRect(float left, float top, float right, float bottom);
-	void Paint(D2Objects const & d2);
 
 	// Data pointers to these functions should remain valid until the next Clear() call
 	void Candlestick(OHLC const * ohlc, int n);
