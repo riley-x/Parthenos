@@ -18,12 +18,15 @@ public:
 	void Load(std::wstring ticker, int range = 1260); // range in days. default to 5 years 
 	void Paint(D2D1_RECT_F updateRect);
 	void Resize(RECT pRect, D2D1_RECT_F pDipRect);
-	void OnLButtonDown(D2D1_POINT_2F cursor);
+	bool OnLButtonDown(D2D1_POINT_2F cursor);
 
 private:
 
 	// parameters
 	float				m_menuHeight = 25.0f;
+	float m_commandHPad = 5.0f;
+	float m_commandSize = 20.0f;
+	float m_labelBoxWidth = 100.0f;
 
 	// data
 	std::vector<OHLC>	m_OHLC;

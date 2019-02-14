@@ -119,6 +119,9 @@
     <ClCompile Include="Graphing.cpp">
       <Filter>Source Files\AppItems</Filter>
     </ClCompile>
+    <ClCompile Include="Button.cpp">
+      <Filter>Source Files\AppItems</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Parthenos.rc">
@@ -143,6 +146,12 @@
     </Image>
     <Image Include="Parthenos_white.png">
       <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Command Icons\Candlestick.png">
+      <Filter>Resource Files\Command Icons</Filter>
+    </Image>
+    <Image Include="Command Icons\Line.png">
+      <Filter>Resource Files\Command Icons</Filter>
     </Image>
   </ItemGroup>
 </Project>

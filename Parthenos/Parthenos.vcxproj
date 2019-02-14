@@ -177,6 +177,7 @@
     <ClInclude Include="utilities.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Button.cpp" />
     <ClCompile Include="Chart.cpp" />
     <ClCompile Include="D2Objects.cpp" />
     <ClCompile Include="DataManaging.cpp" />
@@ -199,7 +200,9 @@
     <ResourceCompile Include="Parthenos.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="Command Icons\Candlestick.png" />
     <Image Include="Command Icons\Close.png" />
+    <Image Include="Command Icons\Line.png" />
     <Image Include="Command Icons\Maximize.png" />
     <Image Include="Command Icons\Minimize.png" />
     <Image Include="Command Icons\Restore.png" />

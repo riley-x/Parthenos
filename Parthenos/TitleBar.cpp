@@ -2,6 +2,7 @@
 #include "Parthenos.h"
 #include "TitleBar.h"
 #include "utilities.h"
+#include "Colors.h"
 
 float const TitleBar::iconHPad = 6.0f;
 float const TitleBar::height = 30.0f;
@@ -56,7 +57,7 @@ void TitleBar::Paint(D2D1_RECT_F updateRect)
 	else if (m_mouseOn == HTMINBUTTON) mouse_on = 2;
 	if (mouse_on >= 0)
 	{
-		m_d2.pBrush->SetColor(D2D1::ColorF(0.25f, 0.25f, 0.25f, 1.0f));
+		m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
 		m_d2.pRenderTarget->FillRectangle(D2D1::RectF(
 			m_CommandIconRects[mouse_on].left - iconHPad,
 			static_cast<float>(m_pixRect.top),

@@ -303,8 +303,10 @@ LRESULT Parthenos::OnLButtonDown(POINT cursor, DWORD flags)
 	}
 
 	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
-	if (dipCursor.x > m_leftPanelWidth)
-		m_chart->OnLButtonDown(dipCursor); //TODO fix this
+	for (auto item : m_activeItems)
+	{
+		if (item->OnLButtonDown(dipCursor)) break;
+	}
 	
 	return 0;
 }

@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "D2Objects.h"
 #include "utilities.h"
-#include "resource.h"
 
 HRESULT D2Objects::CreateDeviceIndependentResources()
 {
@@ -76,7 +75,6 @@ HRESULT D2Objects::CreateDeviceIndependentResources()
 	}
 	
 	// Initialize the converted bitmaps
-	int resource_ids[nIcons] = { IDB_CLOSE, IDB_MAXIMIZE, IDB_MINIMIZE, IDB_RESTORE, IDB_PARTHENOS_WHITE };
 	for (int i = 0; i < nIcons; i++)
 	{
 		if (SUCCEEDED(hr))

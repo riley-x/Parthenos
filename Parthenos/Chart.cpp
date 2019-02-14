@@ -3,15 +3,27 @@
 #include "utilities.h"
 #include "TitleBar.h"
 #include "Colors.h"
+#include "Resource.h"
 
 #include <algorithm>
 
+bool candle = true;
 
 Chart::Chart(HWND hwnd, D2Objects const & d2)
 	: AppItem(hwnd, d2), m_axes(hwnd, d2), m_tickerBox(hwnd, d2) 
 {
-	for (int i = 0; i < 8; i++)
+	auto temp = new IconButton(hwnd, d2);
+	temp->SetIcon(GetResourceIndex(IDB_CANDLESTICK));
+	m_iconButtons.push_back(temp);
+	
+	temp = new IconButton(hwnd, d2);
+	temp->SetIcon(GetResourceIndex(IDB_LINE));
+	m_iconButtons.push_back(temp);
+
+	for (int i = 0; i < 6; i++)
+	{
 		m_iconButtons.push_back(new IconButton(hwnd, d2));
+	}
 }
 Chart::~Chart()
 {
@@ -58,6 +70,29 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 
 	m_d2.pBrush->SetColor(Colors::MENU_BACKGROUND);
 	m_d2.pRenderTarget->FillRectangle(m_menuRect, m_d2.pBrush);
+
+
+	m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
+	D2D1_RECT_F iconRect;
+	if (candle)
+	{
+		iconRect = m_iconButtons[0]->GetDIPRect();
+	}
+	else
+	{
+		iconRect = m_iconButtons[1]->GetDIPRect();
+	}
+	iconRect.left -= m_commandHPad / 2.0f;
+	iconRect.top = m_menuRect.top;
+	iconRect.right += m_commandHPad / 2.0f;
+	iconRect.bottom = m_menuRect.bottom - 1.0f;
+	m_d2.pRenderTarget->FillRectangle(iconRect, m_d2.pBrush);
+
+
+	m_tickerBox.Paint(updateRect);
+	for (auto icon : m_iconButtons)
+		icon->Paint(updateRect);
+
 	m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
 	m_d2.pRenderTarget->DrawLine(
 		D2D1::Point2F(m_menuRect.left, m_menuRect.bottom),
@@ -66,11 +101,7 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 		0.5f
 	);
 
-	m_tickerBox.Paint(updateRect);
-	for (auto icon : m_iconButtons)
-		icon->Paint(updateRect);
-
-	if (updateRect.bottom <= m_axes.GetAxesRect().top) return;
+	if (updateRect.bottom <= m_axes.GetDIPRect().top) return;
 	m_axes.Paint(updateRect);
 
 }
@@ -90,9 +121,6 @@ void Chart::Resize(RECT pRect, D2D1_RECT_F pDipRect)
 		m_dipRect.bottom
 	));
 
-	float m_commandHPad = 5.0f;
-	float m_commandSize = 20.0f;
-	float m_labelBoxWidth = 100.0f;
 	float top = m_dipRect.top + (m_menuHeight - m_commandSize) / 2.0f;
 	m_tickerBox.SetSize(D2D1::RectF(
 		m_dipRect.left + m_commandHPad,
@@ -114,20 +142,44 @@ void Chart::Resize(RECT pRect, D2D1_RECT_F pDipRect)
 	}
 }
 
-void Chart::OnLButtonDown(D2D1_POINT_2F cursor)
+bool Chart::OnLButtonDown(D2D1_POINT_2F cursor)
 {
 	if (cursor.x > m_dipRect.left &&
 		cursor.x < m_dipRect.right &&
 		cursor.y > m_dipRect.top &&
 		cursor.y < m_dipRect.bottom)
 	{
-		if (m_currentMChart == MainChartType::envelope)
-			DrawMainChart(MainChartType::candlestick, m_currentTimeframe);
-		else if (m_currentMChart == MainChartType::candlestick)
-			DrawMainChart(MainChartType::line, m_currentTimeframe);
-		else if (m_currentMChart == MainChartType::line)
-			DrawMainChart(MainChartType::envelope, m_currentTimeframe);
+		//if (m_currentMChart == MainChartType::envelope)
+		//	DrawMainChart(MainChartType::candlestick, m_currentTimeframe);
+		//else if (m_currentMChart == MainChartType::candlestick)
+		//	DrawMainChart(MainChartType::line, m_currentTimeframe);
+		//else if (m_currentMChart == MainChartType::line)
+		//	DrawMainChart(MainChartType::envelope, m_currentTimeframe);
+
+		if (cursor.y < m_menuRect.bottom)
+		{
+			if (m_tickerBox.OnLButtonDown(cursor)) return true;
+			for (size_t i = 0; i < m_iconButtons.size(); i++)
+			{
+				if (m_iconButtons[i]->OnLButtonDown(cursor))
+				{
+					// Create icon group class
+					if (i == 0)
+					{
+						DrawMainChart(MainChartType::candlestick, m_currentTimeframe);
+						candle = true;
+					}
+					else if (i == 1)
+					{
+						DrawMainChart(MainChartType::line, m_currentTimeframe);
+						candle = false;
+					}
+					return true;
+				}
+			}
+		}
 	}
+	return false;
 }
 
 void Chart::DrawMainChart(MainChartType type, Timeframe timeframe)
