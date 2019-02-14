@@ -309,7 +309,7 @@ void Axes::CalculateYTicks()
 	// Add lines moving up from start
 	double y = start;
 	float ydip = start_dip;
-	while (ydip > m_axesRect.top)
+	while (ydip > m_axesRect.top  + m_labelHeight / 2.0f)
 	{
 		wchar_t buffer[20] = {};
 		swprintf_s(buffer, _countof(buffer), L"%.2lf", y);

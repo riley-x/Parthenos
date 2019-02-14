@@ -1,14 +1,14 @@
 #pragma once
 #include "stdafx.h"
-#include "D2Objects.h"
+#include "AppItem.h"
 
-class TitleBar
+class TitleBar : public AppItem
 {
 public:
-	TitleBar(HWND hwnd, D2Objects const & d2);
+	using AppItem::AppItem;
 	void Init();
 	void Paint();
-	void Resize(RECT pRect);
+	void Resize(RECT pRect, D2D1_RECT_F pDipRect);
 	LRESULT HitTest(POINT cursor);
 	void Maximize(bool isMax) { m_maximized = isMax; }
 	void MouseOn(LRESULT button);
@@ -18,16 +18,12 @@ public:
 	int bottom() { return m_pixRect.bottom; }
 
 private:
-	HWND m_hwnd;
-	D2Objects const &m_d2;
-
 	static int const	nIcons		= 3;
 	static float const	iconHPad;
 	bool				m_maximized = false;
 	LRESULT				m_mouseOn	= HTNOWHERE; // for icon highlighting
 
 	RECT		m_pixRect; // pixels in main window client coordinates
-	D2D1_RECT_F m_dipRect; // DIPs in main window client coordinates
 	D2D1_RECT_F	m_CommandIconRects[nIcons]; // 32x24 command icons. These are PIXEL coordinates, not DIPs!!!
 	D2D1_RECT_F m_TitleIconRect; // 48x48 Parthenos icon. In DIP coordinates.
 

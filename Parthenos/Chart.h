@@ -1,27 +1,24 @@
 #pragma once
 
 #include "stdafx.h"
-#include "D2Objects.h"
+#include "AppItem.h"
 #include "DataManaging.h"
 #include "Graphing.h"
 
 
 // Main plotting window for stock price charts.
 // Includes drawing command bar.
-class Chart
+class Chart : public AppItem
 {
 public:
-	Chart(HWND hwnd, D2Objects & d2, float leftOffset);
+	using AppItem::AppItem;
+	void Init(float leftOffset);
 	void Load(std::wstring ticker, int range = 1260); // range in days. default to 5 years 
 	void Paint();
-	void Resize(RECT pRect);
+	void Resize(RECT pRect, D2D1_RECT_F pDipRect);
 	void OnLButtonDown(D2D1_POINT_2F cursor);
 
 private:
-	// base
-	HWND				m_hwnd;
-	D2D1_RECT_F			m_dipRect; // DIPs in main window client coordinates
-	D2Objects			&m_d2;
 
 	// parameters
 	float				m_menuHeight = 25.0f;

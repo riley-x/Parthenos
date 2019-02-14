@@ -12,6 +12,8 @@
 class Parthenos : public BorderlessWindow<Parthenos>
 {
 	// Logical components
+	std::vector<AppItem*>	m_activeItems; // items that need to be painted
+	std::vector<AppItem*>	m_allItems;
 	TitleBar				*m_titleBar;
 	Chart					*m_chart;
 	MouseTrackEvents m_mouseTrack;

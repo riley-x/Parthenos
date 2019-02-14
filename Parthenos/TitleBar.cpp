@@ -6,8 +6,6 @@
 float const TitleBar::iconHPad = 6.0f;
 float const TitleBar::height = 30.0f;
 
-TitleBar::TitleBar(HWND hwnd, D2Objects const & d2)
-	: m_hwnd(hwnd), m_d2(d2) {};
 
 // This must be called AFTER DPIScale is initialized
 void TitleBar::Init()
@@ -89,10 +87,10 @@ void TitleBar::Paint()
 
 
 // 'pRect': client RECT of parent
-void TitleBar::Resize(RECT pRect)
+void TitleBar::Resize(RECT pRect, D2D1_RECT_F pDipRect)
 { 
 	m_pixRect.right = pRect.right;
-	m_dipRect.right = DPIScale::PixelsToDipsX(pRect.right);;
+	m_dipRect.right = pDipRect.right;
 
 	float width = 32;
 	for (int i = 0; i < nIcons; i++)

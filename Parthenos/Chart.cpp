@@ -7,12 +7,10 @@
 
 
 // Chart is flush right, with fixed-width offset in DIPs on left
-Chart::Chart(HWND hwnd, D2Objects & d2, float leftOffset)
-	: m_hwnd(hwnd), m_d2(d2)
+void Chart::Init(float leftOffset)
 {
 	m_dipRect.left = leftOffset; 
 	m_dipRect.top  = TitleBar::height;
-
 }
 
 void Chart::Load(std::wstring ticker, int range)
@@ -39,10 +37,10 @@ void Chart::Paint()
 	m_axes.Paint(m_d2);
 }
 
-void Chart::Resize(RECT pRect)
+void Chart::Resize(RECT pRect, D2D1_RECT_F pDipRect)
 {
-	m_dipRect.right  = DPIScale::PixelsToDipsX(pRect.right);
-	m_dipRect.bottom = DPIScale::PixelsToDipsY(pRect.bottom);
+	m_dipRect.right  = pDipRect.right;
+	m_dipRect.bottom = pDipRect.bottom;
 
 	m_axes.SetBoundingRect(
 		m_dipRect.left, 

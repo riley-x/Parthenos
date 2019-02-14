@@ -35,8 +35,8 @@ namespace {
 
 Parthenos::~Parthenos()
 {
-	if (m_titleBar) delete m_titleBar;
-	if (m_chart) delete m_chart;
+	for (auto item : m_allItems)
+		if (item) delete item;
 }
 
 LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -176,9 +176,10 @@ LRESULT Parthenos::OnSize(WPARAM wParam)
 		GetClientRect(m_hwnd, &rc);
 
 		D2D1_SIZE_U size = D2D1::SizeU(rc.right, rc.bottom);
+		D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
 		m_d2.pRenderTarget->Resize(size);
-		m_titleBar->Resize(rc);
-		m_chart->Resize(rc);
+		m_titleBar->Resize(rc, dipRect);
+		m_chart->Resize(rc, dipRect);
 
 		InvalidateRect(m_hwnd, NULL, FALSE);
 	}
@@ -189,7 +190,12 @@ LRESULT Parthenos::OnCreate()
 {
 	m_d2.hwndParent = m_hwnd;
 	m_titleBar = new TitleBar(m_hwnd, m_d2);
-	m_chart = new Chart(m_hwnd, m_d2, m_leftPanelWidth);
+	m_chart = new Chart(m_hwnd, m_d2);
+
+	m_allItems.push_back(m_titleBar);
+	m_allItems.push_back(m_chart);
+	m_activeItems.push_back(m_titleBar);
+	m_activeItems.push_back(m_chart);
 
 	hCursor = LoadCursor(NULL, IDC_ARROW);
 
@@ -211,10 +217,16 @@ void Parthenos::PreShow()
 {
 	RECT rc;
 	GetClientRect(m_hwnd, &rc);
-	m_titleBar->Init();
-	m_titleBar->Resize(rc);
+	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
 
-	m_chart->Resize(rc);
+	for (auto item : m_allItems)
+	{
+		if (item == m_chart) 
+			m_chart->Init(m_leftPanelWidth);
+		else 
+			item->Init();
+		item->Resize(rc, dipRect);
+	}
 	m_chart->Load(L"aapl");
 
 	//std::string json = SendHTTPSRequest_GET(L"www.alphavantage.co", L"query",
@@ -244,8 +256,8 @@ LRESULT Parthenos::OnPaint()
 
 			m_d2.pRenderTarget->Clear(D2D1::ColorF(0.2f, 0.2f, 0.2f, 1.0f));
 
-			m_titleBar->Paint();
-			m_chart->Paint();
+			for (auto item : m_activeItems)
+				item->Paint();
 
 			//D2D1_SIZE_F size = m_d2.pRenderTarget->GetSize();
 			//const float x = size.width;

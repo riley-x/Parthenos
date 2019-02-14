@@ -89,6 +89,16 @@ public:
 		return D2D1::Point2F(static_cast<float>(p.x) / scaleX, static_cast<float>(p.y) / scaleY);
 	}
 
+	static D2D1_RECT_F PixelsToDips(RECT rc)
+	{
+		return D2D1::RectF(
+			DPIScale::PixelsToDipsX(rc.left),
+			DPIScale::PixelsToDipsY(rc.top),
+			DPIScale::PixelsToDipsX(rc.right),
+			DPIScale::PixelsToDipsY(rc.bottom)
+		);
+	}
+
 	template <typename T>
 	static float PixelsToDipsX(T x)
 	{
