@@ -2,6 +2,7 @@
 #include "Chart.h"
 #include "utilities.h"
 #include "TitleBar.h"
+#include "Colors.h"
 
 #include <algorithm>
 
@@ -25,6 +26,9 @@ void Chart::Init(float leftOffset)
 	m_dipRect.top  = TitleBar::height;
 	m_pixRect.left = DPIScale::DipsToPixelsX(m_dipRect.left);
 	m_pixRect.top = DPIScale::DipsToPixelsY(m_dipRect.top);
+	m_menuRect.left = m_dipRect.left;
+	m_menuRect.top = m_dipRect.top;
+	m_menuRect.bottom = m_menuRect.top + m_menuHeight;
 }
 
 void Chart::Load(std::wstring ticker, int range)
@@ -46,16 +50,29 @@ void Chart::Load(std::wstring ticker, int range)
 void Chart::Paint(D2D1_RECT_F updateRect)
 {
 	// when invalidating, converts to pixels then back to DIPs -> updateRect has smaller values
-	// then when invalidated.
+	// than when invalidated.
 	if (updateRect.bottom <= m_dipRect.top || updateRect.right <= m_dipRect.left) return;
 
 	m_d2.pBrush->SetColor(D2D1::ColorF(0.8f, 0.0f, 0.0f, 1.0f));
-	//m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 1.0, NULL);
+	m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 1.0, NULL);
 
-	m_axes.Paint(updateRect);
+	m_d2.pBrush->SetColor(Colors::MENU_BACKGROUND);
+	m_d2.pRenderTarget->FillRectangle(m_menuRect, m_d2.pBrush);
+	m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
+	m_d2.pRenderTarget->DrawLine(
+		D2D1::Point2F(m_menuRect.left, m_menuRect.bottom),
+		D2D1::Point2F(m_menuRect.right, m_menuRect.bottom),
+		m_d2.pBrush,
+		0.5f
+	);
+
 	m_tickerBox.Paint(updateRect);
 	for (auto icon : m_iconButtons)
 		icon->Paint(updateRect);
+
+	if (updateRect.bottom <= m_axes.GetAxesRect().top) return;
+	m_axes.Paint(updateRect);
+
 }
 
 void Chart::Resize(RECT pRect, D2D1_RECT_F pDipRect)
@@ -64,6 +81,7 @@ void Chart::Resize(RECT pRect, D2D1_RECT_F pDipRect)
 	m_dipRect.bottom = pDipRect.bottom;
 	m_pixRect.right  = pRect.right;
 	m_pixRect.bottom = pRect.bottom;
+	m_menuRect.right = m_dipRect.right;
 
 	m_axes.SetSize(D2D1::RectF(
 		m_dipRect.left, 

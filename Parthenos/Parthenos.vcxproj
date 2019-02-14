@@ -162,6 +162,7 @@
     <ClInclude Include="BorderlessWindow.h" />
     <ClInclude Include="Button.h" />
     <ClInclude Include="Chart.h" />
+    <ClInclude Include="Colors.h" />
     <ClInclude Include="D2Objects.h" />
     <ClInclude Include="DataManaging.h" />
     <ClInclude Include="FileIO.h" />

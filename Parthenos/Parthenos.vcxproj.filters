@@ -78,6 +78,9 @@
     <ClInclude Include="stdafx.h">
       <Filter>Header Files\VS</Filter>
     </ClInclude>
+    <ClInclude Include="Colors.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">

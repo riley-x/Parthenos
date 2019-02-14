@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "Graphing.h"
-
+#include "Colors.h"
 
 
 void Axes::Clear()
@@ -74,10 +74,10 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 {
 	if (!m_ismade) Make();
 
-	m_d2.pBrush->SetColor(D2D1::ColorF(0.15f, 0.15f, 0.15f, 1.0f));
+	m_d2.pBrush->SetColor(Colors::AXES_BACKGROUND);
 	m_d2.pRenderTarget->FillRectangle(m_dipRect, m_d2.pBrush);
 
-	m_d2.pBrush->SetColor(D2D1::ColorF(0.25f, 0.25f, 0.25f, 1.0f));
+	m_d2.pBrush->SetColor(Colors::DULL_LINE);
 	for (auto line : m_grid_lines[0]) // x lines
 	{
 		m_d2.pRenderTarget->DrawLine(line.start, line.end, m_d2.pBrush, 0.8f, m_d2.pDashedStyle);
@@ -87,13 +87,13 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 		m_d2.pRenderTarget->DrawLine(line.start, line.end, m_d2.pBrush, 0.8f, m_d2.pDashedStyle);
 	}
 
-	m_d2.pBrush->SetColor(D2D1::ColorF(0.5f, 0.5f, 0.5f, 1.0f));
+	m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
 	for (auto line : m_axes_lines)
 	{
 		m_d2.pRenderTarget->DrawLine(line.start, line.end, m_d2.pBrush);
 	}
 
-	m_d2.pBrush->SetColor(D2D1::ColorF(0.8f, 0.8f, 0.8f, 1.0f));
+	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
 	for (auto tick : m_xTicks)
 	{
 		float loc = std::get<0>(tick);

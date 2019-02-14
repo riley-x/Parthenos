@@ -6,6 +6,7 @@
 #include "TitleBar.h"
 #include "HTTP.h"
 #include "DataManaging.h"
+#include "Colors.h"
 
 #include <windowsx.h>
 
@@ -248,7 +249,7 @@ LRESULT Parthenos::OnPaint()
 		if (ps.rcPaint.left == 0 && ps.rcPaint.top == 0 &&
 			ps.rcPaint.right == rc.right && ps.rcPaint.bottom == rc.bottom)
 		{
-			m_d2.pRenderTarget->Clear(D2D1::ColorF(0.2f, 0.2f, 0.2f, 1.0f));
+			m_d2.pRenderTarget->Clear(Colors::MAIN_BACKGROUND);
 		}
 
 		for (auto item : m_activeItems)

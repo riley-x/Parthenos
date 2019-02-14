@@ -79,24 +79,24 @@ public:
 		float stroke_width = 1.0f,
 		ID2D1StrokeStyle * pStyle = NULL);
 
-
-	const inline float XtoDIP(double val)
+	inline float XtoDIP(double val) const
 	{
 		double data_xmin = m_dataRange[static_cast<int>(dataRange::xmin)];
 		return m_dataRect.left + static_cast<float>((val - data_xmin) / m_data_xdiff) * m_rect_xdiff;
 	}
-	const inline float YtoDIP(double val)
+	inline float YtoDIP(double val) const
 	{
 		double data_ymin = m_dataRange[static_cast<int>(dataRange::ymin)];
 		return m_dataRect.bottom + static_cast<float>((val - data_ymin) / m_data_ydiff) * m_rect_ydiff;
 	}
-	const inline double DIPtoY(float val)
+	inline double DIPtoY(float val) const
 	{
 		double data_ymin = m_dataRange[static_cast<int>(dataRange::ymin)];
 		return data_ymin + ((val - m_dataRect.bottom) / m_rect_ydiff) * m_data_ydiff;
 	}
 
-	inline float GetDataRectXDiff() { return m_rect_xdiff; }
+	inline float GetDataRectXDiff() const { return m_rect_xdiff; }
+	inline D2D1_RECT_F GetAxesRect() const { return m_axesRect; }
 
 private:
 	// Parameters

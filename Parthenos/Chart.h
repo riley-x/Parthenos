@@ -38,6 +38,7 @@ private:
 	std::vector<IconButton*> m_iconButtons;
 
 	// drawing
+	D2D1_RECT_F			m_menuRect;
 	enum class MainChartType { none, line, candlestick, envelope };
 	enum class Timeframe { none, year1 };
 	MainChartType		m_currentMChart = MainChartType::none;
