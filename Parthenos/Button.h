@@ -10,6 +10,7 @@ public:
 
 	bool OnLButtonDown(D2D1_POINT_2F cursor);
 	void OnLButtonUp(D2D1_POINT_2F cursor) { return; }
+	virtual void SetClickRect(D2D1_RECT_F rect) { return; }
 
 	std::wstring m_name;
 protected:
@@ -21,9 +22,12 @@ class IconButton : public Button
 public:
 	using Button::Button;
 	void Paint(D2D1_RECT_F updateRect);
+	bool OnLButtonDown(D2D1_POINT_2F cursor);
 	inline void SetIcon(size_t i) { m_iBitmap = i; } // index into d2.pD2DBitmaps
+	inline void SetClickRect(D2D1_RECT_F rect) { m_clickRect = rect; }
 private:
 	int m_iBitmap = -1;
+	D2D1_RECT_F m_clickRect; // include padding
 };
 
 
@@ -73,6 +77,11 @@ public:
 	inline void SetSize(size_t i, D2D1_RECT_F const & rect)
 	{
 		if (i < m_buttons.size()) m_buttons[i]->SetSize(rect);
+		else OutputMessage(L"%u exceeds ButtonGroup size\n", i);
+	}
+	inline void SetClickRect(size_t i, D2D1_RECT_F rect) 
+	{ 
+		if (i < m_buttons.size()) m_buttons[i]->SetClickRect(rect);
 		else OutputMessage(L"%u exceeds ButtonGroup size\n", i);
 	}
 	inline bool GetActiveRect(D2D1_RECT_F & rect) const

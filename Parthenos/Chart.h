@@ -20,13 +20,13 @@ public:
 	void Resize(RECT pRect, D2D1_RECT_F pDipRect);
 	bool OnLButtonDown(D2D1_POINT_2F cursor);
 
+	static const float	m_commandSize;
+	static const float	m_labelBoxWidth;
 private:
 
-	// parameters
+	// extra parameters
 	float				m_menuHeight	= 25.0f;
 	float				m_commandHPad	= 5.0f;
-	float				m_commandSize	= 20.0f;
-	float				m_labelBoxWidth = 100.0f;
 
 	// state
 	std::wstring		m_ticker;

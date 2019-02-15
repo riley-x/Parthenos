@@ -6,6 +6,7 @@ HRESULT D2Objects::CreateDeviceIndependentResources()
 {
 	// Create a Direct2D factory
 	HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &pFactory);
+
 	// Initialize DPI settings
 	if (SUCCEEDED(hr))
 	{
@@ -35,7 +36,7 @@ HRESULT D2Objects::CreateDeviceIndependentResources()
 			reinterpret_cast<IUnknown **>(&pDWriteFactory)
 		);
 	}
-	// Create text format
+	// Create text format 10 point
 	if (SUCCEEDED(hr))
 	{
 		hr = pDWriteFactory->CreateTextFormat(
@@ -49,12 +50,33 @@ HRESULT D2Objects::CreateDeviceIndependentResources()
 			&pTextFormat_10p
 		);
 
+		// Set default alignment
+		if (SUCCEEDED(hr))
+		{
+			pTextFormat_10p->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+			pTextFormat_10p->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
+		}
 	}
-	// Set default alignment
+	// Create text format 18 point
 	if (SUCCEEDED(hr))
 	{
-		pTextFormat_10p->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
-		pTextFormat_10p->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
+		hr = pDWriteFactory->CreateTextFormat(
+			L"Calibri",
+			NULL,
+			DWRITE_FONT_WEIGHT_NORMAL,
+			DWRITE_FONT_STYLE_NORMAL,
+			DWRITE_FONT_STRETCH_NORMAL,
+			18.0f, // font size. this can't be changed dynamically?
+			L"", //locale
+			&pTextFormat_18p
+		);
+
+		// Set default alignment
+		if (SUCCEEDED(hr))
+		{
+			pTextFormat_18p->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+			pTextFormat_18p->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
+		}
 	}
 	// Create WIC factory
 	if (SUCCEEDED(hr))
@@ -198,6 +220,7 @@ void D2Objects::DiscardDeviceIndependentResources()
 	SafeRelease(&pFactory);
 	SafeRelease(&pDWriteFactory);
 	SafeRelease(&pTextFormat_10p);
+	SafeRelease(&pTextFormat_18p);
 	SafeRelease(&pIWICFactory);
 	SafeRelease(&pDashedStyle);
 

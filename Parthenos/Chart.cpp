@@ -7,6 +7,9 @@
 
 #include <algorithm>
 
+float const Chart::m_commandSize = 20.0f;
+float const Chart::m_labelBoxWidth = 100.0f;
+
 Chart::Chart(HWND hwnd, D2Objects const & d2)
 	: AppItem(hwnd, d2), m_axes(hwnd, d2), m_tickerBox(hwnd, d2), m_iconButtons(hwnd, d2)
 {
@@ -64,6 +67,12 @@ void Chart::Init(float leftOffset)
 			top,
 			left + m_commandSize,
 			top + m_commandSize
+		));
+		m_iconButtons.SetClickRect(i, D2D1::RectF(
+			left - m_commandHPad / 2.0f,
+			m_menuRect.top,
+			left + m_commandSize + m_commandHPad / 2.0f,
+			m_menuRect.bottom
 		));
 	}
 }

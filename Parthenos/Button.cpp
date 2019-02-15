@@ -17,12 +17,24 @@ void IconButton::Paint(D2D1_RECT_F updateRect)
 	}
 }
 
+bool IconButton::OnLButtonDown(D2D1_POINT_2F cursor)
+{
+	if (cursor.x >= m_clickRect.left &&
+		cursor.x <= m_clickRect.right &&
+		cursor.y >= m_clickRect.top &&
+		cursor.y <= m_clickRect.bottom)
+	{
+		return true;
+	}
+	return false;
+}
+
 bool Button::OnLButtonDown(D2D1_POINT_2F cursor)
 {
-	if (cursor.x > m_dipRect.left &&
-		cursor.x < m_dipRect.right &&
-		cursor.y > m_dipRect.top &&
-		cursor.y < m_dipRect.bottom)
+	if (cursor.x >= m_dipRect.left &&
+		cursor.x <= m_dipRect.right &&
+		cursor.y >= m_dipRect.top &&
+		cursor.y <= m_dipRect.bottom)
 	{
 		return true;
 	}

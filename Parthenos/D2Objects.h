@@ -31,6 +31,18 @@ class D2Objects {
 public:
 	HWND					hwndParent				= NULL;
 
+	////////////////////////////////////////////////////////
+	// Data
+
+	// WIC
+	static const int nIcons = 8;
+	int resource_ids[nIcons] = { IDB_CLOSE, IDB_MAXIMIZE, IDB_MINIMIZE, IDB_RESTORE, IDB_PARTHENOS_WHITE,
+		IDB_CANDLESTICK, IDB_LINE, IDB_ENVELOPE };
+
+	////////////////////////////////////////////////////////
+	// Pointers
+
+	// Rendering 
 	ID2D1Factory            *pFactory				= NULL;
 	ID2D1HwndRenderTarget   *pRenderTarget			= NULL;
 	ID2D1SolidColorBrush    *pBrush					= NULL;
@@ -39,15 +51,16 @@ public:
 	// Direct Write pointers
 	IDWriteFactory          *pDWriteFactory			= NULL;
 	IDWriteTextFormat		*pTextFormat_10p		= NULL; // 10 point (DIPs)
+	IDWriteTextFormat		*pTextFormat_18p		= NULL; // 128 point (DIPs)
 
 	// WIC pointers
-	static const int nIcons = 8;
-	int resource_ids[nIcons] = { IDB_CLOSE, IDB_MAXIMIZE, IDB_MINIMIZE, IDB_RESTORE, IDB_PARTHENOS_WHITE, 
-		IDB_CANDLESTICK, IDB_LINE, IDB_ENVELOPE };
 	IWICImagingFactory      *pIWICFactory						= NULL;
-	IWICFormatConverter		*pConvertedSourceBitmaps[nIcons]	= {NULL}; 
-	ID2D1Bitmap				*pD2DBitmaps[nIcons]				= {NULL};
+	IWICFormatConverter		*pConvertedSourceBitmaps[nIcons]	= {}; 
+	ID2D1Bitmap				*pD2DBitmaps[nIcons]				= {};
 	
+	////////////////////////////////////////////////////////
+	// Functions
+
 	HRESULT CreateDeviceIndependentResources();
 	HRESULT LoadResourcePNG(int resource, IWICFormatConverter * pConvertedSourceBitmap);
 	HRESULT	CreateGraphicsResources(HWND hwnd);
