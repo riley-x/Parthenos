@@ -10,25 +10,28 @@
 bool candle = true;
 
 Chart::Chart(HWND hwnd, D2Objects const & d2)
-	: AppItem(hwnd, d2), m_axes(hwnd, d2), m_tickerBox(hwnd, d2) 
+	: AppItem(hwnd, d2), m_axes(hwnd, d2), m_tickerBox(hwnd, d2), m_iconButtons(hwnd, d2)
 {
 	auto temp = new IconButton(hwnd, d2);
+	temp->m_name = L"Candlestick";
 	temp->SetIcon(GetResourceIndex(IDB_CANDLESTICK));
-	m_iconButtons.push_back(temp);
+	m_iconButtons.Add(temp);
 	
 	temp = new IconButton(hwnd, d2);
+	temp->m_name = L"Line";
 	temp->SetIcon(GetResourceIndex(IDB_LINE));
-	m_iconButtons.push_back(temp);
+	m_iconButtons.Add(temp);
 
 	for (int i = 0; i < 6; i++)
 	{
-		m_iconButtons.push_back(new IconButton(hwnd, d2));
+		m_iconButtons.Add(new IconButton(hwnd, d2));
 	}
+
+	m_iconButtons.SetActive(0);
 }
+
 Chart::~Chart()
 {
-	for (auto button : m_iconButtons)
-		if (button) delete button;
 }
 
 // Chart is flush right, with fixed-width offset in DIPs on left
@@ -41,6 +44,25 @@ void Chart::Init(float leftOffset)
 	m_menuRect.left = m_dipRect.left;
 	m_menuRect.top = m_dipRect.top;
 	m_menuRect.bottom = m_menuRect.top + m_menuHeight;
+
+	float top = m_dipRect.top + (m_menuHeight - m_commandSize) / 2.0f;
+	m_tickerBox.SetSize(D2D1::RectF(
+		m_dipRect.left + m_commandHPad,
+		top,
+		m_dipRect.left + m_commandHPad + m_labelBoxWidth,
+		top + m_commandSize
+	));
+
+	for (size_t i = 0; i < m_iconButtons.Size(); i++)
+	{
+		float left = m_dipRect.left + m_labelBoxWidth + m_commandHPad * (i + 2) + m_commandSize * i;
+		m_iconButtons.SetSize(i, D2D1::RectF(
+			left,
+			top,
+			left + m_commandSize,
+			top + m_commandSize
+		));
+	}
 }
 
 void Chart::Load(std::wstring ticker, int range)
@@ -74,24 +96,17 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 
 	m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
 	D2D1_RECT_F iconRect;
-	if (candle)
+	if (m_iconButtons.GetActiveRect(iconRect))
 	{
-		iconRect = m_iconButtons[0]->GetDIPRect();
+		iconRect.left -= m_commandHPad / 2.0f;
+		iconRect.top = m_menuRect.top;
+		iconRect.right += m_commandHPad / 2.0f;
+		iconRect.bottom = m_menuRect.bottom - 1.0f;
+		m_d2.pRenderTarget->FillRectangle(iconRect, m_d2.pBrush);
 	}
-	else
-	{
-		iconRect = m_iconButtons[1]->GetDIPRect();
-	}
-	iconRect.left -= m_commandHPad / 2.0f;
-	iconRect.top = m_menuRect.top;
-	iconRect.right += m_commandHPad / 2.0f;
-	iconRect.bottom = m_menuRect.bottom - 1.0f;
-	m_d2.pRenderTarget->FillRectangle(iconRect, m_d2.pBrush);
-
 
 	m_tickerBox.Paint(updateRect);
-	for (auto icon : m_iconButtons)
-		icon->Paint(updateRect);
+	m_iconButtons.Paint(updateRect);
 
 	m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
 	m_d2.pRenderTarget->DrawLine(
@@ -120,26 +135,6 @@ void Chart::Resize(RECT pRect, D2D1_RECT_F pDipRect)
 		m_dipRect.right, 
 		m_dipRect.bottom
 	));
-
-	float top = m_dipRect.top + (m_menuHeight - m_commandSize) / 2.0f;
-	m_tickerBox.SetSize(D2D1::RectF(
-		m_dipRect.left + m_commandHPad,
-		top,
-		m_dipRect.left + m_commandHPad + m_labelBoxWidth,
-		top + m_commandSize
-	));
-
-	
-	for (size_t i = 0; i < m_iconButtons.size(); i++)
-	{
-		float left = m_dipRect.left + m_labelBoxWidth + m_commandHPad * (i + 2) + m_commandSize * i;
-		m_iconButtons[i]->SetSize(D2D1::RectF(
-			left,
-			top,
-			left + m_commandSize,
-			top + m_commandSize
-		));
-	}
 }
 
 bool Chart::OnLButtonDown(D2D1_POINT_2F cursor)
@@ -159,47 +154,48 @@ bool Chart::OnLButtonDown(D2D1_POINT_2F cursor)
 		if (cursor.y < m_menuRect.bottom)
 		{
 			if (m_tickerBox.OnLButtonDown(cursor)) return true;
-			for (size_t i = 0; i < m_iconButtons.size(); i++)
+
+			std::wstring name;
+			if (m_iconButtons.OnLButtonDown(cursor, name))
 			{
-				if (m_iconButtons[i]->OnLButtonDown(cursor))
-				{
-					// Create icon group class
-					if (i == 0)
-					{
-						DrawMainChart(MainChartType::candlestick, m_currentTimeframe);
-						candle = true;
-					}
-					else if (i == 1)
-					{
-						DrawMainChart(MainChartType::line, m_currentTimeframe);
-						candle = false;
-					}
-					return true;
-				}
+				if (name == L"Candlestick")
+					DrawMainChart(MainChartType::candlestick, m_currentTimeframe);
+				else if (name == L"Line")
+					DrawMainChart(MainChartType::line, m_currentTimeframe);
+				return true;
 			}
 		}
 	}
 	return false;
 }
 
+// Sets the current state members.
 void Chart::DrawMainChart(MainChartType type, Timeframe timeframe)
 {
 	if (timeframe == Timeframe::none) timeframe = Timeframe::year1;
+	if (type == MainChartType::none) type = MainChartType::candlestick;
+	m_currentTimeframe = timeframe;
+	m_currentMChart = type;
+
+	OHLC *data;
+	int n = FindStart(timeframe, data);
+
+	m_axes.Clear(); // todo FIXME
 
 	switch (type)
 	{
 	case MainChartType::line:
-		Line(timeframe);
+		Line(data, n);
 		break;
 	case MainChartType::envelope:
-		Envelope(timeframe);
+		Envelope(data, n);
 		break;
 	case MainChartType::candlestick:
-	case MainChartType::none:
-	default:
-		Candlestick(timeframe);
+		Candlestick(data, n);
 		break;
 	}
+
+	InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 }
 
 // Call this when the chart needs to be completely redrawn but nothing's changed,
@@ -248,28 +244,15 @@ int Chart::FindStart(Timeframe timeframe, OHLC* & data)
 	return n;
 }
 
-// TODO: Add button highlight, etc. here?
-// Sets the current state members.
-void Chart::Candlestick(Timeframe timeframe)
+
+void Chart::Candlestick(OHLC const *data, int n)
 {
-	OHLC *data;
-	int n = FindStart(timeframe, data);
-
-	m_currentMChart = MainChartType::candlestick;
-	m_currentTimeframe = timeframe;
-
-	m_axes.Clear(); // todo FIXME
 	m_axes.Candlestick(data, n); 
-
-	InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 }
 
 
-void Chart::Line(Timeframe timeframe)
+void Chart::Line(OHLC const *data, int n)
 { 
-	OHLC *data;
-	int n = FindStart(timeframe, data);
-	
 	// data may already exist! TODO: zooming needs to clear
 	if (n != m_closes.size() || n != m_dates.size()) 
 	{
@@ -283,19 +266,11 @@ void Chart::Line(Timeframe timeframe)
 		}
 	}
 
-	m_currentMChart = MainChartType::line;
-	m_currentTimeframe = timeframe;
-
-	m_axes.Clear(); // todo FIXME
-	m_axes.Line(m_dates.data(), m_closes.data(), n); 
-	InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+	m_axes.Line(m_dates.data(), m_closes.data(), n);
 }
 
-void Chart::Envelope(Timeframe timeframe)
+void Chart::Envelope(OHLC const *data, int n)
 {
-	OHLC *data;
-	int n = FindStart(timeframe, data);
-
 	// data may already exist! TODO: zooming needs to clear
 	if (n != m_closes.size() || n != m_highs.size()
 		|| n != m_lows.size() || n != m_dates.size()) 
@@ -313,13 +288,8 @@ void Chart::Envelope(Timeframe timeframe)
 		}
 	}
 
-	m_currentMChart = MainChartType::envelope;
-	m_currentTimeframe = timeframe;
-
-	m_axes.Clear(); // todo FIXME
 	m_axes.Line(m_dates.data(), m_closes.data(), n);
 	m_axes.Line(m_dates.data(), m_highs.data(), n, D2D1::ColorF(0.8f, 0.0f, 0.5f), 0.6f, m_d2.pDashedStyle);
 	m_axes.Line(m_dates.data(), m_lows.data(), n, D2D1::ColorF(0.8f, 0.0f, 0.5f), 0.6f, m_d2.pDashedStyle);
-	InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 }
 

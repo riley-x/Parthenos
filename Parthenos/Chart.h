@@ -23,10 +23,10 @@ public:
 private:
 
 	// parameters
-	float				m_menuHeight = 25.0f;
-	float m_commandHPad = 5.0f;
-	float m_commandSize = 20.0f;
-	float m_labelBoxWidth = 100.0f;
+	float				m_menuHeight	= 25.0f;
+	float				m_commandHPad	= 5.0f;
+	float				m_commandSize	= 20.0f;
+	float				m_labelBoxWidth = 100.0f;
 
 	// data
 	std::vector<OHLC>	m_OHLC;
@@ -38,7 +38,7 @@ private:
 	// child objects
 	Axes				m_axes;
 	TextBox				m_tickerBox;
-	std::vector<IconButton*> m_iconButtons;
+	ButtonGroup			m_iconButtons;
 
 	// drawing
 	D2D1_RECT_F			m_menuRect;
@@ -51,9 +51,9 @@ private:
 	void DrawMainChart(MainChartType type, Timeframe timeframe);
 	void DrawSavedState();
 	int FindStart(Timeframe timeframe, OHLC* & data);
-	void Candlestick(Timeframe timeframe);
-	void Line(Timeframe timeframe);
-	void Envelope(Timeframe timeframe);
+	void Candlestick(OHLC const *data, int n);
+	void Line(OHLC const *data, int n);
+	void Envelope(OHLC const *data, int n);
 };
 
 
