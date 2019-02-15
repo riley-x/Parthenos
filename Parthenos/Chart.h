@@ -15,7 +15,7 @@ public:
 	Chart(HWND hwnd, D2Objects const & d2);
 	~Chart();
 	void Init(float leftOffset);
-	void Load(std::wstring ticker, int range = 1260); // range in days. default to 5 years 
+	void Load(std::wstring ticker, int range = 1260); // # datapoints in days. default to 5 years 
 	void Paint(D2D1_RECT_F updateRect);
 	void Resize(RECT pRect, D2D1_RECT_F pDipRect);
 	bool OnLButtonDown(D2D1_POINT_2F cursor);
@@ -27,6 +27,13 @@ private:
 	float				m_commandHPad	= 5.0f;
 	float				m_commandSize	= 20.0f;
 	float				m_labelBoxWidth = 100.0f;
+
+	// state
+	std::wstring		m_ticker;
+	enum class MainChartType { none, line, candlestick, envelope };
+	enum class Timeframe { none, year1 };
+	MainChartType		m_currentMChart = MainChartType::none;
+	Timeframe			m_currentTimeframe = Timeframe::none;
 
 	// data
 	std::vector<OHLC>	m_OHLC;
@@ -42,10 +49,6 @@ private:
 
 	// drawing
 	D2D1_RECT_F			m_menuRect;
-	enum class MainChartType { none, line, candlestick, envelope };
-	enum class Timeframe { none, year1 };
-	MainChartType		m_currentMChart = MainChartType::none;
-	Timeframe			m_currentTimeframe = Timeframe::none;
 
 	// helper functions
 	void DrawMainChart(MainChartType type, Timeframe timeframe);

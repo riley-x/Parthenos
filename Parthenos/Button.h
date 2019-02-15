@@ -85,8 +85,6 @@ public:
 		else return false;
 	}
 
-
-
 private:
 	int m_active;
 	std::vector<Button*> m_buttons;

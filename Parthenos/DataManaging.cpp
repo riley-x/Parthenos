@@ -205,7 +205,7 @@ std::vector<OHLC> GetOHLC_Alpha(std::wstring ticker, size_t last_n)
 		ohlcData = extra;
 		ohlcFile.Write(reinterpret_cast<const void*>(ohlcData.data()), sizeof(OHLC) * ohlcData.size());
 	}
-	else
+	else if (extra.size() > 0)
 	{
 		bool err = ohlcFile.Append(reinterpret_cast<const void*>(extra.data()), extra.size() * sizeof(OHLC));
 		if (!err) OutputMessage(L"Append OHLC failed\n");

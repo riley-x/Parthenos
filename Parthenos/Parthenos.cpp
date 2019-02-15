@@ -229,7 +229,7 @@ void Parthenos::PreShow()
 			item->Init();
 		item->Resize(rc, dipRect);
 	}
-	m_chart->Load(L"aapl");
+	m_chart->Load(L"aapl", 20);
 }
 
 LRESULT Parthenos::OnPaint()

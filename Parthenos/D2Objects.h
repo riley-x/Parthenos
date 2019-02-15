@@ -20,6 +20,8 @@ inline int GetResourceIndex(int resource)
 		return 5;
 	case IDB_LINE:
 		return 6;
+	case IDB_ENVELOPE:
+		return 7;
 	default:
 		return -1;
 	}
@@ -39,9 +41,9 @@ public:
 	IDWriteTextFormat		*pTextFormat_10p		= NULL; // 10 point (DIPs)
 
 	// WIC pointers
-	static const int nIcons = 7;
+	static const int nIcons = 8;
 	int resource_ids[nIcons] = { IDB_CLOSE, IDB_MAXIMIZE, IDB_MINIMIZE, IDB_RESTORE, IDB_PARTHENOS_WHITE, 
-		IDB_CANDLESTICK, IDB_LINE };
+		IDB_CANDLESTICK, IDB_LINE, IDB_ENVELOPE };
 	IWICImagingFactory      *pIWICFactory						= NULL;
 	IWICFormatConverter		*pConvertedSourceBitmaps[nIcons]	= {NULL}; 
 	ID2D1Bitmap				*pD2DBitmaps[nIcons]				= {NULL};

@@ -7,8 +7,6 @@
 
 #include <algorithm>
 
-bool candle = true;
-
 Chart::Chart(HWND hwnd, D2Objects const & d2)
 	: AppItem(hwnd, d2), m_axes(hwnd, d2), m_tickerBox(hwnd, d2), m_iconButtons(hwnd, d2)
 {
@@ -20,6 +18,11 @@ Chart::Chart(HWND hwnd, D2Objects const & d2)
 	temp = new IconButton(hwnd, d2);
 	temp->m_name = L"Line";
 	temp->SetIcon(GetResourceIndex(IDB_LINE));
+	m_iconButtons.Add(temp);
+
+	temp = new IconButton(hwnd, d2);
+	temp->m_name = L"Envelope";
+	temp->SetIcon(GetResourceIndex(IDB_ENVELOPE));
 	m_iconButtons.Add(temp);
 
 	for (int i = 0; i < 6; i++)
@@ -67,6 +70,12 @@ void Chart::Init(float leftOffset)
 
 void Chart::Load(std::wstring ticker, int range)
 {
+	if (ticker == m_ticker && range < static_cast<int>(m_OHLC.size())) return;
+	m_ticker = ticker;
+	m_dates.clear();
+	m_closes.clear();
+	m_highs.clear();
+	m_lows.clear();
 	m_OHLC = GetOHLC(ticker, apiSource::alpha, range);
 	DrawSavedState(); // draw on load, default candlestick 1-year
 
@@ -162,6 +171,8 @@ bool Chart::OnLButtonDown(D2D1_POINT_2F cursor)
 					DrawMainChart(MainChartType::candlestick, m_currentTimeframe);
 				else if (name == L"Line")
 					DrawMainChart(MainChartType::line, m_currentTimeframe);
+				else if (name == L"Envelope")
+					DrawMainChart(MainChartType::envelope, m_currentTimeframe);
 				return true;
 			}
 		}
@@ -275,6 +286,7 @@ void Chart::Envelope(OHLC const *data, int n)
 	if (n != m_closes.size() || n != m_highs.size()
 		|| n != m_lows.size() || n != m_dates.size()) 
 	{
+		m_dates.resize(n);
 		m_closes.resize(n);
 		m_highs.resize(n);
 		m_lows.resize(n);
