@@ -30,6 +30,7 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	LRESULT	OnCreate();
 	LRESULT OnPaint();
 	LRESULT OnMouseMove(POINT cursor, DWORD flags);
+	LRESULT OnChar(wchar_t c, LPARAM lParam);
 	LRESULT OnSize(WPARAM wParam);
 	LRESULT OnNCHitTest(POINT cursor);
 	LRESULT	OnLButtonDown(POINT cursor, DWORD flags);

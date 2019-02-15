@@ -3,6 +3,8 @@
 #include "FileIO.h"
 #include "HTTP.h"
 
+#include <exception>
+
 const std::wstring ROOTDIR(L"C:/Users/Riley/Documents/Finances/Parthenos/"); // C:/Users/Riley/Documents/Finances/Parthenos/
 const std::wstring IEXHOST(L"api.iextrading.com"); // api.iextrading.com
 const std::wstring ALPHAHOST(L"www.alphavantage.co");
@@ -24,6 +26,7 @@ OHLC parseAlphaChartItem(std::string json);
 // Queries IEX for a quote with fields
 //		open, close, latestPrice, latestSource, latestUpdate (timestamp truncated to seconds)
 //		latestVolume, avgTotalVolume
+// Throws std::invalid_argument if failed
 Quote GetQuote(std::wstring ticker)
 {
 	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/" + ticker + L"/quote",
@@ -40,6 +43,7 @@ Quote GetQuote(std::wstring ticker)
 	if (n != 7)
 	{
 		OutputMessage(L"sscanf_s failed! Only read %d/%d\n", n, 7);
+		throw std::invalid_argument("GetQuote failed");
 	}
 
 	if (strcmp(buffer, "IEX real time price") == 0)
@@ -62,25 +66,30 @@ Quote GetQuote(std::wstring ticker)
 std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source, size_t last_n)
 {
 	std::vector<OHLC> out;
-	switch (source)
-	{
-	case apiSource::alpha:
-		out = GetOHLC_Alpha(ticker, last_n);
-		break;
-	case apiSource::iex:
-	default:
-		out = GetOHLC_IEX(ticker, last_n);
-		break;
+	try {
+		switch (source)
+		{
+		case apiSource::alpha:
+			out = GetOHLC_Alpha(ticker, last_n);
+			break;
+		case apiSource::iex:
+		default:
+			out = GetOHLC_IEX(ticker, last_n);
+			break;
+		}
+		if (last_n > 0 && out.size() > last_n)
+		{
+			return std::vector<OHLC>(out.end() - last_n, out.end());
+		}
 	}
-	if (last_n > 0 && out.size() > last_n)
-	{
-		return std::vector<OHLC>(out.end() - last_n, out.end());
+	catch (const std::invalid_argument& ia) {
+		OutputDebugStringA(ia.what()); OutputDebugStringA("\n");
 	}
 	return out;
 }
 
 
-
+/////////////////////////////////////////////////////////////////////////////////////////
 // --- Helper Functions ---
 
 // Reads saved data from 'filename', initializing 'ohlcFile' and populating 'days_to_get'.
@@ -103,6 +112,7 @@ std::vector<OHLC> GetSavedOHLC(std::wstring const & ticker, std::wstring const &
 			ohlcData = ohlcFile.Read<OHLC>();
 		else
 			ohlcData = ohlcFile.ReadEnd<OHLC>(last_n);
+		if (ohlcData.empty()) throw std::invalid_argument("saved data empty");
 		date_t latestDate = ohlcData.back().date;
 
 		Quote quote = GetQuote(ticker);
@@ -283,6 +293,7 @@ OHLC parseIEXChartItem(std::string json)
 	if (n != 6)
 	{
 		OutputMessage(L"parseIEXChart sscanf_s failed! Only read %d/%d\n", n, 6);
+		throw std::invalid_argument("praseIEXChartItem failed");
 	}
 
 	// parse date
@@ -291,6 +302,7 @@ OHLC parseIEXChartItem(std::string json)
 	if (n != 3)
 	{
 		OutputMessage(L"parseIEXChart sscanf_s 2 failed! Only read %d/%d\n", n, 3);
+		throw std::invalid_argument("praseIEXChartItem failed");
 	}
 	out.date = MkDate(year, month, date);
 
@@ -323,7 +335,11 @@ OHLC parseAlphaChartItem(std::string json)
 		{
 			int year, month, date;
 			int n = sscanf_s(token.c_str(), "%d-%d-%d", &year, &month, &date);
-			if (n != 3) OutputMessage(L"parseIEXChart sscanf_s %d failed! Only read %d/%d\n", i, n, 3);
+			if (n != 3)
+			{
+				OutputMessage(L"parseAlphaChart sscanf_s %d failed! Only read %d/%d\n", i, n, 3);
+				throw std::invalid_argument("praseAlphaChartItem failed");
+			}
 			out.date = MkDate(year, month, date);
 		}
 		// i == 2: open bracket and new lines
@@ -332,27 +348,27 @@ OHLC parseAlphaChartItem(std::string json)
 		else if (i == 5)
 		{
 			int n = sscanf_s(token.c_str(), "%lf", &out.open);
-			if (n != 1) OutputMessage(L"parseIEXChart sscanf_s %d failed! Only read %d/%d\n", i, n, 1);
+			if (n != 1)	throw std::invalid_argument("praseAlphaChartItem failed");
 		}
 		else if (i == 9)
 		{
 			int n = sscanf_s(token.c_str(), "%lf", &out.high);
-			if (n != 1) OutputMessage(L"parseIEXChart sscanf_s %d failed! Only read %d/%d\n", i, n, 1);
+			if (n != 1) throw std::invalid_argument("praseAlphaChartItem failed");
 		}
 		else if (i == 13)
 		{
 			int n = sscanf_s(token.c_str(), "%lf", &out.low);
-			if (n != 1) OutputMessage(L"parseIEXChart sscanf_s %d failed! Only read %d/%d\n", i, n, 1);
+			if (n != 1) throw std::invalid_argument("praseAlphaChartItem failed");
 		}
 		else if (i == 17)
 		{
 			int n = sscanf_s(token.c_str(), "%lf", &out.close);
-			if (n != 1) OutputMessage(L"parseIEXChart sscanf_s %d failed! Only read %d/%d\n", i, n, 1);
+			if (n != 1) throw std::invalid_argument("praseAlphaChartItem failed");
 		}
 		else if (i == 21)
 		{
 			int n = sscanf_s(token.c_str(), "%I32u", &out.volume);
-			if (n != 1) OutputMessage(L"parseIEXChart sscanf_s %d failed! Only read %d/%d\n", i, n, 1);
+			if (n != 1) throw std::invalid_argument("praseAlphaChartItem failed");
 			break;
 		}
 		start = end + delim.length();

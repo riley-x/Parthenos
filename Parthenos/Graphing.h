@@ -117,7 +117,6 @@ private:
 	std::vector<std::tuple<float, date_t, std::wstring>> m_xTicks; // DIP, date pair, label
 	std::vector<std::tuple<float, double, std::wstring>> m_yTicks; // DIP, value pair, label
 	std::vector<date_t> m_dates; // actual date values (plotted as x = [0, n-1))
-	D2D1_RECT_F m_dipRect;  // bounding rect DIPs in main window client coordinates
 	D2D1_RECT_F m_axesRect; // rect for the actual axes
 	D2D1_RECT_F m_dataRect; // rect for drawable space for data points
 	float m_rect_xdiff;		// m_dataRect.right - m_dataRect.left

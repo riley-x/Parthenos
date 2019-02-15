@@ -115,6 +115,8 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	//case WM_LBUTTONUP:
 	//	OnLButtonUp();
 	//	return 0;
+	case WM_CHAR:
+		return OnChar(static_cast<wchar_t>(wParam), lParam);
 	case WM_MOUSEMOVE:
 		return OnMouseMove(
 			POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }, 
@@ -229,7 +231,7 @@ void Parthenos::PreShow()
 			item->Init();
 		item->Resize(rc, dipRect);
 	}
-	m_chart->Load(L"aapl", 20);
+	m_chart->Load(L"xyzz", 20);
 }
 
 LRESULT Parthenos::OnPaint()
@@ -321,6 +323,15 @@ LRESULT Parthenos::OnMouseMove(POINT cursor, DWORD flags)
 	return 0;
 
 	//if ((flags & MK_LBUTTON) && Selection())
+}
+
+LRESULT Parthenos::OnChar(wchar_t c, LPARAM lParam)
+{
+	for (auto item : m_activeItems)
+	{
+		if (item->OnChar(c, lParam)) break;
+	}
+	return 0;
 }
 
 /*

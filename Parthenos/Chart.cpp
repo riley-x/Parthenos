@@ -86,8 +86,14 @@ void Chart::Load(std::wstring ticker, int range)
 	m_highs.clear();
 	m_lows.clear();
 	m_OHLC = GetOHLC(ticker, apiSource::alpha, range);
-	DrawSavedState(); // draw on load, default candlestick 1-year
 
+	if (m_OHLC.empty())
+	{
+		// TODO
+	}
+
+	DrawSavedState(); // draw on load, default candlestick 1-year
+	m_tickerBox.SetText(ticker);
 	//for (int i = 0; i < 10; i++)
 	//{
 	//	OutputDebugString(m_OHLC[i].to_wstring().c_str());
@@ -105,12 +111,9 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 	// than when invalidated.
 	if (updateRect.bottom <= m_dipRect.top || updateRect.right <= m_dipRect.left) return;
 
-	m_d2.pBrush->SetColor(D2D1::ColorF(0.8f, 0.0f, 0.0f, 1.0f));
-	m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 1.0, NULL);
 
 	m_d2.pBrush->SetColor(Colors::MENU_BACKGROUND);
 	m_d2.pRenderTarget->FillRectangle(m_menuRect, m_d2.pBrush);
-
 
 	m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
 	D2D1_RECT_F iconRect;
@@ -135,6 +138,9 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 	);
 
 	if (updateRect.bottom <= m_axes.GetDIPRect().top) return;
+	
+	m_d2.pBrush->SetColor(D2D1::ColorF(0.8f, 0.0f, 0.0f, 1.0f));
+	m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 1.0, NULL);
 	m_axes.Paint(updateRect);
 
 }
@@ -189,6 +195,11 @@ bool Chart::OnLButtonDown(D2D1_POINT_2F cursor)
 	return false;
 }
 
+bool Chart::OnChar(wchar_t c, LPARAM lParam)
+{
+	return m_tickerBox.OnChar(c, lParam);
+}
+
 // Sets the current state members.
 void Chart::DrawMainChart(MainChartType type, Timeframe timeframe)
 {
@@ -199,6 +210,11 @@ void Chart::DrawMainChart(MainChartType type, Timeframe timeframe)
 
 	OHLC *data;
 	int n = FindStart(timeframe, data);
+	if (n <= 0)
+	{
+		InvalidateRect(m_hwnd, &m_pixRect, FALSE); // so button clicks still appear
+		return;
+	}
 
 	m_axes.Clear(); // todo FIXME
 
@@ -226,13 +242,13 @@ void Chart::DrawSavedState()
 }
 
 // Finds the starting date in OHLC data given 'timeframe', returning the pointer in 'data'.
-// Returns the number of days / data points.
+// Returns the number of days / data points, or -1 on error.
 int Chart::FindStart(Timeframe timeframe, OHLC* & data)
 {
 	if (m_OHLC.empty())
 	{
 		OutputMessage(L"No data!\n");
-		return 0;
+		return -1;
 	}
 
 	data = nullptr;

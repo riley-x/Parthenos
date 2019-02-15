@@ -23,6 +23,7 @@ public:
 	virtual void OnMouseMove(D2D1_POINT_2F cursor) { return; }
 	virtual bool OnLButtonDown(D2D1_POINT_2F cursor) { return false; }
 	virtual void OnLButtonUp(D2D1_POINT_2F cursor) { return; }
+	virtual bool OnChar(wchar_t c, LPARAM lParam) { return false; }
 
 	D2D1_RECT_F GetDIPRect() const { return m_dipRect; }
 

@@ -12,4 +12,6 @@ namespace Colors
 	const D2D1_COLOR_F MEDIUM_LINE	   = D2D1::ColorF(0.5f, 0.5f, 0.5f, 1.0f);
 	const D2D1_COLOR_F BRIGHT_LINE	   = D2D1::ColorF(0.8f, 0.8f, 0.8f, 1.0f);
 	const D2D1_COLOR_F MAIN_TEXT	   = D2D1::ColorF(0.8f, 0.8f, 0.8f, 1.0f);
+
+	const D2D1_COLOR_F ACCENT		   = D2D1::ColorF(0.8f, 0.0f, 0.5f, 1.0f);
 }
