@@ -22,6 +22,7 @@ public:
 	bool OnChar(wchar_t c, LPARAM lParam);
 	bool OnKeyDown(WPARAM wParam, LPARAM lParam);
 
+	void ReceiveMessage(std::wstring msg, int i);
 
 	static const float	m_commandSize;
 	static const float	m_labelBoxWidth;

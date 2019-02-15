@@ -136,6 +136,9 @@ bool TextBox::OnKeyDown(WPARAM wParam, LPARAM lParam)
 		CreateTextLayout();
 		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 		return true;
+	case VK_RETURN:
+		m_parent->ReceiveMessage(m_text, 0);
+		return true;
 	case VK_INSERT:
 		return false;
 	default:

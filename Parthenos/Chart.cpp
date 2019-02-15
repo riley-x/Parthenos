@@ -11,7 +11,7 @@ float const Chart::m_commandSize = 20.0f;
 float const Chart::m_labelBoxWidth = 100.0f;
 
 Chart::Chart(HWND hwnd, D2Objects const & d2)
-	: AppItem(hwnd, d2), m_axes(hwnd, d2), m_tickerBox(hwnd, d2), m_iconButtons(hwnd, d2)
+	: AppItem(hwnd, d2), m_axes(hwnd, d2), m_tickerBox(hwnd, d2, this), m_iconButtons(hwnd, d2)
 {
 	auto temp = new IconButton(hwnd, d2);
 	temp->m_name = L"Candlestick";
@@ -203,6 +203,14 @@ bool Chart::OnChar(wchar_t c, LPARAM lParam)
 bool Chart::OnKeyDown(WPARAM wParam, LPARAM lParam)
 {
 	return m_tickerBox.OnKeyDown(wParam, lParam);
+}
+
+void Chart::ReceiveMessage(std::wstring msg, int i)
+{
+	if (i == 0) // ticker box
+	{
+		Load(msg);
+	}
 }
 
 // Sets the current state members.

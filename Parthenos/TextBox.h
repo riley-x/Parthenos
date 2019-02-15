@@ -3,12 +3,16 @@
 #include "stdafx.h"
 #include "AppItem.h"
 
+
+class Chart;
+
 // Single-line, editable text box
 // Don't use buffer because need to convert to wstring anyways to display
 class TextBox : public AppItem
 {
 public:
-	using AppItem::AppItem;
+	TextBox(HWND hwnd, D2Objects const & d2, AppItem *chart) :
+		AppItem(hwnd, d2), m_parent(chart) {};
 	~TextBox();
 	void Paint(D2D1_RECT_F updateRect);
 	//void OnMouseMove(D2D1_POINT_2F cursor);
@@ -34,6 +38,7 @@ private:
 	float m_leftOffset = 2.0f;
 
 	// data
+	AppItem				*m_parent;
 	IDWriteTextLayout *m_pTextLayout = NULL; // must recreate each edit
 
 	// helpers
