@@ -3,8 +3,6 @@
 #include "FileIO.h"
 #include "HTTP.h"
 
-#include <exception>
-
 const std::wstring ROOTDIR(L"C:/Users/Riley/Documents/Finances/Parthenos/"); // C:/Users/Riley/Documents/Finances/Parthenos/
 const std::wstring IEXHOST(L"api.iextrading.com"); // api.iextrading.com
 const std::wstring ALPHAHOST(L"www.alphavantage.co");
@@ -29,6 +27,7 @@ OHLC parseAlphaChartItem(std::string json);
 // Throws std::invalid_argument if failed
 Quote GetQuote(std::wstring ticker)
 {
+	std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::tolower);
 	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/" + ticker + L"/quote",
 		L"filter=open,close,latestPrice,latestSource,latestUpdate,latestVolume,avgTotalVolume");
 
@@ -65,6 +64,7 @@ Quote GetQuote(std::wstring ticker)
 // Reads, writes, and fetches data as necessary
 std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source, size_t last_n)
 {
+	std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::tolower);
 	std::vector<OHLC> out;
 	try {
 		switch (source)

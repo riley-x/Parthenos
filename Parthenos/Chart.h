@@ -20,6 +20,7 @@ public:
 	void Resize(RECT pRect, D2D1_RECT_F pDipRect);
 	bool OnLButtonDown(D2D1_POINT_2F cursor);
 	bool OnChar(wchar_t c, LPARAM lParam);
+	bool OnKeyDown(WPARAM wParam, LPARAM lParam);
 
 
 	static const float	m_commandSize;

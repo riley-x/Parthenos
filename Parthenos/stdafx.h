@@ -20,7 +20,8 @@
 #include <vector>
 #include <ctime>
 #include <tuple>
-
+#include <exception>
+#include <algorithm>
 
 // reference additional headers your program requires here
 #include <d2d1.h>

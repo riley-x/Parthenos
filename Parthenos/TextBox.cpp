@@ -73,7 +73,8 @@ bool TextBox::OnLButtonDown(D2D1_POINT_2F cursor)
 bool TextBox::OnChar(wchar_t c, LPARAM lParam)
 {
 	if (!m_active) return false;
-
+	
+	c = towupper(c);
 	switch (c)
 	{
 	case 0x09: // tab
@@ -82,13 +83,12 @@ bool TextBox::OnChar(wchar_t c, LPARAM lParam)
 	case 0x0D: // carriage return (single line)
 		//MessageBeep((UINT)-1);
 		break;
-	case 0x08: // backspace TODO
+	case 0x08: // backspace
 	{
 		if (m_text.length() == 0 || m_ipos == 0) break;
 		m_text.erase(m_ipos - 1, 1);
 		CreateTextLayout();
 		MoveCaret(-1);
-		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 		break;
 	}
 	default:   // displayable character
@@ -106,11 +106,43 @@ bool TextBox::OnChar(wchar_t c, LPARAM lParam)
 
 		CreateTextLayout();
 		MoveCaret(1);
-		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 		break;
 	}
 	}
 	return true;
+}
+
+bool TextBox::OnKeyDown(WPARAM wParam, LPARAM lParam)
+{
+	if (!m_active) return false;
+
+	switch (wParam)
+	{
+	case VK_LEFT:
+		MoveCaret(-1);
+		return true;
+	case VK_RIGHT:
+		MoveCaret(1);
+		return true;
+	case VK_HOME:
+		MoveCaret(-m_ipos);
+		return true;
+	case VK_END:
+		MoveCaret(m_text.size() - m_ipos);
+		return true;
+	case VK_DELETE:
+		if (m_ipos == m_text.length()) return true;
+		m_text.erase(m_ipos, 1);
+		CreateTextLayout();
+		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+		return true;
+	case VK_INSERT:
+		return false;
+	default:
+		return false;
+	}
+
+	return false;
 }
 
 std::wstring TextBox::String() const
@@ -145,11 +177,13 @@ void TextBox::CreateTextLayout()
 	if (FAILED(hr)) Error(L"CreateTextLayout failed");
 }
 
+// Moves the caret, with error checking, and invalidates
 void TextBox::MoveCaret(int i)
 {
-	if (m_ipos + i > static_cast<int>(m_text.size())) return; 
-	if (m_ipos + i < 0) return;
 	// silent so no extra bound check needed
+	if (m_ipos + i > static_cast<int>(m_text.size())) return;
+	if (m_ipos + i < 0) return;
+	if (i == 0) return;
 
 	m_ipos += i;
 	float dummy_y;
@@ -162,6 +196,7 @@ void TextBox::MoveCaret(int i)
 		&dummy_metrics
 	);
 	m_fpos += m_dipRect.left + m_leftOffset;
-
 	if (FAILED(hr)) Error(L"HitTestTextPosition failed");
+
+	::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 }

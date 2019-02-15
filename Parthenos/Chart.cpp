@@ -200,6 +200,11 @@ bool Chart::OnChar(wchar_t c, LPARAM lParam)
 	return m_tickerBox.OnChar(c, lParam);
 }
 
+bool Chart::OnKeyDown(WPARAM wParam, LPARAM lParam)
+{
+	return m_tickerBox.OnKeyDown(wParam, lParam);
+}
+
 // Sets the current state members.
 void Chart::DrawMainChart(MainChartType type, Timeframe timeframe)
 {

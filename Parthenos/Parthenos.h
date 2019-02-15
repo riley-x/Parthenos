@@ -16,8 +16,8 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	std::vector<AppItem*>	m_allItems;
 	TitleBar				*m_titleBar;
 	Chart					*m_chart;
-	MouseTrackEvents m_mouseTrack;
-	FileIO m_histFile;
+	MouseTrackEvents		m_mouseTrack;
+	FileIO					m_histFile;
 
 	// Resource management.
 	D2Objects				m_d2;
@@ -31,6 +31,7 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	LRESULT OnPaint();
 	LRESULT OnMouseMove(POINT cursor, DWORD flags);
 	LRESULT OnChar(wchar_t c, LPARAM lParam);
+	bool	OnKeyDown(WPARAM wParam, LPARAM lParam);
 	LRESULT OnSize(WPARAM wParam);
 	LRESULT OnNCHitTest(POINT cursor);
 	LRESULT	OnLButtonDown(POINT cursor, DWORD flags);

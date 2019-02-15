@@ -15,6 +15,8 @@ public:
 	bool OnLButtonDown(D2D1_POINT_2F cursor);
 	//void OnLButtonUp(D2D1_POINT_2F cursor);
 	bool OnChar(wchar_t c, LPARAM lParam);
+	bool OnKeyDown(WPARAM wParam, LPARAM lParam);
+
 
 	std::wstring String() const;
 	void SetText(std::wstring text);
