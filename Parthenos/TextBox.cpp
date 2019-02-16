@@ -16,6 +16,18 @@ void TextBox::Paint(D2D1_RECT_F updateRect)
 		m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
 	m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 0.5f);
 
+	// Draw highlight
+	if (m_selection)
+	{
+		m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
+		m_d2.pRenderTarget->FillRectangle(D2D1::RectF(
+			min(m_fpos, m_fstart),
+			m_dipRect.top,
+			max(m_fpos, m_fstart),
+			m_dipRect.bottom
+		), m_d2.pBrush);
+	}
+
 	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
 	m_d2.pRenderTarget->DrawTextLayout(
 		D2D1::Point2F(m_dipRect.left + m_leftOffset, m_dipRect.top),
@@ -23,6 +35,7 @@ void TextBox::Paint(D2D1_RECT_F updateRect)
 		m_d2.pBrush
 	);
 
+	// Draw caret
 	if (m_active)
 	{
 		m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
@@ -35,6 +48,38 @@ void TextBox::Paint(D2D1_RECT_F updateRect)
 	}
 }
 
+void TextBox::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
+{
+	if (!m_mouseSelection || !(wParam & MK_LBUTTON)) return;
+
+	DWRITE_HIT_TEST_METRICS hitTestMetrics;
+	BOOL isTrailingHit;
+	BOOL isInside;
+
+	m_pTextLayout->HitTestPoint(
+		cursor.x - (m_dipRect.left + m_leftOffset),
+		cursor.y - m_dipRect.top,
+		&isTrailingHit,
+		&isInside,
+		&hitTestMetrics
+	);
+	int new_ipos = hitTestMetrics.textPosition + isTrailingHit; // cursor should be placed before m_text[end]
+	if (new_ipos != m_ipos)
+	{
+		if (!m_selection)
+		{
+			m_selection = true;
+			m_istart = m_ipos;
+			m_fstart = m_fpos;
+		}
+		m_ipos = new_ipos;
+		m_fpos = hitTestMetrics.left + static_cast<float>(isTrailingHit) * hitTestMetrics.width
+			+ m_dipRect.left + m_leftOffset;
+
+		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+	}
+}
+
 bool TextBox::OnLButtonDown(D2D1_POINT_2F cursor)
 {
 	if (!(cursor.x >= m_dipRect.left &&
@@ -42,6 +87,12 @@ bool TextBox::OnLButtonDown(D2D1_POINT_2F cursor)
 		cursor.y >= m_dipRect.top &&
 		cursor.y <= m_dipRect.bottom))
 	{
+		if (m_active)
+		{
+			m_active = false;
+			m_selection = false;
+			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+		}
 		return false;
 	}
 
@@ -56,18 +107,61 @@ bool TextBox::OnLButtonDown(D2D1_POINT_2F cursor)
 		&isInside,
 		&hitTestMetrics
 	);
-	int m_oldpos = m_ipos;
+	int oldpos = m_ipos;
 	m_ipos = hitTestMetrics.textPosition + isTrailingHit; // cursor should be placed before m_text[end]
 	m_fpos = hitTestMetrics.left + static_cast<float>(isTrailingHit) * hitTestMetrics.width
 		+ m_dipRect.left + m_leftOffset;
 	
-	if (!m_active || m_oldpos != m_ipos) // remove this once have timer? may be too slow
+	if (!m_active || oldpos != m_ipos || m_selection) // remove this once have timer? may be too slow
 	{
-		RECT rect = DPIScale::DipsToPixels(m_dipRect);
-		::InvalidateRect(m_hwnd, &rect, FALSE);
+		m_selection = false;
 		m_active = true;
+		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 	}
+	m_mouseSelection = true; // flag OnMouseMove to track
+
 	return true;
+}
+
+void TextBox::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)
+{
+	if (inRect(cursor, m_dipRect))
+	{
+		if (m_selection && m_istart == 0 && m_ipos == m_text.size()) return;
+		m_active = true;
+		m_selection = true;
+		m_istart = 0;
+		m_ipos = m_text.size();
+
+		float dummy_y;
+		DWRITE_HIT_TEST_METRICS dummy_metrics;
+		HRESULT hr = m_pTextLayout->HitTestTextPosition(
+			m_istart,
+			FALSE,
+			&m_fstart,
+			&dummy_y,
+			&dummy_metrics
+		);
+		m_fstart += m_dipRect.left + m_leftOffset;
+		if (FAILED(hr)) OutputMessage(L"HitTestTextPosition failed\n");
+
+		hr = m_pTextLayout->HitTestTextPosition(
+			m_ipos,
+			FALSE,
+			&m_fpos,
+			&dummy_y,
+			&dummy_metrics
+		);
+		m_fpos += m_dipRect.left + m_leftOffset;
+		if (FAILED(hr)) OutputMessage(L"HitTestTextPosition failed\n");
+
+		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+	}
+}
+
+void TextBox::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
+{
+	if (m_mouseSelection) m_mouseSelection = false;
 }
 
 bool TextBox::OnChar(wchar_t c, LPARAM lParam)
@@ -85,6 +179,11 @@ bool TextBox::OnChar(wchar_t c, LPARAM lParam)
 		break;
 	case 0x08: // backspace
 	{
+		if (m_selection)
+		{
+			DeleteSelection();
+			break;
+		}
 		if (m_text.length() == 0 || m_ipos == 0) break;
 		m_text.erase(m_ipos - 1, 1);
 		CreateTextLayout();
@@ -93,7 +192,8 @@ bool TextBox::OnChar(wchar_t c, LPARAM lParam)
 	}
 	default:   // displayable character
 	{
-		if (m_text.length() >= 10)
+		if (m_selection) DeleteSelection(false);
+		if (m_text.length() >= m_maxChars)
 		{
 			MessageBeep((UINT)-1);
 			break;
@@ -119,25 +219,62 @@ bool TextBox::OnKeyDown(WPARAM wParam, LPARAM lParam)
 	switch (wParam)
 	{
 	case VK_LEFT:
+		if (GetKeyState(VK_SHIFT) & 0x8000)
+		{
+			if (!m_selection)
+			{
+				m_selection = true;
+				m_istart = m_ipos;
+				m_fstart = m_fpos;
+			}
+		}
+		else
+		{
+			m_selection = false;
+		}
 		MoveCaret(-1);
 		return true;
 	case VK_RIGHT:
+	{
+		if (GetKeyState(VK_SHIFT) & 0x8000)
+		{
+			if (!m_selection)
+			{
+				m_selection = true;
+				m_istart = m_ipos;
+				m_fstart = m_fpos;
+			}
+		}
+		else
+		{
+			m_selection = false;
+		}
 		MoveCaret(1);
 		return true;
+	}
 	case VK_HOME:
+		if (m_selection) m_selection = false;
 		MoveCaret(-m_ipos);
 		return true;
 	case VK_END:
+		if (m_selection) m_selection = false;
 		MoveCaret(m_text.size() - m_ipos);
 		return true;
 	case VK_DELETE:
-		if (m_ipos == m_text.length()) return true;
-		m_text.erase(m_ipos, 1);
-		CreateTextLayout();
-		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+		if (m_selection)
+		{
+			DeleteSelection();
+		}
+		else
+		{
+			if (m_ipos == m_text.length()) return true;
+			m_text.erase(m_ipos, 1);
+			CreateTextLayout();
+			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+		}
 		return true;
 	case VK_RETURN:
-		m_parent->ReceiveMessage(m_text, 0);
+		m_parent->ReceiveMessage(m_text, 0); // will call SetText
 		return true;
 	case VK_INSERT:
 		return false;
@@ -155,13 +292,14 @@ std::wstring TextBox::String() const
 
 void TextBox::SetText(std::wstring text)
 {
-	if (text.length() > 10)
+	if (text.length() > m_maxChars)
 	{
 		OutputMessage(L"%s too long\n", text);
 		return;
 	}
 	m_text = text;
 	m_active = false;
+	m_selection = false;
 	CreateTextLayout();
 }
 
@@ -199,7 +337,30 @@ void TextBox::MoveCaret(int i)
 		&dummy_metrics
 	);
 	m_fpos += m_dipRect.left + m_leftOffset;
-	if (FAILED(hr)) Error(L"HitTestTextPosition failed");
+	if (FAILED(hr)) OutputMessage(L"HitTestTextPosition failed\n");
+
+	if (m_selection && m_ipos == m_istart) m_selection = false;
 
 	::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+}
+
+void TextBox::DeleteSelection(bool invalidate)
+{
+	if (m_ipos > m_istart)
+	{
+		m_text.erase(m_istart, m_ipos - m_istart);
+		m_ipos = m_istart;
+		m_fpos = m_fstart;
+	}
+	else
+	{
+		m_text.erase(m_ipos, m_istart - m_ipos);
+	}
+	m_selection = false;
+
+	if (invalidate)
+	{
+		CreateTextLayout();
+		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+	}
 }

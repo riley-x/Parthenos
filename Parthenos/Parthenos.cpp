@@ -110,11 +110,13 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_LBUTTONDOWN:
 		return OnLButtonDown(
 			POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) },
-			(DWORD)wParam
+			wParam
 		);
-	//case WM_LBUTTONUP:
-	//	OnLButtonUp();
-	//	return 0;
+	case WM_LBUTTONUP:
+		return OnLButtonUp(
+			POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) },
+			wParam
+		);
 	case WM_KEYDOWN:
 	{
 		if (OnKeyDown(wParam, lParam)) return 0;
@@ -125,10 +127,13 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_MOUSEMOVE:
 		return OnMouseMove(
 			POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }, 
-			static_cast<DWORD>(wParam)
+			wParam
 		);
-	//case WM_LBUTTONDBLCLK:
-	//	return 0;
+	case WM_LBUTTONDBLCLK:
+		return OnLButtonDblclk(
+			POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) },
+			wParam
+		);
 	case WM_MOUSELEAVE:
 		m_titleBar->MouseOn(HTNOWHERE);
 		m_mouseTrack.Reset(m_hwnd);
@@ -262,24 +267,6 @@ LRESULT Parthenos::OnPaint()
 		for (auto item : m_activeItems)
 			item->Paint(dipRect);
 
-		//D2D1_SIZE_F size = m_d2.pRenderTarget->GetSize();
-		//const float x = size.width;
-		//const float y = size.height;
-
-
-		//D2D1_RECT_F layoutRect = D2D1::RectF(0.f, 0.f, 200.f, 200.f);
-		//wchar_t msg[32];
-		//swprintf_s(msg, L"DPI: %3.1f %3.1f\n\n\n", DPIScale::dpiX, DPIScale::dpiY);
-		//OutputDebugString(msg);
-		////PCWSTR msg = L"Hellow World";
-		//m_d2.pRenderTarget->DrawText(
-		//	msg,
-		//	wcslen(msg),
-		//	pTextFormat,
-		//	layoutRect,
-		//	pBrush
-		//);
-
 		hr = m_d2.pRenderTarget->EndDraw();
 		if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
 		{
@@ -292,7 +279,7 @@ LRESULT Parthenos::OnPaint()
 }
 
 
-LRESULT Parthenos::OnLButtonDown(POINT cursor, DWORD flags)
+LRESULT Parthenos::OnLButtonDown(POINT cursor, WPARAM wParam)
 {
 	LRESULT ret = m_titleBar->HitTest(cursor);
 	switch (ret)
@@ -312,22 +299,46 @@ LRESULT Parthenos::OnLButtonDown(POINT cursor, DWORD flags)
 	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
 	for (auto item : m_activeItems)
 	{
-		if (item->OnLButtonDown(dipCursor)) break;
+		//if (item->OnLButtonDown(dipCursor)) break;
+		item->OnLButtonDown(dipCursor);
 	}
 	
 	return 0;
 }
 
-LRESULT Parthenos::OnMouseMove(POINT cursor, DWORD flags)
+LRESULT Parthenos::OnLButtonDblclk(POINT cursor, WPARAM wParam)
+{
+	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
+	for (auto item : m_activeItems)
+	{
+		item->OnLButtonDblclk(dipCursor, wParam);
+	}
+	return 0;
+}
+
+LRESULT Parthenos::OnLButtonUp(POINT cursor, WPARAM wParam)
+{
+	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
+	for (auto item : m_activeItems)
+	{
+		item->OnLButtonUp(dipCursor, wParam);
+	}
+	return 0;
+}
+
+LRESULT Parthenos::OnMouseMove(POINT cursor, WPARAM wParam)
 {
 	::SetCursor(hCursor);
 	m_mouseTrack.OnMouseMove(m_hwnd);  // Start tracking.
 	
-	//D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
+	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
+
+	for (auto item : m_activeItems)
+	{
+		item->OnMouseMove(dipCursor, wParam);
+	}
 
 	return 0;
-
-	//if ((flags & MK_LBUTTON) && Selection())
 }
 
 LRESULT Parthenos::OnChar(wchar_t c, LPARAM lParam)

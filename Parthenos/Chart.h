@@ -16,9 +16,13 @@ public:
 	~Chart();
 	void Init(float leftOffset);
 	void Load(std::wstring ticker, int range = 1260); // # datapoints in days. default to 5 years 
+	
 	void Paint(D2D1_RECT_F updateRect);
 	void Resize(RECT pRect, D2D1_RECT_F pDipRect);
+	void OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam);
 	bool OnLButtonDown(D2D1_POINT_2F cursor);
+	void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam);
+	void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam);
 	bool OnChar(wchar_t c, LPARAM lParam);
 	bool OnKeyDown(WPARAM wParam, LPARAM lParam);
 

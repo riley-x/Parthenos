@@ -87,13 +87,8 @@ void Chart::Load(std::wstring ticker, int range)
 	m_lows.clear();
 	m_OHLC = GetOHLC(ticker, apiSource::alpha, range);
 
-	if (m_OHLC.empty())
-	{
-		// TODO
-	}
-
-	DrawSavedState(); // draw on load, default candlestick 1-year
 	m_tickerBox.SetText(ticker);
+	DrawSavedState(); // draw on load, default candlestick 1-year
 	//for (int i = 0; i < 10; i++)
 	//{
 	//	OutputDebugString(m_OHLC[i].to_wstring().c_str());
@@ -161,38 +156,64 @@ void Chart::Resize(RECT pRect, D2D1_RECT_F pDipRect)
 	));
 }
 
+void Chart::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
+{
+	if (!inRect(cursor, m_dipRect))
+	{
+		return;
+	}
+
+	if (cursor.y < m_axes.GetDIPRect().top)
+	{
+		m_tickerBox.OnMouseMove(cursor, wParam);
+		// don't need to pass to buttons
+	}
+	else
+	{
+		// todo pass to axes
+	}
+}
+
 bool Chart::OnLButtonDown(D2D1_POINT_2F cursor)
 {
-	if (cursor.x > m_dipRect.left &&
-		cursor.x < m_dipRect.right &&
-		cursor.y > m_dipRect.top &&
-		cursor.y < m_dipRect.bottom)
+	if (m_tickerBox.OnLButtonDown(cursor)) return true;
+
+	if (inRect(cursor, m_menuRect))
 	{
-		//if (m_currentMChart == MainChartType::envelope)
-		//	DrawMainChart(MainChartType::candlestick, m_currentTimeframe);
-		//else if (m_currentMChart == MainChartType::candlestick)
-		//	DrawMainChart(MainChartType::line, m_currentTimeframe);
-		//else if (m_currentMChart == MainChartType::line)
-		//	DrawMainChart(MainChartType::envelope, m_currentTimeframe);
-
-		if (cursor.y < m_menuRect.bottom)
+		std::wstring name;
+		if (m_iconButtons.OnLButtonDown(cursor, name))
 		{
-			if (m_tickerBox.OnLButtonDown(cursor)) return true;
-
-			std::wstring name;
-			if (m_iconButtons.OnLButtonDown(cursor, name))
-			{
-				if (name == L"Candlestick")
-					DrawMainChart(MainChartType::candlestick, m_currentTimeframe);
-				else if (name == L"Line")
-					DrawMainChart(MainChartType::line, m_currentTimeframe);
-				else if (name == L"Envelope")
-					DrawMainChart(MainChartType::envelope, m_currentTimeframe);
-				return true;
-			}
+			if (name == L"Candlestick")
+				DrawMainChart(MainChartType::candlestick, m_currentTimeframe);
+			else if (name == L"Line")
+				DrawMainChart(MainChartType::line, m_currentTimeframe);
+			else if (name == L"Envelope")
+				DrawMainChart(MainChartType::envelope, m_currentTimeframe);
+			return true;
 		}
+
 	}
 	return false;
+}
+
+void Chart::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
+{
+	if (!inRect(cursor, m_dipRect)) return;
+
+	if (cursor.y < m_menuRect.bottom)
+	{
+		m_tickerBox.OnLButtonUp(cursor, wParam);
+	}
+	else
+	{
+		// todo?
+	}
+
+}
+
+void Chart::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)
+{
+	m_tickerBox.OnLButtonDblclk(cursor, wParam);
 }
 
 bool Chart::OnChar(wchar_t c, LPARAM lParam)

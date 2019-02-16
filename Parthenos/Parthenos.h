@@ -29,16 +29,14 @@ class Parthenos : public BorderlessWindow<Parthenos>
 
 	LRESULT	OnCreate();
 	LRESULT OnPaint();
-	LRESULT OnMouseMove(POINT cursor, DWORD flags);
+	LRESULT OnMouseMove(POINT cursor, WPARAM wParam);
 	LRESULT OnChar(wchar_t c, LPARAM lParam);
 	bool	OnKeyDown(WPARAM wParam, LPARAM lParam);
 	LRESULT OnSize(WPARAM wParam);
 	LRESULT OnNCHitTest(POINT cursor);
-	LRESULT	OnLButtonDown(POINT cursor, DWORD flags);
-	//void	OnLButtonUp();
-	//void	OnMouseMove(int pixelX, int pixelY, DWORD flags);
-
-	//void    Resize();
+	LRESULT	OnLButtonDown(POINT cursor, WPARAM wParam);
+	LRESULT OnLButtonDblclk(POINT cursor, WPARAM wParam);
+	LRESULT	OnLButtonUp(POINT cursor, WPARAM wParam);
 
 public:
 

@@ -59,6 +59,14 @@ enum class HitTest
 	nowhere
 };
 
+inline bool inRect(D2D1_POINT_2F cursor, D2D1_RECT_F rect)
+{
+	return cursor.x >= rect.left &&
+		cursor.x <= rect.right &&
+		cursor.y >= rect.top &&
+		cursor.y <= rect.bottom;
+}
+
 template <class T> void SafeRelease(T **ppT)
 {
 	if (*ppT)

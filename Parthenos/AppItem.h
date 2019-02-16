@@ -20,9 +20,10 @@ public:
 		m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 0.5f); 
 	}
 
-	virtual void OnMouseMove(D2D1_POINT_2F cursor) { return; }
+	virtual void OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam) { return; }
 	virtual bool OnLButtonDown(D2D1_POINT_2F cursor) { return false; }
-	virtual void OnLButtonUp(D2D1_POINT_2F cursor) { return; }
+	virtual void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam) { return; }
+	virtual void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam) { return; }
 	virtual bool OnChar(wchar_t c, LPARAM lParam) { return false; }
 	virtual bool OnKeyDown(WPARAM wParam, LPARAM lParam) { return false; }
 
