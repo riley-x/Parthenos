@@ -7,6 +7,8 @@ float DPIScale::scaleY = 1.0f;
 float DPIScale::dpiX = 96.0f;
 float DPIScale::dpiY = 96.0f;
 
+bool Timers::active[Timers::n_timers + 1] = {};
+
 std::wstring OutputError(const std::wstring & msg)
 {
 	DWORD error = GetLastError();

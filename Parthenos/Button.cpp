@@ -1,6 +1,5 @@
 #include "stdafx.h"
 #include "Button.h"
-#include "Colors.h"
 
 void IconButton::Paint(D2D1_RECT_F updateRect)
 {

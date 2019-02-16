@@ -26,6 +26,7 @@ public:
 	virtual void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam) { return; }
 	virtual bool OnChar(wchar_t c, LPARAM lParam) { return false; }
 	virtual bool OnKeyDown(WPARAM wParam, LPARAM lParam) { return false; }
+	virtual void OnTimer(WPARAM wParam, LPARAM lParam) { return; }
 
 	virtual void ReceiveMessage(std::wstring msg, int i) { return; } 
 

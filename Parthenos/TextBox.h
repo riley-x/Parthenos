@@ -22,16 +22,22 @@ public:
 	void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam);
 	bool OnChar(wchar_t c, LPARAM lParam);
 	bool OnKeyDown(WPARAM wParam, LPARAM lParam);
+	void OnTimer(WPARAM wParam, LPARAM lParam);
 
 	std::wstring String() const;
 	void SetText(std::wstring text);
+	void Activate();
+	void Deactivate();
 
 private:
 	// state
 	std::wstring		m_text;
-	bool				m_active = false; // show caret
-	int					m_ipos = -1; // caret pos
+
+	bool				m_active = false; // enter edit mode with caret
+	int					m_ipos = -1; // caret pos in text
 	float				m_fpos = -1.0f; // caret pos in parent client coordinates
+	bool				m_flash = true; // should caret be shown
+
 	bool				m_selection = false; // highlight a selection
 	bool				m_mouseSelection = false; // is selection via mouse?
 	int					m_istart; // for selection
@@ -43,7 +49,7 @@ private:
 
 	// data
 	AppItem				*m_parent;
-	IDWriteTextLayout *m_pTextLayout = NULL; // must recreate each edit
+	IDWriteTextLayout	*m_pTextLayout = NULL; // must recreate each edit
 
 	// helpers
 	void CreateTextLayout();

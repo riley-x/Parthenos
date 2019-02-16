@@ -6,7 +6,6 @@
 #include "TitleBar.h"
 #include "HTTP.h"
 #include "DataManaging.h"
-#include "Colors.h"
 
 #include <windowsx.h>
 
@@ -107,30 +106,8 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return OnPaint();
 	case WM_SIZE:
 		return OnSize(wParam);
-	case WM_LBUTTONDOWN:
-		return OnLButtonDown(
-			POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) },
-			wParam
-		);
-	case WM_LBUTTONUP:
-		return OnLButtonUp(
-			POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) },
-			wParam
-		);
-	case WM_KEYDOWN:
-	{
-		if (OnKeyDown(wParam, lParam)) return 0;
-		break; // pass on to DefWindowProc to process WM_CHAR messages...?
-	}
-	case WM_CHAR:
-		return OnChar(static_cast<wchar_t>(wParam), lParam);
 	case WM_MOUSEMOVE:
 		return OnMouseMove(
-			POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }, 
-			wParam
-		);
-	case WM_LBUTTONDBLCLK:
-		return OnLButtonDblclk(
 			POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) },
 			wParam
 		);
@@ -139,9 +116,7 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		m_mouseTrack.Reset(m_hwnd);
 		return 0;
 	case WM_MOUSEHOVER:
-
 		// TODO: Handle the mouse-hover message.
-
 		m_mouseTrack.Reset(m_hwnd);
 		return 0;
 	case WM_SETCURSOR:
@@ -151,53 +126,52 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			return TRUE;
 		}
 		break;
+	case WM_LBUTTONDOWN:
+		return OnLButtonDown(
+			POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) },
+			wParam
+		);
+	case WM_LBUTTONDBLCLK:
+		return OnLButtonDblclk(
+			POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) },
+			wParam
+		);
+	case WM_LBUTTONUP:
+		return OnLButtonUp(
+			POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) },
+			wParam
+		);
+	case WM_CHAR:
+		return OnChar(static_cast<wchar_t>(wParam), lParam);
+	case WM_KEYDOWN:
+		if (OnKeyDown(wParam, lParam)) return 0;
+		break; // pass on to DefWindowProc to process WM_CHAR messages...?
+	case WM_TIMER:
+		return OnTimer(wParam, lParam);
 	}
 	return DefWindowProc(m_hwnd, uMsg, wParam, lParam);
 }
 
-LRESULT Parthenos::OnNCHitTest(POINT cursor) {
-	//RECT window;
-	//if (!::GetWindowRect(m_hwnd, &window)) Error("GetWindowRect failed");
-	if (!::ScreenToClient(m_hwnd, &cursor)) Error(L"ScreenToClient failed");
 
-	LRESULT ret = m_titleBar->HitTest(cursor);
-	switch (ret)
-	{
-	case HTMINBUTTON:
-	case HTMAXBUTTON:
-	case HTCLOSE:
-		m_titleBar->MouseOn(ret);
-		return HTCLIENT;
-	case HTCAPTION:
-		m_titleBar->MouseOn(HTNOWHERE);
-		return ret;
-	default:
-		m_titleBar->MouseOn(HTNOWHERE);
-		return HTCLIENT;
-	}
-}
-
-LRESULT Parthenos::OnSize(WPARAM wParam)
+void Parthenos::PreShow()
 {
-	if (wParam == SIZE_MAXIMIZED)
-		m_titleBar->Maximize(true);
-	else if (wParam == SIZE_RESTORED)
-		m_titleBar->Maximize(false);
-	if (m_d2.pRenderTarget != NULL)
+	RECT rc;
+	BOOL bErr = GetClientRect(m_hwnd, &rc);
+	if (bErr == 0) OutputError(L"GetClientRect failed");
+	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
+
+	for (auto item : m_allItems)
 	{
-		RECT rc;
-		GetClientRect(m_hwnd, &rc);
-
-		D2D1_SIZE_U size = D2D1::SizeU(rc.right, rc.bottom);
-		D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
-		m_d2.pRenderTarget->Resize(size);
-		m_titleBar->Resize(rc, dipRect);
-		m_chart->Resize(rc, dipRect);
-
-		InvalidateRect(m_hwnd, NULL, FALSE);
+		if (item == m_chart)
+			m_chart->Init(m_leftPanelWidth);
+		else
+			item->Init();
+		item->Resize(rc, dipRect);
 	}
-	return 0;
+	m_chart->Load(L"AAPL", 20);
 }
+
+///////////////////////////////////////////////////////////////////
 
 LRESULT Parthenos::OnCreate()
 {
@@ -226,22 +200,26 @@ LRESULT Parthenos::OnCreate()
 	return 0;
 }
 
-void Parthenos::PreShow()
-{
-	RECT rc;
-	BOOL bErr = GetClientRect(m_hwnd, &rc);
-	if (bErr == 0) OutputError(L"GetClientRect failed");
-	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
+LRESULT Parthenos::OnNCHitTest(POINT cursor) {
+	//RECT window;
+	//if (!::GetWindowRect(m_hwnd, &window)) Error("GetWindowRect failed");
+	if (!::ScreenToClient(m_hwnd, &cursor)) Error(L"ScreenToClient failed");
 
-	for (auto item : m_allItems)
+	LRESULT ret = m_titleBar->HitTest(cursor);
+	switch (ret)
 	{
-		if (item == m_chart) 
-			m_chart->Init(m_leftPanelWidth);
-		else 
-			item->Init();
-		item->Resize(rc, dipRect);
+	case HTMINBUTTON:
+	case HTMAXBUTTON:
+	case HTCLOSE:
+		m_titleBar->MouseOn(ret);
+		return HTCLIENT;
+	case HTCAPTION:
+		m_titleBar->MouseOn(HTNOWHERE);
+		return ret;
+	default:
+		m_titleBar->MouseOn(HTNOWHERE);
+		return HTCLIENT;
 	}
-	m_chart->Load(L"AAPL", 20);
 }
 
 LRESULT Parthenos::OnPaint()
@@ -278,6 +256,42 @@ LRESULT Parthenos::OnPaint()
 	return 0;
 }
 
+LRESULT Parthenos::OnSize(WPARAM wParam)
+{
+	if (wParam == SIZE_MAXIMIZED)
+		m_titleBar->Maximize(true);
+	else if (wParam == SIZE_RESTORED)
+		m_titleBar->Maximize(false);
+	if (m_d2.pRenderTarget != NULL)
+	{
+		RECT rc;
+		GetClientRect(m_hwnd, &rc);
+
+		D2D1_SIZE_U size = D2D1::SizeU(rc.right, rc.bottom);
+		D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
+		m_d2.pRenderTarget->Resize(size);
+		m_titleBar->Resize(rc, dipRect);
+		m_chart->Resize(rc, dipRect);
+
+		InvalidateRect(m_hwnd, NULL, FALSE);
+	}
+	return 0;
+}
+
+LRESULT Parthenos::OnMouseMove(POINT cursor, WPARAM wParam)
+{
+	::SetCursor(hCursor);
+	m_mouseTrack.OnMouseMove(m_hwnd);  // Start tracking.
+
+	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
+
+	for (auto item : m_activeItems)
+	{
+		item->OnMouseMove(dipCursor, wParam);
+	}
+
+	return 0;
+}
 
 LRESULT Parthenos::OnLButtonDown(POINT cursor, WPARAM wParam)
 {
@@ -326,21 +340,6 @@ LRESULT Parthenos::OnLButtonUp(POINT cursor, WPARAM wParam)
 	return 0;
 }
 
-LRESULT Parthenos::OnMouseMove(POINT cursor, WPARAM wParam)
-{
-	::SetCursor(hCursor);
-	m_mouseTrack.OnMouseMove(m_hwnd);  // Start tracking.
-	
-	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
-
-	for (auto item : m_activeItems)
-	{
-		item->OnMouseMove(dipCursor, wParam);
-	}
-
-	return 0;
-}
-
 LRESULT Parthenos::OnChar(wchar_t c, LPARAM lParam)
 {
 	for (auto item : m_activeItems)
@@ -358,6 +357,16 @@ bool Parthenos::OnKeyDown(WPARAM wParam, LPARAM lParam)
 	}
 	return false;
 }
+
+LRESULT Parthenos::OnTimer(WPARAM wParam, LPARAM lParam)
+{
+	for (auto item : m_activeItems)
+	{
+		item->OnTimer(wParam, lParam);
+	}
+	return 0;
+}
+
 
 /*
 void MainWindow::OnLButtonUp()

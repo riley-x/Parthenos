@@ -1,6 +1,5 @@
 #include "stdafx.h"
 #include "Graphing.h"
-#include "Colors.h"
 
 
 void Axes::Clear()

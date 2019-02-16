@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "TextBox.h"
 #include "Chart.h"
-#include "Colors.h"
 
 TextBox::~TextBox()
 {
@@ -36,7 +35,7 @@ void TextBox::Paint(D2D1_RECT_F updateRect)
 	);
 
 	// Draw caret
-	if (m_active)
+	if (m_active && m_flash)
 	{
 		m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
 		m_d2.pRenderTarget->DrawLine(
@@ -89,7 +88,7 @@ bool TextBox::OnLButtonDown(D2D1_POINT_2F cursor)
 	{
 		if (m_active)
 		{
-			m_active = false;
+			Deactivate();
 			m_selection = false;
 			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 		}
@@ -112,10 +111,10 @@ bool TextBox::OnLButtonDown(D2D1_POINT_2F cursor)
 	m_fpos = hitTestMetrics.left + static_cast<float>(isTrailingHit) * hitTestMetrics.width
 		+ m_dipRect.left + m_leftOffset;
 	
-	if (!m_active || oldpos != m_ipos || m_selection) // remove this once have timer? may be too slow
+	if (!m_active || oldpos != m_ipos || m_selection)
 	{
 		m_selection = false;
-		m_active = true;
+		Activate();
 		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 	}
 	m_mouseSelection = true; // flag OnMouseMove to track
@@ -128,7 +127,7 @@ void TextBox::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)
 	if (inRect(cursor, m_dipRect))
 	{
 		if (m_selection && m_istart == 0 && m_ipos == m_text.size()) return;
-		m_active = true;
+		Activate();
 		m_selection = true;
 		m_istart = 0;
 		m_ipos = m_text.size();
@@ -285,6 +284,15 @@ bool TextBox::OnKeyDown(WPARAM wParam, LPARAM lParam)
 	return false;
 }
 
+void TextBox::OnTimer(WPARAM wParam, LPARAM lParam)
+{
+	if (wParam == Timers::IDT_CARET)
+	{
+		m_flash = !m_flash;
+		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+	}
+}
+
 std::wstring TextBox::String() const
 {
 	return m_text;
@@ -298,9 +306,31 @@ void TextBox::SetText(std::wstring text)
 		return;
 	}
 	m_text = text;
-	m_active = false;
+	Deactivate();
 	m_selection = false;
 	CreateTextLayout();
+}
+
+void TextBox::Activate()
+{
+	m_active = true;
+	if (!Timers::active[Timers::IDT_CARET])
+	{
+		UINT_PTR err = ::SetTimer(m_hwnd, Timers::IDT_CARET, Timers::CARET_TIME, NULL);
+		if (err == 0) OutputError(L"Set timer failed");
+		else Timers::active[Timers::IDT_CARET] = true;
+	}
+}
+
+void TextBox::Deactivate()
+{
+	m_active = false;
+	if (Timers::active[Timers::IDT_CARET])
+	{
+		BOOL err = ::KillTimer(m_hwnd, Timers::IDT_CARET);
+		if (err == 0)  OutputError(L"Kill timer failed");
+		else Timers::active[Timers::IDT_CARET] = false;
+	}
 }
 
 void TextBox::CreateTextLayout()

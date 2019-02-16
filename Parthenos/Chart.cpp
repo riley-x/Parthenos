@@ -2,7 +2,6 @@
 #include "Chart.h"
 #include "utilities.h"
 #include "TitleBar.h"
-#include "Colors.h"
 #include "Resource.h"
 
 #include <algorithm>
@@ -27,11 +26,6 @@ Chart::Chart(HWND hwnd, D2Objects const & d2)
 	temp->m_name = L"Envelope";
 	temp->SetIcon(GetResourceIndex(IDB_ENVELOPE));
 	m_iconButtons.Add(temp);
-
-	for (int i = 0; i < 6; i++)
-	{
-		m_iconButtons.Add(new IconButton(hwnd, d2));
-	}
 
 	m_iconButtons.SetActive(0);
 }
@@ -196,6 +190,11 @@ bool Chart::OnLButtonDown(D2D1_POINT_2F cursor)
 	return false;
 }
 
+void Chart::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)
+{
+	m_tickerBox.OnLButtonDblclk(cursor, wParam);
+}
+
 void Chart::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 {
 	if (!inRect(cursor, m_dipRect)) return;
@@ -211,11 +210,6 @@ void Chart::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 
 }
 
-void Chart::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)
-{
-	m_tickerBox.OnLButtonDblclk(cursor, wParam);
-}
-
 bool Chart::OnChar(wchar_t c, LPARAM lParam)
 {
 	return m_tickerBox.OnChar(c, lParam);
@@ -226,6 +220,11 @@ bool Chart::OnKeyDown(WPARAM wParam, LPARAM lParam)
 	return m_tickerBox.OnKeyDown(wParam, lParam);
 }
 
+void Chart::OnTimer(WPARAM wParam, LPARAM lParam)
+{
+	m_tickerBox.OnTimer(wParam, lParam);
+}
+
 void Chart::ReceiveMessage(std::wstring msg, int i)
 {
 	if (i == 0) // ticker box
@@ -233,6 +232,9 @@ void Chart::ReceiveMessage(std::wstring msg, int i)
 		Load(msg);
 	}
 }
+
+///////////////////////////////////////////////////////////
+// --- Helpers ---
 
 // Sets the current state members.
 void Chart::DrawMainChart(MainChartType type, Timeframe timeframe)

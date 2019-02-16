@@ -25,6 +25,7 @@ public:
 	void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam);
 	bool OnChar(wchar_t c, LPARAM lParam);
 	bool OnKeyDown(WPARAM wParam, LPARAM lParam);
+	void OnTimer(WPARAM wParam, LPARAM lParam);
 
 	void ReceiveMessage(std::wstring msg, int i);
 

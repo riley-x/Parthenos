@@ -2,7 +2,6 @@
 #include "Parthenos.h"
 #include "TitleBar.h"
 #include "utilities.h"
-#include "Colors.h"
 
 float const TitleBar::iconHPad = 6.0f;
 float const TitleBar::height = 30.0f;

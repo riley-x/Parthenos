@@ -1,9 +1,13 @@
 #pragma once
 
+///////////////////////////////////////////////////////////
+// --- Messaging --- 
 std::wstring OutputError(const std::wstring & msg);
 std::system_error Error(const std::wstring & msg);
 void OutputMessage(const std::wstring format, ...);
 
+///////////////////////////////////////////////////////////
+// --- Datetime --- 
 typedef uint32_t date_t; // 10000*yyyy + 100*mm + dd
 time_t const DATE_T_1YR = 10000;
 
@@ -49,16 +53,8 @@ inline std::wstring toMonthWString_Short(date_t date)
 	}
 }
 
-enum class HitTest
-{
-	in,
-	left,
-	right,
-	above,
-	below,
-	nowhere
-};
-
+///////////////////////////////////////////////////////////
+// --- Misc --- 
 inline bool inRect(D2D1_POINT_2F cursor, D2D1_RECT_F rect)
 {
 	return cursor.x >= rect.left &&
@@ -76,6 +72,31 @@ template <class T> void SafeRelease(T **ppT)
 	}
 }
 
+
+namespace Colors
+{
+	const D2D1_COLOR_F MAIN_BACKGROUND = D2D1::ColorF(0.2f, 0.2f, 0.2f, 1.0f);
+	const D2D1_COLOR_F AXES_BACKGROUND = D2D1::ColorF(0.15f, 0.15f, 0.15f, 1.0f);
+	const D2D1_COLOR_F MENU_BACKGROUND = D2D1::ColorF(0.1f, 0.1f, 0.1f, 1.0f);
+	const D2D1_COLOR_F HIGHLIGHT = D2D1::ColorF(0.25f, 0.25f, 0.25f, 1.0f);
+	const D2D1_COLOR_F DULL_LINE = D2D1::ColorF(0.25f, 0.25f, 0.25f, 1.0f);
+	const D2D1_COLOR_F MEDIUM_LINE = D2D1::ColorF(0.5f, 0.5f, 0.5f, 1.0f);
+	const D2D1_COLOR_F BRIGHT_LINE = D2D1::ColorF(0.8f, 0.8f, 0.8f, 1.0f);
+	const D2D1_COLOR_F MAIN_TEXT = D2D1::ColorF(0.8f, 0.8f, 0.8f, 1.0f);
+
+	const D2D1_COLOR_F ACCENT = D2D1::ColorF(0.8f, 0.0f, 0.5f, 1.0f);
+}
+
+namespace Timers
+{
+	const int n_timers = 1;
+	enum { IDT_CARET = 1 }; // no zero
+	extern bool active[n_timers + 1]; // extra entry for easy indexing
+
+	const UINT CARET_TIME = 750; // 0.75 seconds
+}
+
+///////////////////////////////////////////////////////////
 class DPIScale
 {
 	static float scaleX;
@@ -144,6 +165,7 @@ public:
 
 };
 
+///////////////////////////////////////////////////////////
 class MouseTrackEvents
 {
 	bool m_bMouseTracking;
