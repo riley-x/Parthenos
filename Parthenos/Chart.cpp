@@ -60,7 +60,7 @@ void Chart::Init(float leftOffset)
 	left += m_tickerBoxWidth + m_commandHPad;
 
 	// Timeframe drop menu
-	m_timeframeButton.SetItems({ L"1D", L"1M", L"3M", L"1Y", L"2Y", L"5Y" });
+	m_timeframeButton.SetItems({ L"1M", L"3M", L"6M", L"1Y", L"2Y", L"5Y" });
 	m_timeframeButton.SetActive(3); // default 1 year
 	m_timeframeButton.SetSize(D2D1::RectF(
 		left,
@@ -259,12 +259,12 @@ void Chart::ReceiveMessage(std::wstring msg, int i)
 	if (i == 1) // timeframe
 	{
 		Timeframe tf = Timeframe::none;;
-		if (msg == L"1D");
-		else if (msg == L"1M") tf = Timeframe::month1;
-		else if (msg == L"3M");
+		if (msg == L"1M") tf = Timeframe::month1;
+		else if (msg == L"3M") tf = Timeframe::month3;
+		else if (msg == L"6M") tf = Timeframe::month6;
 		else if (msg == L"1Y") tf = Timeframe::year1;
-		else if (msg == L"2Y");
-		else if (msg == L"5Y");
+		else if (msg == L"2Y") tf = Timeframe::year2;
+		else if (msg == L"5Y") tf = Timeframe::year5;
 		DrawMainChart(m_currentMChart, tf);
 	}
 }
@@ -345,9 +345,45 @@ int Chart::FindStart(Timeframe timeframe, OHLC* & data)
 		}
 		break;
 	}
+	case Timeframe::month3:
+	{
+		if (GetMonth(end) <= 3)
+		{
+			temp.date = end - DATE_T_1YR;
+			SetMonth(temp.date, 9 + GetMonth(end));
+		}
+		else
+		{
+			temp.date = end - 3 * DATE_T_1M;
+		}
+		break;
+	}
+	case Timeframe::month6:
+	{
+		if (GetMonth(end) <= 6)
+		{
+			temp.date = end - DATE_T_1YR;
+			SetMonth(temp.date, 6 + GetMonth(end));
+		}
+		else
+		{
+			temp.date = end - 6 * DATE_T_1M;
+		}
+		break;
+	}
 	case Timeframe::year1:
 	{
 		temp.date = end - DATE_T_1YR;
+		break;
+	}
+	case Timeframe::year2:
+	{
+		temp.date = end - 2 * DATE_T_1YR;
+		break;
+	}
+	case Timeframe::year5:
+	{
+		temp.date = end - 5 * DATE_T_1YR;
 		break;
 	}
 	default:
