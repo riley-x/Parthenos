@@ -17,14 +17,34 @@ public:
 	void Show(bool show = true);
 	void SetItems(std::vector<std::wstring> const & items);
 	inline IDWriteTextLayout* GetLayout(size_t i) { if (i < m_pTextLayouts.size()) return m_pTextLayouts[i]; else return NULL; }
+
+	float const m_vPad = 3.0f;
+	float const m_fontSize = 12.0f;
 private:
+	// Data
 	std::vector<std::wstring> m_items;
 	std::vector<IDWriteTextLayout*> m_pTextLayouts;
 
+	// Paramters
+	bool m_active;
 	int m_highlight = -1;
 	float m_width;
 	float m_height;
-	float const m_vPad = 2.0f;
-	float const m_fontSize = 14.0f;
-	bool m_active;
+	D2Objects::Formats const m_format = D2Objects::Consolas12;
+
+	// Helpers
+
+	// get DIP coordinate relative to m_dipRect.top of top of boudning box of item i.
+	// top of text is at getTop(i) + m_vPad
+	inline float getTop(size_t i)
+	{
+		return i * (m_fontSize + 2 * m_vPad);
+	}
+
+	// get index given offset in dips from m_dipRect.top
+	inline int getInd(float y)
+	{
+		return static_cast<int>(y / (m_fontSize + 2 * m_vPad));
+	}
+
 };

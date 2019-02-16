@@ -11,8 +11,8 @@ float const Chart::m_tickerBoxWidth = 100.0f;
 float const Chart::m_timeframeWidth = 60.0f;
 
 Chart::Chart(HWND hwnd, D2Objects const & d2)
-	: AppItem(hwnd, d2), m_axes(hwnd, d2), m_tickerBox(hwnd, d2, this), m_chartTypeButtons(hwnd, d2),
-	m_timeframeButton(hwnd, d2, this)
+	: AppItem(hwnd, d2), m_axes(hwnd, d2), m_tickerBox(hwnd, d2, this, D2Objects::Consolas18), 
+	m_chartTypeButtons(hwnd, d2), m_timeframeButton(hwnd, d2, this)
 {
 	auto temp = new IconButton(hwnd, d2);
 	temp->m_name = L"Candlestick";
@@ -36,7 +36,8 @@ Chart::~Chart()
 {
 }
 
-// Chart is flush right, with fixed-width offset in DIPs on left
+// Chart is flush right, with fixed-width offset in DIPs on left,
+// and fixed menu height
 void Chart::Init(float leftOffset)
 {
 	m_dipRect.left = leftOffset; 
@@ -97,29 +98,6 @@ void Chart::Init(float leftOffset)
 	left += 3 * m_commandHPad;
 }
 
-void Chart::Load(std::wstring ticker, int range)
-{
-	if (ticker == m_ticker && range < static_cast<int>(m_OHLC.size())) return;
-	m_ticker = ticker;
-	m_dates.clear();
-	m_closes.clear();
-	m_highs.clear();
-	m_lows.clear();
-	m_OHLC = GetOHLC(ticker, apiSource::alpha, range);
-
-	m_tickerBox.SetText(ticker);
-	DrawSavedState(); // draw on load, default candlestick 1-year
-	//for (int i = 0; i < 10; i++)
-	//{
-	//	OutputDebugString(m_OHLC[i].to_wstring().c_str());
-	//}
-	//OutputMessage(L"Size: %u\n", m_OHLC.size());
-	//for (size_t i = m_OHLC.size() - 10; i < m_OHLC.size(); i++)
-	//{
-	//	OutputDebugString(m_OHLC[i].to_wstring().c_str());
-	//}
-}
-
 void Chart::Paint(D2D1_RECT_F updateRect)
 {
 	// When invalidating, converts to pixels then back to DIPs -> updateRect has smaller values
@@ -128,7 +106,7 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 
 	if (updateRect.top <= m_menuRect.bottom) {
 		// Background of menu
-		m_d2.pBrush->SetColor(Colors::MENU_BACKGROUND);
+		m_d2.pBrush->SetColor(Colors::MAIN_BACKGROUND);
 		m_d2.pRenderTarget->FillRectangle(m_menuRect, m_d2.pBrush);
 
 		// Ticker box
@@ -250,6 +228,29 @@ void Chart::OnTimer(WPARAM wParam, LPARAM lParam)
 	m_tickerBox.OnTimer(wParam, lParam);
 }
 
+void Chart::Load(std::wstring ticker, int range)
+{
+	if (ticker == m_ticker && range < static_cast<int>(m_OHLC.size())) return;
+	m_ticker = ticker;
+	m_dates.clear();
+	m_closes.clear();
+	m_highs.clear();
+	m_lows.clear();
+	m_OHLC = GetOHLC(ticker, apiSource::alpha, range);
+
+	m_tickerBox.SetText(ticker);
+	DrawSavedState(); // draw on load, default candlestick 1-year
+	//for (int i = 0; i < 10; i++)
+	//{
+	//	OutputDebugString(m_OHLC[i].to_wstring().c_str());
+	//}
+	//OutputMessage(L"Size: %u\n", m_OHLC.size());
+	//for (size_t i = m_OHLC.size() - 10; i < m_OHLC.size(); i++)
+	//{
+	//	OutputDebugString(m_OHLC[i].to_wstring().c_str());
+	//}
+}
+
 void Chart::ReceiveMessage(std::wstring msg, int i)
 {
 	if (i == 0) // ticker box
@@ -265,6 +266,7 @@ void Chart::ReceiveMessage(std::wstring msg, int i)
 		else if (msg == L"1Y") tf = Timeframe::year1;
 		else if (msg == L"2Y") tf = Timeframe::year2;
 		else if (msg == L"5Y") tf = Timeframe::year5;
+		if (tf == m_currentTimeframe) return;
 		DrawMainChart(m_currentMChart, tf);
 	}
 }

@@ -15,8 +15,6 @@ public:
 	Chart(HWND hwnd, D2Objects const & d2);
 	~Chart();
 	void Init(float leftOffset);
-	void Load(std::wstring ticker, int range = 1260); // # datapoints in days. default to 5 years 
-	
 	void Paint(D2D1_RECT_F updateRect);
 	void Resize(RECT pRect, D2D1_RECT_F pDipRect);
 	void OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam);
@@ -27,6 +25,7 @@ public:
 	bool OnKeyDown(WPARAM wParam, LPARAM lParam);
 	void OnTimer(WPARAM wParam, LPARAM lParam);
 
+	void Load(std::wstring ticker, int range = 1260); // # datapoints in days. default to 5 years 
 	void ReceiveMessage(std::wstring msg, int i);
 
 	static const float	m_commandSize;

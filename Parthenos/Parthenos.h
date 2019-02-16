@@ -7,6 +7,7 @@
 #include "TitleBar.h"
 #include "FileIO.h"
 #include "Chart.h"
+#include "Watchlist.h"
 
 
 class Parthenos : public BorderlessWindow<Parthenos>
@@ -16,12 +17,11 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	std::vector<AppItem*>	m_allItems;
 	TitleBar				*m_titleBar;
 	Chart					*m_chart;
-	MouseTrackEvents		m_mouseTrack;
-	FileIO					m_histFile;
+	Watchlist				*m_watchlist;
 
-	// Resource management.
+	// Resource management
+	MouseTrackEvents		m_mouseTrack;
 	D2Objects				m_d2;
-	//D2D1_POINT_2F			ptMouseStart;
 
 	// Data memebers
 	float m_leftPanelWidth = 350.0f; // in DIPs

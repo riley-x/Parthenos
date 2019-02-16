@@ -11,8 +11,9 @@ class Chart;
 class TextBox : public AppItem
 {
 public:
-	TextBox(HWND hwnd, D2Objects const & d2, AppItem *chart) :
-		AppItem(hwnd, d2), m_parent(chart) {};
+	TextBox(HWND hwnd, D2Objects const & d2, AppItem *chart, 
+		D2Objects::Formats format = D2Objects::Consolas12) :
+		AppItem(hwnd, d2), m_parent(chart), m_format(format) {};
 	~TextBox();
 	
 	void Paint(D2D1_RECT_F updateRect);
@@ -48,6 +49,7 @@ private:
 	// paramters
 	float				m_leftOffset = 2.0f;
 	size_t				m_maxChars = 9;
+	D2Objects::Formats	m_format;
 
 	// data
 	AppItem				*m_parent;

@@ -175,6 +175,7 @@
     <ClInclude Include="TextBox.h" />
     <ClInclude Include="TitleBar.h" />
     <ClInclude Include="utilities.h" />
+    <ClInclude Include="Watchlist.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Button.cpp" />
@@ -196,6 +197,7 @@
     <ClCompile Include="TextBox.cpp" />
     <ClCompile Include="TitleBar.cpp" />
     <ClCompile Include="utilities.cpp" />
+    <ClCompile Include="Watchlist.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Parthenos.rc" />

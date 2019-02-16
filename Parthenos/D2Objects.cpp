@@ -36,67 +36,52 @@ HRESULT D2Objects::CreateDeviceIndependentResources()
 			reinterpret_cast<IUnknown **>(&pDWriteFactory)
 		);
 	}
-	// Create text format 10 point
-	if (SUCCEEDED(hr))
+	// Create text formats
+	for (int i = 0; i < nFormats; i++)
 	{
-		hr = pDWriteFactory->CreateTextFormat(
-			L"Consolas",
-			NULL,
-			DWRITE_FONT_WEIGHT_NORMAL,
-			DWRITE_FONT_STYLE_NORMAL,
-			DWRITE_FONT_STRETCH_NORMAL,
-			10.0f, // font size. this can't be changed dynamically?
-			L"", //locale
-			&pTextFormat_10p
-		);
-
-		// Set default alignment
 		if (SUCCEEDED(hr))
 		{
-			pTextFormat_10p->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
-			pTextFormat_10p->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
-		}
-	}
-	// Create text format 14 point
-	if (SUCCEEDED(hr))
-	{
-		hr = pDWriteFactory->CreateTextFormat(
-			L"Calibri",
-			NULL,
-			DWRITE_FONT_WEIGHT_NORMAL,
-			DWRITE_FONT_STYLE_NORMAL,
-			DWRITE_FONT_STRETCH_NORMAL,
-			14.0f, // font size. this can't be changed dynamically?
-			L"", //locale
-			&pTextFormat_14p
-		);
+			IDWriteTextFormat **ppTextFormat = &pTextFormats[i];
+			if (i == Consolas10)
+			{
+				hr = pDWriteFactory->CreateTextFormat(
+					L"Consolas",
+					NULL,
+					DWRITE_FONT_WEIGHT_NORMAL,
+					DWRITE_FONT_STYLE_NORMAL,
+					DWRITE_FONT_STRETCH_NORMAL,
+					10.0f, // font size. this can't be changed dynamically?
+					L"", //locale
+					ppTextFormat
+				);
 
-		// Set default alignment
-		if (SUCCEEDED(hr))
-		{
-			pTextFormat_14p->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
-			pTextFormat_14p->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
-		}
-	}
-	// Create text format 18 point
-	if (SUCCEEDED(hr))
-	{
-		hr = pDWriteFactory->CreateTextFormat(
-			L"Calibri",
-			NULL,
-			DWRITE_FONT_WEIGHT_NORMAL,
-			DWRITE_FONT_STYLE_NORMAL,
-			DWRITE_FONT_STRETCH_NORMAL,
-			18.0f, // font size. this can't be changed dynamically?
-			L"", //locale
-			&pTextFormat_18p
-		);
+				// Set default alignment
+				if (SUCCEEDED(hr))
+				{
+					(*ppTextFormat)->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+					(*ppTextFormat)->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
+				}
+			}
+			else
+			{
+				hr = pDWriteFactory->CreateTextFormat(
+					L"Consolas",
+					NULL,
+					DWRITE_FONT_WEIGHT_NORMAL,
+					DWRITE_FONT_STYLE_NORMAL,
+					DWRITE_FONT_STRETCH_NORMAL,
+					FontSize(static_cast<D2Objects::Formats>(i)),
+					L"", //locale
+					ppTextFormat
+				);
 
-		// Set default alignment
-		if (SUCCEEDED(hr))
-		{
-			pTextFormat_18p->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
-			pTextFormat_18p->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+				// Set default alignment
+				if (SUCCEEDED(hr))
+				{
+					(*ppTextFormat)->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+					(*ppTextFormat)->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+				}
+			}
 		}
 	}
 	// Create WIC factory
@@ -240,9 +225,10 @@ void D2Objects::DiscardDeviceIndependentResources()
 {
 	SafeRelease(&pFactory);
 	SafeRelease(&pDWriteFactory);
-	SafeRelease(&pTextFormat_10p);
-	SafeRelease(&pTextFormat_14p);
-	SafeRelease(&pTextFormat_18p);
+	for (int i = 0; i < nFormats; i++)
+	{
+		SafeRelease(&pTextFormats[i]);
+	}
 	SafeRelease(&pIWICFactory);
 	SafeRelease(&pDashedStyle);
 

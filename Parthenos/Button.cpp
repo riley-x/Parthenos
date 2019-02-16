@@ -49,7 +49,7 @@ void DropMenuButton::SetSize(D2D1_RECT_F dipRect)
 	m_pixRect = DPIScale::DipsToPixels(m_dipRect);
 
 	// text
-	float pad = (m_dipRect.bottom - m_dipRect.top - 14.0f) / 2.0f; // 14pt font
+	float pad = (m_dipRect.bottom - m_dipRect.top - m_menu.m_fontSize) / 2.0f;
 	m_textRect = D2D1::RectF(
 		m_dipRect.left + 2.0f,
 		m_dipRect.top + pad,
@@ -77,11 +77,14 @@ void DropMenuButton::SetSize(D2D1_RECT_F dipRect)
 // owner of button should call paint on popup
 void DropMenuButton::Paint(D2D1_RECT_F updateRect)
 {
-	// border
-	m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
+	// Draw bounding box
+	if (m_active)
+		m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
+	else
+		m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
 	m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 0.5f);
 
-	// text
+	// Text
 	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
 	m_d2.pRenderTarget->DrawTextLayout(
 		D2D1::Point2F(m_textRect.left, m_textRect.top),
@@ -89,7 +92,7 @@ void DropMenuButton::Paint(D2D1_RECT_F updateRect)
 		m_d2.pBrush
 	);
 
-	// arrow icon
+	// Arrow icon
 	if (m_d2.pD2DBitmaps[GetResourceIndex(IDB_DOWNARROWHEAD)])
 	{
 		m_d2.pRenderTarget->DrawBitmap(

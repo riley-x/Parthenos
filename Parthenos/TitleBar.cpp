@@ -35,7 +35,7 @@ void TitleBar::Paint(D2D1_RECT_F updateRect)
 	// when invalidating, converts to pixels then back to DIPs -> updateRect has smaller values
 	// then when invalidated. Add 1 to adjust.
 	if (updateRect.top + 1 > m_dipRect.bottom) return;
-	m_d2.pBrush->SetColor(D2D1::ColorF(0.15f, 0.16f, 0.15f, 1.0f));
+	m_d2.pBrush->SetColor(Colors::TITLE_BACKGROUND);
 	m_d2.pRenderTarget->FillRectangle(m_dipRect, m_d2.pBrush);
 
 	// Paint titlebar icon
@@ -76,15 +76,6 @@ void TitleBar::Paint(D2D1_RECT_F updateRect)
 			);
 	}
 	m_d2.pRenderTarget->SetDpi(0, 0); // restore DIPs
-
-	//D2D1_SIZE_U size = d2.pD2DBitmaps[0]->GetPixelSize();
-	//OutputMessage(L"%u %u\n\n", size.width, size.height);
-
-	//GetClientRect(m_hwnd, &clientRect);
-	//OutputMessage(L"Titlebar Rect: %ld %ld\n", clientRect.right, clientRect.bottom);
-
-	//D2D1_SIZE_F size = d2.pRenderTarget->GetSize();
-	//OutputMessage(L"Render Target: %3.1f %3.1f\n\n\n", size.width, size.height);
 }
 
 

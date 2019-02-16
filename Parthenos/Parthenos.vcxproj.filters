@@ -81,6 +81,9 @@
     <ClInclude Include="PopupMenu.h">
       <Filter>Header Files\AppItems</Filter>
     </ClInclude>
+    <ClInclude Include="Watchlist.h">
+      <Filter>Header Files\AppItems</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -124,6 +127,9 @@
     </ClCompile>
     <ClCompile Include="PopupMenu.cpp">
       <Filter>Source Files\AppItems</Filter>
+    </ClCompile>
+    <ClCompile Include="Watchlist.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

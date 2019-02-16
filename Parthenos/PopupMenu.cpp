@@ -24,7 +24,7 @@ void PopupMenu::Paint(D2D1_RECT_F updateRect)
 	
 	m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
 	m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 0.5f);
-	m_d2.pBrush->SetColor(Colors::MAIN_BACKGROUND);
+	m_d2.pBrush->SetColor(Colors::MENU_BACKGROUND);
 	m_d2.pRenderTarget->FillRectangle(m_dipRect, m_d2.pBrush);
 	
 	if (m_highlight >= 0)
@@ -32,9 +32,9 @@ void PopupMenu::Paint(D2D1_RECT_F updateRect)
 		m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
 		m_d2.pRenderTarget->FillRectangle(D2D1::RectF(
 			m_dipRect.left,
-			m_dipRect.top + m_highlight * (m_fontSize + m_vPad),
+			m_dipRect.top + getTop(m_highlight),
 			m_dipRect.right,
-			m_dipRect.top + (m_highlight + 1) * (m_fontSize + m_vPad)
+			m_dipRect.top + getTop(m_highlight + 1)
 		), m_d2.pBrush);
 	}
 
@@ -42,7 +42,7 @@ void PopupMenu::Paint(D2D1_RECT_F updateRect)
 	for (size_t i = 0; i < m_pTextLayouts.size(); i++)
 	{
 		m_d2.pRenderTarget->DrawTextLayout(
-			D2D1::Point2F(m_dipRect.left + 1.0f, m_dipRect.top + i * (m_fontSize + m_vPad)),
+			D2D1::Point2F(m_dipRect.left + 1.0f, m_dipRect.top + getTop(i) + m_vPad),
 			m_pTextLayouts[i],
 			m_d2.pBrush
 		);
@@ -53,7 +53,7 @@ void PopupMenu::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
 {
 	if (inRect(cursor, m_dipRect))
 	{
-		m_highlight = static_cast<int>((cursor.y - m_dipRect.top) / (m_fontSize + m_vPad));
+		m_highlight = getInd(cursor.y - m_dipRect.top);
 		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 	}
 	else if (m_highlight >= 0)
@@ -71,7 +71,7 @@ bool PopupMenu::OnLButtonDown(D2D1_POINT_2F cursor, int & selection, std::wstrin
 
 	if (inRect(cursor, m_dipRect))
 	{
-		selection = static_cast<int>((cursor.y - m_dipRect.top) / (m_fontSize + m_vPad));
+		selection = getInd(cursor.y - m_dipRect.top);
 		str = m_items[selection];
 		return true;
 	}
@@ -101,19 +101,22 @@ void PopupMenu::SetItems(std::vector<std::wstring> const & items)
 		if (item.size() > max_size) max_size = item.size();
 	}
 
-	m_width = max(50.0f, 50.0f * ceil(max_size * 18.0f / 50.0f));
-	m_height = items.size() * (m_fontSize + m_vPad);
+	m_width = max(50.0f, 50.0f * ceil(max_size * (4.0f + m_fontSize) / 50.0f));
+	m_height = getTop(items.size());
 
 	for (size_t i = 0; i < items.size(); i++)
 	{
 		HRESULT hr = m_d2.pDWriteFactory->CreateTextLayout(
 			items[i].c_str(),		// The string to be laid out and formatted.
 			items[i].size(),		// The length of the string.
-			m_d2.pTextFormat_14p,   // The text format to apply to the string (contains font information, etc).
+			m_d2.pTextFormats[m_format],   // The text format to apply to the string (contains font information, etc).
 			m_width,				// The width of the layout box.
-			14.0f,					// The height of the layout box.
+			m_fontSize,					// The height of the layout box.
 			&m_pTextLayouts[i]		// The IDWriteTextLayout interface pointer.
 		);
 		if (FAILED(hr)) Error(L"CreateTextLayout failed");
 	}
 }
+
+
+

@@ -2,6 +2,53 @@
 #include "stdafx.h"
 #include "resource.h"
 
+
+class D2Objects {
+public:
+	HWND					hwndParent				= NULL;
+
+	////////////////////////////////////////////////////////
+	// Data
+
+	// Direct Write
+	static const int nFormats = 4;
+	enum Formats { Consolas10, Consolas12, Consolas14, Consolas18 };
+
+	// WIC
+	static const int nIcons = 9;
+	int resource_ids[nIcons] = { IDB_CLOSE, IDB_MAXIMIZE, IDB_MINIMIZE, IDB_RESTORE, IDB_PARTHENOS_WHITE,
+		IDB_CANDLESTICK, IDB_LINE, IDB_ENVELOPE, IDB_DOWNARROWHEAD };
+
+	////////////////////////////////////////////////////////
+	// Pointers
+
+	// Rendering 
+	ID2D1Factory            *pFactory				= NULL;
+	ID2D1HwndRenderTarget   *pRenderTarget			= NULL;
+	ID2D1SolidColorBrush    *pBrush					= NULL;
+	ID2D1StrokeStyle		*pDashedStyle			= NULL;
+
+	// Direct Write pointers
+	IDWriteFactory          *pDWriteFactory			= NULL;
+	IDWriteTextFormat		*pTextFormats[nFormats] = {};
+
+	// WIC pointers
+	IWICImagingFactory      *pIWICFactory						= NULL;
+	IWICFormatConverter		*pConvertedSourceBitmaps[nIcons]	= {}; 
+	ID2D1Bitmap				*pD2DBitmaps[nIcons]				= {};
+	
+	////////////////////////////////////////////////////////
+	// Functions
+
+	HRESULT CreateDeviceIndependentResources();
+	HRESULT LoadResourcePNG(int resource, IWICFormatConverter * pConvertedSourceBitmap);
+	HRESULT	CreateGraphicsResources(HWND hwnd);
+	void	DiscardDeviceIndependentResources();
+	void	DiscardGraphicsResources();
+
+};
+
+
 inline int GetResourceIndex(int resource)
 {
 	switch (resource)
@@ -29,45 +76,20 @@ inline int GetResourceIndex(int resource)
 	}
 }
 
-class D2Objects {
-public:
-	HWND					hwndParent				= NULL;
-
-	////////////////////////////////////////////////////////
-	// Data
-
-	// WIC
-	static const int nIcons = 9;
-	int resource_ids[nIcons] = { IDB_CLOSE, IDB_MAXIMIZE, IDB_MINIMIZE, IDB_RESTORE, IDB_PARTHENOS_WHITE,
-		IDB_CANDLESTICK, IDB_LINE, IDB_ENVELOPE, IDB_DOWNARROWHEAD };
-
-	////////////////////////////////////////////////////////
-	// Pointers
-
-	// Rendering 
-	ID2D1Factory            *pFactory				= NULL;
-	ID2D1HwndRenderTarget   *pRenderTarget			= NULL;
-	ID2D1SolidColorBrush    *pBrush					= NULL;
-	ID2D1StrokeStyle		*pDashedStyle			= NULL;
-
-	// Direct Write pointers
-	IDWriteFactory          *pDWriteFactory			= NULL;
-	IDWriteTextFormat		*pTextFormat_10p		= NULL; // 10 point (DIPs)
-	IDWriteTextFormat		*pTextFormat_14p		= NULL; // 14 point (DIPs)
-	IDWriteTextFormat		*pTextFormat_18p		= NULL; // 18 point (DIPs)
-
-	// WIC pointers
-	IWICImagingFactory      *pIWICFactory						= NULL;
-	IWICFormatConverter		*pConvertedSourceBitmaps[nIcons]	= {}; 
-	ID2D1Bitmap				*pD2DBitmaps[nIcons]				= {};
-	
-	////////////////////////////////////////////////////////
-	// Functions
-
-	HRESULT CreateDeviceIndependentResources();
-	HRESULT LoadResourcePNG(int resource, IWICFormatConverter * pConvertedSourceBitmap);
-	HRESULT	CreateGraphicsResources(HWND hwnd);
-	void	DiscardDeviceIndependentResources();
-	void	DiscardGraphicsResources();
-
-};
+inline float FontSize(D2Objects::Formats font)
+{
+	switch (font)
+	{
+	case D2Objects::Consolas10:
+		return 10.0f;
+	case D2Objects::Consolas12:
+		return 12.0f;
+	case D2Objects::Consolas14:
+		return 14.0f;
+	case D2Objects::Consolas18:
+		return 18.0f;
+	default:
+		OutputDebugString(L"FontSize font not recognized\n");
+		return 0.0f;
+	}
+}

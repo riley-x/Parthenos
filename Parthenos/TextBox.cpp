@@ -21,6 +21,8 @@ void TextBox::Paint(D2D1_RECT_F updateRect)
 		), m_d2.pBrush);
 	}
 
+
+	// Text
 	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
 	m_d2.pRenderTarget->DrawTextLayout(
 		D2D1::Point2F(m_dipRect.left + m_leftOffset, m_dipRect.top),
@@ -353,7 +355,7 @@ void TextBox::CreateTextLayout()
 	HRESULT hr = m_d2.pDWriteFactory->CreateTextLayout(
 		str.c_str(),			// The string to be laid out and formatted.
 		str.size(),				// The length of the string.
-		m_d2.pTextFormat_18p,   // The text format to apply to the string (contains font information, etc).
+		m_d2.pTextFormats[m_format],   // The text format to apply to the string (contains font information, etc).
 		Chart::m_tickerBoxWidth - 2 * m_leftOffset, // The width of the layout box.
 		Chart::m_commandSize,   // The height of the layout box.
 		&m_pTextLayout			// The IDWriteTextLayout interface pointer.

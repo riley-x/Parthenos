@@ -164,6 +164,8 @@ void Parthenos::PreShow()
 	{
 		if (item == m_chart)
 			m_chart->Init(m_leftPanelWidth);
+		else if (item == m_watchlist)
+			m_watchlist->Init(m_leftPanelWidth);
 		else
 			item->Init();
 		item->Resize(rc, dipRect);
@@ -178,11 +180,14 @@ LRESULT Parthenos::OnCreate()
 	m_d2.hwndParent = m_hwnd;
 	m_titleBar = new TitleBar(m_hwnd, m_d2);
 	m_chart = new Chart(m_hwnd, m_d2);
+	m_watchlist = new Watchlist(m_hwnd, m_d2);
 
 	m_allItems.push_back(m_titleBar);
 	m_allItems.push_back(m_chart);
+	m_allItems.push_back(m_watchlist);
 	m_activeItems.push_back(m_titleBar);
 	m_activeItems.push_back(m_chart);
+	m_activeItems.push_back(m_watchlist);
 
 	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 
@@ -266,10 +271,13 @@ LRESULT Parthenos::OnSize(WPARAM wParam)
 		GetClientRect(m_hwnd, &rc);
 
 		D2D1_SIZE_U size = D2D1::SizeU(rc.right, rc.bottom);
-		D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
 		m_d2.pRenderTarget->Resize(size);
-		m_titleBar->Resize(rc, dipRect);
-		m_chart->Resize(rc, dipRect);
+
+		D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
+		for (auto item : m_activeItems)
+		{
+			item->Resize(rc, dipRect);
+		}
 
 		InvalidateRect(m_hwnd, NULL, FALSE);
 	}
