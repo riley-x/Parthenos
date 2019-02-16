@@ -12,6 +12,7 @@ public:
 	bool OnLButtonDown(D2D1_POINT_2F cursor);
 	void OnLButtonUp(D2D1_POINT_2F cursor) { return; }
 	virtual void SetClickRect(D2D1_RECT_F rect) { return; }
+	virtual D2D1_RECT_F GetClickRect() { return D2D1::RectF(0,0,0,0); }
 
 	std::wstring m_name;
 protected:
@@ -26,6 +27,8 @@ public:
 	bool OnLButtonDown(D2D1_POINT_2F cursor);
 	inline void SetIcon(size_t i) { m_iBitmap = i; } // index into d2.pD2DBitmaps
 	inline void SetClickRect(D2D1_RECT_F rect) { m_clickRect = rect; }
+	inline D2D1_RECT_F GetClickRect() { return m_clickRect; }
+
 private:
 	int m_iBitmap = -1;
 	D2D1_RECT_F m_clickRect; // include padding
@@ -88,6 +91,15 @@ public:
 		if (m_active >= 0)
 		{
 			rect = m_buttons[m_active]->GetDIPRect();
+			return true;
+		}
+		else return false;
+	}
+	inline bool GetActiveClickRect(D2D1_RECT_F & rect) const
+	{
+		if (m_active >= 0)
+		{
+			rect = m_buttons[m_active]->GetClickRect();
 			return true;
 		}
 		else return false;

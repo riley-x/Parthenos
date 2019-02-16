@@ -21,7 +21,6 @@ void TextBox::Paint(D2D1_RECT_F updateRect)
 		), m_d2.pBrush);
 	}
 
-
 	// Text
 	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
 	m_d2.pRenderTarget->DrawTextLayout(

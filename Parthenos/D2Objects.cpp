@@ -42,10 +42,10 @@ HRESULT D2Objects::CreateDeviceIndependentResources()
 		if (SUCCEEDED(hr))
 		{
 			IDWriteTextFormat **ppTextFormat = &pTextFormats[i];
-			if (i == Consolas10)
+			if (i == Segoe10)
 			{
 				hr = pDWriteFactory->CreateTextFormat(
-					L"Consolas",
+					L"Segoe UI",
 					NULL,
 					DWRITE_FONT_WEIGHT_NORMAL,
 					DWRITE_FONT_STYLE_NORMAL,
@@ -65,7 +65,7 @@ HRESULT D2Objects::CreateDeviceIndependentResources()
 			else
 			{
 				hr = pDWriteFactory->CreateTextFormat(
-					L"Consolas",
+					L"Segoe UI",
 					NULL,
 					DWRITE_FONT_WEIGHT_NORMAL,
 					DWRITE_FONT_STYLE_NORMAL,

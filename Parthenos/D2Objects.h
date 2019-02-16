@@ -12,7 +12,7 @@ public:
 
 	// Direct Write
 	static const int nFormats = 4;
-	enum Formats { Consolas10, Consolas12, Consolas14, Consolas18 };
+	enum Formats { Segoe10, Segoe12, Segoe14, Segoe18 };
 
 	// WIC
 	static const int nIcons = 9;
@@ -80,13 +80,13 @@ inline float FontSize(D2Objects::Formats font)
 {
 	switch (font)
 	{
-	case D2Objects::Consolas10:
+	case D2Objects::Segoe10:
 		return 10.0f;
-	case D2Objects::Consolas12:
+	case D2Objects::Segoe12:
 		return 12.0f;
-	case D2Objects::Consolas14:
+	case D2Objects::Segoe14:
 		return 14.0f;
-	case D2Objects::Consolas18:
+	case D2Objects::Segoe18:
 		return 18.0f;
 	default:
 		OutputDebugString(L"FontSize font not recognized\n");

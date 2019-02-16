@@ -133,6 +133,12 @@ class DPIScale
 	static float dpiX;
 	static float dpiY;
 
+	// Half / full pixel in DIPs
+	static float halfPX;
+	static float halfPY;
+	static float fullPX;
+	static float fullPY;
+
 public:
 
 	static inline void Initialize(ID2D1Factory *pFactory)
@@ -140,6 +146,11 @@ public:
 		pFactory->GetDesktopDpi(&dpiX, &dpiY);
 		scaleX = dpiX / 96.0f;
 		scaleY = dpiY / 96.0f;
+
+		halfPX = PixelsToDipsX(0.5);
+		halfPY = PixelsToDipsY(0.5);
+		fullPX = PixelsToDipsX(1);
+		fullPY = PixelsToDipsY(1);
 	}
 
 	static inline D2D1_POINT_2F PixelsToDips(POINT p)
@@ -193,8 +204,18 @@ public:
 
 	static inline float SnapToPixelX(float x)
 	{
-		return (floor(x * scaleX + 0.5f) - 0.5f) / scaleX; // pixels seem to be aligned to 0.5 boundaries...
+		return round(x * scaleX) / scaleX; // when drawing lines, align to 0.5 boundaries
 	}
+
+	static inline float SnapToPixelY(float y)
+	{
+		return round(y * scaleY) / scaleY;
+	}
+
+	static inline float hpx() { return halfPX; }
+	static inline float hpy() { return halfPY; }
+	static inline float px() { return fullPX; }
+	static inline float py() { return fullPY; }
 };
 
 ///////////////////////////////////////////////////////////

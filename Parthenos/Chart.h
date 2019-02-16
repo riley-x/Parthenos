@@ -34,7 +34,7 @@ public:
 private:
 
 	// extra parameters
-	float				m_menuHeight	= 25.0f;
+	float				m_menuHeight	= 26.0f;
 	float				m_commandHPad	= 5.0f;
 
 	// state

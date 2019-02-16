@@ -11,7 +11,7 @@ float const Chart::m_tickerBoxWidth = 100.0f;
 float const Chart::m_timeframeWidth = 60.0f;
 
 Chart::Chart(HWND hwnd, D2Objects const & d2)
-	: AppItem(hwnd, d2), m_axes(hwnd, d2), m_tickerBox(hwnd, d2, this, D2Objects::Consolas18), 
+	: AppItem(hwnd, d2), m_axes(hwnd, d2), m_tickerBox(hwnd, d2, this, D2Objects::Segoe18), 
 	m_chartTypeButtons(hwnd, d2), m_timeframeButton(hwnd, d2, this)
 {
 	auto temp = new IconButton(hwnd, d2);
@@ -40,14 +40,15 @@ Chart::~Chart()
 // and fixed menu height
 void Chart::Init(float leftOffset)
 {
-	m_dipRect.left = leftOffset; 
-	m_dipRect.top  = TitleBar::height;
+	m_dipRect.left = DPIScale::SnapToPixelX(leftOffset); 
+	m_dipRect.top  = DPIScale::SnapToPixelY(TitleBar::height);
+
 	m_pixRect.left = DPIScale::DipsToPixelsX(m_dipRect.left);
 	m_pixRect.top = DPIScale::DipsToPixelsY(m_dipRect.top);
+
 	m_menuRect.left = m_dipRect.left;
 	m_menuRect.top = m_dipRect.top;
-	m_menuRect.bottom = m_menuRect.top + m_menuHeight;
-
+	m_menuRect.bottom = DPIScale::SnapToPixelY(m_menuRect.top + m_menuHeight);
 
 	// Ticker box
 	float top = m_dipRect.top + (m_menuHeight - m_commandSize) / 2.0f;
@@ -72,7 +73,7 @@ void Chart::Init(float leftOffset)
 	left += m_timeframeWidth + m_commandHPad;
 
 	// Division
-	m_divisions.push_back(DPIScale::SnapToPixelX(left + m_commandHPad));
+	m_divisions.push_back(DPIScale::SnapToPixelX(left + m_commandHPad) + DPIScale::hpx());
 	left += 3 * m_commandHPad;
 
 	// Main chart type buttons
@@ -94,7 +95,7 @@ void Chart::Init(float leftOffset)
 	}
 
 	// Divison
-	m_divisions.push_back(DPIScale::SnapToPixelX(left + m_commandHPad));
+	m_divisions.push_back(DPIScale::SnapToPixelX(left + m_commandHPad) + DPIScale::hpx());
 	left += 3 * m_commandHPad;
 }
 
@@ -118,12 +119,8 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 		// Chart type button highlight
 		m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
 		D2D1_RECT_F iconRect;
-		if (m_chartTypeButtons.GetActiveRect(iconRect))
+		if (m_chartTypeButtons.GetActiveClickRect(iconRect))
 		{
-			iconRect.left -= m_commandHPad / 2.0f;
-			iconRect.top = m_menuRect.top;
-			iconRect.right += m_commandHPad / 2.0f;
-			iconRect.bottom = m_menuRect.bottom - 1.0f;
 			m_d2.pRenderTarget->FillRectangle(iconRect, m_d2.pBrush);
 		}
 
@@ -131,7 +128,7 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 		m_chartTypeButtons.Paint(updateRect);
 
 		// Menu division lines
-		m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
+		m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
 		for (float x : m_divisions)
 		{
 			m_d2.pRenderTarget->DrawLine(
@@ -142,10 +139,10 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 			);
 		}
 		m_d2.pRenderTarget->DrawLine(
-			D2D1::Point2F(m_menuRect.left, m_menuRect.bottom),
-			D2D1::Point2F(m_menuRect.right, m_menuRect.bottom),
+			D2D1::Point2F(m_menuRect.left, m_menuRect.bottom - DPIScale::hpy()),
+			D2D1::Point2F(m_menuRect.right, m_menuRect.bottom - DPIScale::hpy()),
 			m_d2.pBrush,
-			0.5f
+			DPIScale::PixelsToDipsY(1)
 		);
 	}
 
@@ -168,7 +165,7 @@ void Chart::Resize(RECT pRect, D2D1_RECT_F pDipRect)
 
 	m_axes.SetSize(D2D1::RectF(
 		m_dipRect.left, 
-		m_dipRect.top + m_menuHeight, 
+		m_menuRect.bottom, 
 		m_dipRect.right, 
 		m_dipRect.bottom
 	));

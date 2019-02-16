@@ -170,6 +170,7 @@ void Parthenos::PreShow()
 			item->Init();
 		item->Resize(rc, dipRect);
 	}
+	m_watchlist->Load(std::vector<std::wstring>(), std::vector<Column>());
 	m_chart->Load(L"AAPL");
 }
 

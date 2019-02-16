@@ -42,7 +42,7 @@ void PopupMenu::Paint(D2D1_RECT_F updateRect)
 	for (size_t i = 0; i < m_pTextLayouts.size(); i++)
 	{
 		m_d2.pRenderTarget->DrawTextLayout(
-			D2D1::Point2F(m_dipRect.left + 1.0f, m_dipRect.top + getTop(i) + m_vPad),
+			D2D1::Point2F(m_dipRect.left + 4.0f, m_dipRect.top + getTop(i) + m_vPad),
 			m_pTextLayouts[i],
 			m_d2.pBrush
 		);
@@ -51,6 +51,7 @@ void PopupMenu::Paint(D2D1_RECT_F updateRect)
 
 void PopupMenu::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
 {
+	if (!m_active) return;
 	if (inRect(cursor, m_dipRect))
 	{
 		m_highlight = getInd(cursor.y - m_dipRect.top);

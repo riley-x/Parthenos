@@ -12,7 +12,7 @@ class TextBox : public AppItem
 {
 public:
 	TextBox(HWND hwnd, D2Objects const & d2, AppItem *chart, 
-		D2Objects::Formats format = D2Objects::Consolas12) :
+		D2Objects::Formats format = D2Objects::Segoe12) :
 		AppItem(hwnd, d2), m_parent(chart), m_format(format) {};
 	~TextBox();
 	

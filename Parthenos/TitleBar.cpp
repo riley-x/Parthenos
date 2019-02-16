@@ -12,7 +12,7 @@ void TitleBar::Init()
 {
 	m_dipRect.left = 0;
 	m_dipRect.top = 0;
-	m_dipRect.bottom = height;
+	m_dipRect.bottom = DPIScale::SnapToPixelY(height);
 
 	m_pixRect.left = 0;
 	m_pixRect.top = 0;

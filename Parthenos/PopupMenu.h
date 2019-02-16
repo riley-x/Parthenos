@@ -20,6 +20,7 @@ public:
 
 	float const m_vPad = 3.0f;
 	float const m_fontSize = 12.0f;
+	D2Objects::Formats const m_format = D2Objects::Segoe12;
 private:
 	// Data
 	std::vector<std::wstring> m_items;
@@ -30,7 +31,6 @@ private:
 	int m_highlight = -1;
 	float m_width;
 	float m_height;
-	D2Objects::Formats const m_format = D2Objects::Consolas12;
 
 	// Helpers
 

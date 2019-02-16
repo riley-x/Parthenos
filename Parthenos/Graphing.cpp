@@ -101,7 +101,7 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 		m_d2.pRenderTarget->DrawText(
 			label.c_str(),
 			label.size(),
-			m_d2.pTextFormats[D2Objects::Consolas10],
+			m_d2.pTextFormats[D2Objects::Segoe10],
 			D2D1::RectF(loc, 
 				m_axesRect.bottom + m_labelPad, 
 				loc + 4.0f * m_labelHeight, 
@@ -117,7 +117,7 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 		m_d2.pRenderTarget->DrawText(
 			label.c_str(),
 			label.size(),
-			m_d2.pTextFormats[D2Objects::Consolas10],
+			m_d2.pTextFormats[D2Objects::Segoe10],
 			D2D1::RectF(m_axesRect.right + m_labelPad,
 				loc - m_labelHeight/2.0f,
 				m_dipRect.right,
