@@ -30,7 +30,8 @@ public:
 	void ReceiveMessage(std::wstring msg, int i);
 
 	static const float	m_commandSize;
-	static const float	m_labelBoxWidth;
+	static const float	m_tickerBoxWidth;
+	static const float	m_timeframeWidth;
 private:
 
 	// extra parameters
@@ -54,10 +55,12 @@ private:
 	// child objects
 	Axes				m_axes;
 	TextBox				m_tickerBox;
-	ButtonGroup			m_iconButtons;
+	ButtonGroup			m_chartTypeButtons;
+	DropMenuButton		m_timeframeButton;
 
 	// drawing
 	D2D1_RECT_F			m_menuRect;
+	std::vector<float>	m_divisions;
 
 	// helper functions
 	void DrawMainChart(MainChartType type, Timeframe timeframe);

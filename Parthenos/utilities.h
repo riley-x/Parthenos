@@ -63,6 +63,13 @@ inline bool inRect(D2D1_POINT_2F cursor, D2D1_RECT_F rect)
 		cursor.y <= rect.bottom;
 }
 
+// Sees if x overlaps m horizontally, erring on returning false. 
+// Assumes x is a rect created from InvalidateRect, in which case its values err on the small side. 
+inline bool overlapHRect(D2D1_RECT_F x, D2D1_RECT_F m)
+{
+	return x.right > m.left && x.left <= m.right;
+}
+
 template <class T> void SafeRelease(T **ppT)
 {
 	if (*ppT)
@@ -162,7 +169,10 @@ public:
 		return static_cast<int>(static_cast<float>(y) * scaleY);
 	}
 
-
+	static inline float SnapToPixelX(float x)
+	{
+		return (floor(x * scaleX + 0.5f) - 0.5f) / scaleX; // pixels seem to be aligned to 0.5 boundaries...
+	}
 };
 
 ///////////////////////////////////////////////////////////

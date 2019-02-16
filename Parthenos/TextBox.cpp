@@ -341,7 +341,7 @@ void TextBox::CreateTextLayout()
 		str.c_str(),			// The string to be laid out and formatted.
 		str.size(),				// The length of the string.
 		m_d2.pTextFormat_18p,   // The text format to apply to the string (contains font information, etc).
-		Chart::m_labelBoxWidth - 2 * m_leftOffset, // The width of the layout box.
+		Chart::m_tickerBoxWidth - 2 * m_leftOffset, // The width of the layout box.
 		Chart::m_commandSize,   // The height of the layout box.
 		&m_pTextLayout			// The IDWriteTextLayout interface pointer.
 	);

@@ -7,27 +7,32 @@
 #include <algorithm>
 
 float const Chart::m_commandSize = 20.0f;
-float const Chart::m_labelBoxWidth = 100.0f;
+float const Chart::m_tickerBoxWidth = 100.0f;
+float const Chart::m_timeframeWidth = 50.0f;
 
 Chart::Chart(HWND hwnd, D2Objects const & d2)
-	: AppItem(hwnd, d2), m_axes(hwnd, d2), m_tickerBox(hwnd, d2, this), m_iconButtons(hwnd, d2)
+	: AppItem(hwnd, d2), m_axes(hwnd, d2), m_tickerBox(hwnd, d2, this), m_chartTypeButtons(hwnd, d2),
+	m_timeframeButton(hwnd, d2, this)
 {
 	auto temp = new IconButton(hwnd, d2);
 	temp->m_name = L"Candlestick";
 	temp->SetIcon(GetResourceIndex(IDB_CANDLESTICK));
-	m_iconButtons.Add(temp);
+	m_chartTypeButtons.Add(temp);
 	
 	temp = new IconButton(hwnd, d2);
 	temp->m_name = L"Line";
 	temp->SetIcon(GetResourceIndex(IDB_LINE));
-	m_iconButtons.Add(temp);
+	m_chartTypeButtons.Add(temp);
 
 	temp = new IconButton(hwnd, d2);
 	temp->m_name = L"Envelope";
 	temp->SetIcon(GetResourceIndex(IDB_ENVELOPE));
-	m_iconButtons.Add(temp);
+	m_chartTypeButtons.Add(temp);
 
-	m_iconButtons.SetActive(0);
+	m_chartTypeButtons.SetActive(0);
+
+	//m_timeframeButton.SetItems();
+	//m_timeframeButton.SetActive();
 }
 
 Chart::~Chart()
@@ -46,29 +51,49 @@ void Chart::Init(float leftOffset)
 	m_menuRect.bottom = m_menuRect.top + m_menuHeight;
 
 	float top = m_dipRect.top + (m_menuHeight - m_commandSize) / 2.0f;
+	float left = m_dipRect.left + m_commandHPad;
 	m_tickerBox.SetSize(D2D1::RectF(
-		m_dipRect.left + m_commandHPad,
+		left,
 		top,
-		m_dipRect.left + m_commandHPad + m_labelBoxWidth,
+		left + m_tickerBoxWidth,
 		top + m_commandSize
 	));
+	left += m_tickerBoxWidth + m_commandHPad;
 
-	for (size_t i = 0; i < m_iconButtons.Size(); i++)
+	// Timeframe drop menu
+	m_timeframeButton.SetSize(D2D1::RectF(
+		left,
+		top,
+		left + m_timeframeWidth,
+		top + m_commandSize
+	));
+	left += m_timeframeWidth + m_commandHPad;
+
+	// Division
+	m_divisions.push_back(DPIScale::SnapToPixelX(left + m_commandHPad));
+	left += 3 * m_commandHPad;
+
+	// Main chart type buttons
+	for (size_t i = 0; i < m_chartTypeButtons.Size(); i++)
 	{
-		float left = m_dipRect.left + m_labelBoxWidth + m_commandHPad * (i + 2) + m_commandSize * i;
-		m_iconButtons.SetSize(i, D2D1::RectF(
+		m_chartTypeButtons.SetSize(i, D2D1::RectF(
 			left,
 			top,
 			left + m_commandSize,
 			top + m_commandSize
 		));
-		m_iconButtons.SetClickRect(i, D2D1::RectF(
+		m_chartTypeButtons.SetClickRect(i, D2D1::RectF(
 			left - m_commandHPad / 2.0f,
 			m_menuRect.top,
 			left + m_commandSize + m_commandHPad / 2.0f,
 			m_menuRect.bottom
 		));
+		left += m_commandSize + m_commandHPad;
 	}
+
+	// Divison
+	m_divisions.push_back(DPIScale::SnapToPixelX(left + m_commandHPad));
+	left += 3 * m_commandHPad;
 }
 
 void Chart::Load(std::wstring ticker, int range)
@@ -96,17 +121,25 @@ void Chart::Load(std::wstring ticker, int range)
 
 void Chart::Paint(D2D1_RECT_F updateRect)
 {
-	// when invalidating, converts to pixels then back to DIPs -> updateRect has smaller values
+	// When invalidating, converts to pixels then back to DIPs -> updateRect has smaller values
 	// than when invalidated.
 	if (updateRect.bottom <= m_dipRect.top || updateRect.right <= m_dipRect.left) return;
 
-
+	// Background of menu
 	m_d2.pBrush->SetColor(Colors::MENU_BACKGROUND);
 	m_d2.pRenderTarget->FillRectangle(m_menuRect, m_d2.pBrush);
 
+	// Ticker box
+	m_tickerBox.Paint(updateRect);
+
+	// Timeframe menu
+	m_timeframeButton.Paint(updateRect);
+
+
+	// Chart type button highlight
 	m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
 	D2D1_RECT_F iconRect;
-	if (m_iconButtons.GetActiveRect(iconRect))
+	if (m_chartTypeButtons.GetActiveRect(iconRect))
 	{
 		iconRect.left -= m_commandHPad / 2.0f;
 		iconRect.top = m_menuRect.top;
@@ -114,11 +147,20 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 		iconRect.bottom = m_menuRect.bottom - 1.0f;
 		m_d2.pRenderTarget->FillRectangle(iconRect, m_d2.pBrush);
 	}
+	// Chart type buttons
+	m_chartTypeButtons.Paint(updateRect);
 
-	m_tickerBox.Paint(updateRect);
-	m_iconButtons.Paint(updateRect);
-
+	// Menu division lines
 	m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
+	for (float x : m_divisions)
+	{
+		m_d2.pRenderTarget->DrawLine(
+			D2D1::Point2F(x, m_menuRect.top),
+			D2D1::Point2F(x, m_menuRect.bottom),
+			m_d2.pBrush,
+			DPIScale::PixelsToDipsX(1)
+		);
+	}
 	m_d2.pRenderTarget->DrawLine(
 		D2D1::Point2F(m_menuRect.left, m_menuRect.bottom),
 		D2D1::Point2F(m_menuRect.right, m_menuRect.bottom),
@@ -126,10 +168,8 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 		0.5f
 	);
 
+	// Axes
 	if (updateRect.bottom <= m_axes.GetDIPRect().top) return;
-	
-	m_d2.pBrush->SetColor(D2D1::ColorF(0.8f, 0.0f, 0.0f, 1.0f));
-	m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 1.0, NULL);
 	m_axes.Paint(updateRect);
 
 }
@@ -152,30 +192,19 @@ void Chart::Resize(RECT pRect, D2D1_RECT_F pDipRect)
 
 void Chart::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
 {
-	if (!inRect(cursor, m_dipRect))
-	{
-		return;
-	}
-
-	if (cursor.y < m_axes.GetDIPRect().top)
-	{
-		m_tickerBox.OnMouseMove(cursor, wParam);
-		// don't need to pass to buttons
-	}
-	else
-	{
-		// todo pass to axes
-	}
+	m_tickerBox.OnMouseMove(cursor, wParam);
+	m_timeframeButton.OnMouseMove(cursor, wParam);
 }
 
 bool Chart::OnLButtonDown(D2D1_POINT_2F cursor)
 {
-	if (m_tickerBox.OnLButtonDown(cursor)) return true;
+	m_tickerBox.OnLButtonDown(cursor);
+	m_timeframeButton.OnLButtonDown(cursor);
 
 	if (inRect(cursor, m_menuRect))
 	{
 		std::wstring name;
-		if (m_iconButtons.OnLButtonDown(cursor, name))
+		if (m_chartTypeButtons.OnLButtonDown(cursor, name))
 		{
 			if (name == L"Candlestick")
 				DrawMainChart(MainChartType::candlestick, m_currentTimeframe);
@@ -197,17 +226,7 @@ void Chart::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)
 
 void Chart::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 {
-	if (!inRect(cursor, m_dipRect)) return;
-
-	if (cursor.y < m_menuRect.bottom)
-	{
-		m_tickerBox.OnLButtonUp(cursor, wParam);
-	}
-	else
-	{
-		// todo?
-	}
-
+	m_tickerBox.OnLButtonUp(cursor, wParam);
 }
 
 bool Chart::OnChar(wchar_t c, LPARAM lParam)
@@ -243,6 +262,7 @@ void Chart::DrawMainChart(MainChartType type, Timeframe timeframe)
 	if (type == MainChartType::none) type = MainChartType::candlestick;
 	m_currentTimeframe = timeframe;
 	m_currentMChart = type;
+	m_tickerBox.SetText(m_ticker);
 
 	OHLC *data;
 	int n = FindStart(timeframe, data);
