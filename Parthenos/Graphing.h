@@ -101,7 +101,7 @@ public:
 private:
 	// Parameters
 	float m_ylabelWidth = 40.0f; // width of y tick labels in DIPs.
-	float m_labelHeight = 14.0f; // height of tick labels in DIPs.
+	float m_labelHeight = 16.0f; // height of tick labels in DIPs.
 	float m_dataPad		= 20.0f; // padding between datapoints and border
 	float m_labelPad	= 2.0f;
 
