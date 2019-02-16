@@ -3,19 +3,19 @@
 
 bool Button::OnLButtonDown(D2D1_POINT_2F cursor)
 {
-	if (cursor.x >= m_dipRect.left &&
-		cursor.x <= m_dipRect.right &&
-		cursor.y >= m_dipRect.top &&
-		cursor.y <= m_dipRect.bottom)
+	if (inRect(cursor, m_dipRect))
 	{
 		return true;
 	}
 	return false;
 }
 
+///////////////////////////////////////////////////////////
+// --- IconButton ---
+
 void IconButton::Paint(D2D1_RECT_F updateRect)
 {
-	if (m_iBitmap != -1 && m_d2.pD2DBitmaps[m_iBitmap])
+		if (m_iBitmap != -1 && m_d2.pD2DBitmaps[m_iBitmap])
 	{
 		m_d2.pRenderTarget->DrawBitmap(
 			m_d2.pD2DBitmaps[m_iBitmap],
@@ -47,6 +47,8 @@ void DropMenuButton::SetSize(D2D1_RECT_F dipRect)
 {
 	m_dipRect = dipRect;
 	m_pixRect = DPIScale::DipsToPixels(m_dipRect);
+
+	// text
 	float pad = (m_dipRect.bottom - m_dipRect.top - 14.0f) / 2.0f; // 14pt font
 	m_textRect = D2D1::RectF(
 		m_dipRect.left + 2.0f,
@@ -54,6 +56,8 @@ void DropMenuButton::SetSize(D2D1_RECT_F dipRect)
 		m_dipRect.right - 2.0f,
 		m_dipRect.bottom - pad
 	);
+
+	// icon
 	pad = (m_dipRect.bottom - m_dipRect.top - 8.0f) / 2.0f;
 	m_iconRect = D2D1::RectF(
 		m_dipRect.right - 2.0f - 8.0f,
@@ -62,20 +66,22 @@ void DropMenuButton::SetSize(D2D1_RECT_F dipRect)
 		m_dipRect.bottom - pad
 	);
 
+	// menu
 	m_menu.SetSize(D2D1::RectF(
 		dipRect.left,
-		dipRect.bottom,
+		dipRect.bottom + 1.0f,
 		0, 0 // menu calculates these
 	));
-
-
 }
 
+// owner of button should call paint on popup
 void DropMenuButton::Paint(D2D1_RECT_F updateRect)
 {
+	// border
 	m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
 	m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 0.5f);
 
+	// text
 	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
 	m_d2.pRenderTarget->DrawTextLayout(
 		D2D1::Point2F(m_textRect.left, m_textRect.top),
@@ -83,6 +89,7 @@ void DropMenuButton::Paint(D2D1_RECT_F updateRect)
 		m_d2.pBrush
 	);
 
+	// arrow icon
 	if (m_d2.pD2DBitmaps[GetResourceIndex(IDB_DOWNARROWHEAD)])
 	{
 		m_d2.pRenderTarget->DrawBitmap(
@@ -90,10 +97,34 @@ void DropMenuButton::Paint(D2D1_RECT_F updateRect)
 			m_iconRect
 		);
 	}
+
+	// owner of button should call paint on popup
 }
 
 bool DropMenuButton::OnLButtonDown(D2D1_POINT_2F cursor)
 {
+
+	if (m_active)
+	{
+		int i;
+		std::wstring str;
+		if (m_menu.OnLButtonDown(cursor, i, str)) // return true only if item selected
+		{
+			SetActive(i);
+			m_parent->ReceiveMessage(str, 1);
+			m_menu.Show(false);
+		}
+		else
+		{
+			m_active = false;
+			m_menu.Show(false);
+		}
+	}
+	else if (inRect(cursor, m_dipRect))
+	{
+		m_active = true;
+		m_menu.Show();
+	}
 	return false;
 }
 

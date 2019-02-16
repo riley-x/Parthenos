@@ -9,12 +9,6 @@ TextBox::~TextBox()
 
 void TextBox::Paint(D2D1_RECT_F updateRect)
 {
-	if (m_active)
-		m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
-	else
-		m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
-	m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 0.5f);
-
 	// Draw highlight
 	if (m_selection)
 	{
@@ -45,37 +39,56 @@ void TextBox::Paint(D2D1_RECT_F updateRect)
 			1.0f
 		);
 	}
+
+	// Draw bounding box
+	if (m_active)
+		m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
+	else
+		m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
+	m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 0.5f);
 }
 
 void TextBox::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
 {
-	if (!m_mouseSelection || !(wParam & MK_LBUTTON)) return;
-
-	DWRITE_HIT_TEST_METRICS hitTestMetrics;
-	BOOL isTrailingHit;
-	BOOL isInside;
-
-	m_pTextLayout->HitTestPoint(
-		cursor.x - (m_dipRect.left + m_leftOffset),
-		cursor.y - m_dipRect.top,
-		&isTrailingHit,
-		&isInside,
-		&hitTestMetrics
-	);
-	int new_ipos = hitTestMetrics.textPosition + isTrailingHit; // cursor should be placed before m_text[end]
-	if (new_ipos != m_ipos)
+	if (m_mouseSelection && (wParam & MK_LBUTTON))
 	{
-		if (!m_selection)
-		{
-			m_selection = true;
-			m_istart = m_ipos;
-			m_fstart = m_fpos;
-		}
-		m_ipos = new_ipos;
-		m_fpos = hitTestMetrics.left + static_cast<float>(isTrailingHit) * hitTestMetrics.width
-			+ m_dipRect.left + m_leftOffset;
 
-		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+		DWRITE_HIT_TEST_METRICS hitTestMetrics;
+		BOOL isTrailingHit;
+		BOOL isInside;
+
+		m_pTextLayout->HitTestPoint(
+			cursor.x - (m_dipRect.left + m_leftOffset),
+			cursor.y - m_dipRect.top,
+			&isTrailingHit,
+			&isInside,
+			&hitTestMetrics
+		);
+		int new_ipos = hitTestMetrics.textPosition + isTrailingHit; // cursor should be placed before m_text[end]
+		if (new_ipos != m_ipos)
+		{
+			if (!m_selection)
+			{
+				m_selection = true;
+				m_istart = m_ipos;
+				m_fstart = m_fpos;
+			}
+			m_ipos = new_ipos;
+			m_fpos = hitTestMetrics.left + static_cast<float>(isTrailingHit) * hitTestMetrics.width
+				+ m_dipRect.left + m_leftOffset;
+
+			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+		}
+	}
+	else if (inRect(cursor, m_dipRect) && !m_mouseOver)
+	{
+		m_mouseOver = true;
+		Cursor::SetCursor(Cursor::hIBeam);
+	}
+	else if (m_mouseOver && !inRect(cursor, m_dipRect))
+	{
+		m_mouseOver = false;
+		Cursor::SetCursor(Cursor::hArrow);
 	}
 }
 

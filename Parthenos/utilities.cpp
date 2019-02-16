@@ -9,6 +9,8 @@ float DPIScale::dpiY = 96.0f;
 
 bool Timers::active[Timers::n_timers + 1] = {};
 
+HCURSOR Cursor::active = Cursor::hArrow;
+
 std::wstring OutputError(const std::wstring & msg)
 {
 	DWORD error = GetLastError();

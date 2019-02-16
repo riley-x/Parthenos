@@ -41,7 +41,7 @@ private:
 	// state
 	std::wstring		m_ticker;
 	enum class MainChartType { none, line, candlestick, envelope };
-	enum class Timeframe { none, year1 };
+	enum class Timeframe { none, month1, year1 };
 	MainChartType		m_currentMChart = MainChartType::none;
 	Timeframe			m_currentTimeframe = Timeframe::none;
 

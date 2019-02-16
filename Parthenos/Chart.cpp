@@ -126,51 +126,57 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 	// than when invalidated.
 	if (updateRect.bottom <= m_dipRect.top || updateRect.right <= m_dipRect.left) return;
 
-	// Background of menu
-	m_d2.pBrush->SetColor(Colors::MENU_BACKGROUND);
-	m_d2.pRenderTarget->FillRectangle(m_menuRect, m_d2.pBrush);
+	if (updateRect.top <= m_menuRect.bottom) {
+		// Background of menu
+		m_d2.pBrush->SetColor(Colors::MENU_BACKGROUND);
+		m_d2.pRenderTarget->FillRectangle(m_menuRect, m_d2.pBrush);
 
-	// Ticker box
-	m_tickerBox.Paint(updateRect);
+		// Ticker box
+		m_tickerBox.Paint(updateRect);
 
-	// Timeframe menu
-	m_timeframeButton.Paint(updateRect);
+		// Timeframe menu
+		m_timeframeButton.Paint(updateRect);
 
-	// Chart type button highlight
-	m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
-	D2D1_RECT_F iconRect;
-	if (m_chartTypeButtons.GetActiveRect(iconRect))
-	{
-		iconRect.left -= m_commandHPad / 2.0f;
-		iconRect.top = m_menuRect.top;
-		iconRect.right += m_commandHPad / 2.0f;
-		iconRect.bottom = m_menuRect.bottom - 1.0f;
-		m_d2.pRenderTarget->FillRectangle(iconRect, m_d2.pBrush);
-	}
-	// Chart type buttons
-	m_chartTypeButtons.Paint(updateRect);
+		// Chart type button highlight
+		m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
+		D2D1_RECT_F iconRect;
+		if (m_chartTypeButtons.GetActiveRect(iconRect))
+		{
+			iconRect.left -= m_commandHPad / 2.0f;
+			iconRect.top = m_menuRect.top;
+			iconRect.right += m_commandHPad / 2.0f;
+			iconRect.bottom = m_menuRect.bottom - 1.0f;
+			m_d2.pRenderTarget->FillRectangle(iconRect, m_d2.pBrush);
+		}
 
-	// Menu division lines
-	m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
-	for (float x : m_divisions)
-	{
+		// Chart type buttons
+		m_chartTypeButtons.Paint(updateRect);
+
+		// Menu division lines
+		m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
+		for (float x : m_divisions)
+		{
+			m_d2.pRenderTarget->DrawLine(
+				D2D1::Point2F(x, m_menuRect.top),
+				D2D1::Point2F(x, m_menuRect.bottom),
+				m_d2.pBrush,
+				DPIScale::PixelsToDipsX(1)
+			);
+		}
 		m_d2.pRenderTarget->DrawLine(
-			D2D1::Point2F(x, m_menuRect.top),
-			D2D1::Point2F(x, m_menuRect.bottom),
+			D2D1::Point2F(m_menuRect.left, m_menuRect.bottom),
+			D2D1::Point2F(m_menuRect.right, m_menuRect.bottom),
 			m_d2.pBrush,
-			DPIScale::PixelsToDipsX(1)
+			0.5f
 		);
 	}
-	m_d2.pRenderTarget->DrawLine(
-		D2D1::Point2F(m_menuRect.left, m_menuRect.bottom),
-		D2D1::Point2F(m_menuRect.right, m_menuRect.bottom),
-		m_d2.pBrush,
-		0.5f
-	);
 
 	// Axes
-	if (updateRect.bottom <= m_axes.GetDIPRect().top) return;
-	m_axes.Paint(updateRect);
+	if (updateRect.bottom > m_menuRect.bottom)
+		m_axes.Paint(updateRect);
+
+	// Popups -- need to be last
+	m_timeframeButton.GetMenu().Paint(updateRect);
 
 }
 
@@ -249,6 +255,12 @@ void Chart::ReceiveMessage(std::wstring msg, int i)
 	if (i == 0) // ticker box
 	{
 		Load(msg);
+	}
+	if (i == 1) // timeframe
+	{
+		Timeframe tf = Timeframe::year1;
+		if (msg == L"1M") tf = Timeframe::month1;
+		DrawMainChart(m_currentMChart, tf);
 	}
 }
 

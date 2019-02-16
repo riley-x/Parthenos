@@ -22,7 +22,6 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	// Resource management.
 	D2Objects				m_d2;
 	//D2D1_POINT_2F			ptMouseStart;
-	HCURSOR					hCursor;
 
 	// Data memebers
 	float m_leftPanelWidth = 350.0f; // in DIPs

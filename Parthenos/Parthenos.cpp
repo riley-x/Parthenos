@@ -122,7 +122,7 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_SETCURSOR:
 		if (LOWORD(lParam) == HTCLIENT)
 		{
-			SetCursor(hCursor);
+			SetCursor(Cursor::active);
 			return TRUE;
 		}
 		break;
@@ -183,8 +183,6 @@ LRESULT Parthenos::OnCreate()
 	m_allItems.push_back(m_chart);
 	m_activeItems.push_back(m_titleBar);
 	m_activeItems.push_back(m_chart);
-
-	hCursor = LoadCursor(NULL, IDC_ARROW);
 
 	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 
@@ -280,7 +278,7 @@ LRESULT Parthenos::OnSize(WPARAM wParam)
 
 LRESULT Parthenos::OnMouseMove(POINT cursor, WPARAM wParam)
 {
-	::SetCursor(hCursor);
+	//::SetCursor(Cursor::active);
 	m_mouseTrack.OnMouseMove(m_hwnd);  // Start tracking.
 
 	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);

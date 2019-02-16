@@ -109,6 +109,7 @@ public:
 	inline void OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam) { m_menu.OnMouseMove(cursor, wParam); }
 	bool OnLButtonDown(D2D1_POINT_2F cursor);
 
+	inline PopupMenu & GetMenu() { return m_menu; }
 	inline void SetText(std::wstring text) { m_text = text; }
 	inline void SetItems(std::vector<std::wstring> const & items) { m_menu.SetItems(items); }
 	void SetActive(size_t i);
@@ -116,6 +117,8 @@ private:
 	PopupMenu m_menu;
 	AppItem *m_parent;
 	std::wstring m_text;
+
+	bool m_active = false;
 
 	D2D1_RECT_F m_textRect;
 	D2D1_RECT_F m_iconRect;

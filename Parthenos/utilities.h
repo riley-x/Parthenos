@@ -103,6 +103,19 @@ namespace Timers
 	const UINT CARET_TIME = 750; // 0.75 seconds
 }
 
+namespace Cursor
+{
+	extern HCURSOR active;
+	const HCURSOR hArrow = LoadCursor(NULL, IDC_ARROW);
+	const HCURSOR hIBeam = LoadCursor(NULL, IDC_IBEAM);
+
+	inline void SetCursor(HCURSOR cursor) 
+	{
+		active = cursor;
+		::SetCursor(cursor);
+	}
+ }
+
 ///////////////////////////////////////////////////////////
 class DPIScale
 {

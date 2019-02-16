@@ -43,6 +43,8 @@ private:
 	int					m_istart; // for selection
 	float				m_fstart; // for selection
 
+	bool				m_mouseOver = false;
+
 	// paramters
 	float				m_leftOffset = 2.0f;
 	size_t				m_maxChars = 9;
