@@ -40,7 +40,7 @@ HRESULT D2Objects::CreateDeviceIndependentResources()
 	if (SUCCEEDED(hr))
 	{
 		hr = pDWriteFactory->CreateTextFormat(
-			L"Calibri",
+			L"Consolas",
 			NULL,
 			DWRITE_FONT_WEIGHT_NORMAL,
 			DWRITE_FONT_STYLE_NORMAL,
@@ -55,6 +55,27 @@ HRESULT D2Objects::CreateDeviceIndependentResources()
 		{
 			pTextFormat_10p->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
 			pTextFormat_10p->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
+		}
+	}
+	// Create text format 14 point
+	if (SUCCEEDED(hr))
+	{
+		hr = pDWriteFactory->CreateTextFormat(
+			L"Calibri",
+			NULL,
+			DWRITE_FONT_WEIGHT_NORMAL,
+			DWRITE_FONT_STYLE_NORMAL,
+			DWRITE_FONT_STRETCH_NORMAL,
+			14.0f, // font size. this can't be changed dynamically?
+			L"", //locale
+			&pTextFormat_14p
+		);
+
+		// Set default alignment
+		if (SUCCEEDED(hr))
+		{
+			pTextFormat_14p->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+			pTextFormat_14p->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
 		}
 	}
 	// Create text format 18 point
@@ -75,7 +96,7 @@ HRESULT D2Objects::CreateDeviceIndependentResources()
 		if (SUCCEEDED(hr))
 		{
 			pTextFormat_18p->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
-			pTextFormat_18p->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
+			pTextFormat_18p->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
 		}
 	}
 	// Create WIC factory
@@ -220,6 +241,7 @@ void D2Objects::DiscardDeviceIndependentResources()
 	SafeRelease(&pFactory);
 	SafeRelease(&pDWriteFactory);
 	SafeRelease(&pTextFormat_10p);
+	SafeRelease(&pTextFormat_14p);
 	SafeRelease(&pTextFormat_18p);
 	SafeRelease(&pIWICFactory);
 	SafeRelease(&pDashedStyle);

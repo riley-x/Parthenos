@@ -159,5 +159,8 @@
     <Image Include="Command Icons\Envelope.png">
       <Filter>Resource Files\Command Icons</Filter>
     </Image>
+    <Image Include="Command Icons\DownArrowHead.png">
+      <Filter>Resource Files\Command Icons</Filter>
+    </Image>
   </ItemGroup>
 </Project>

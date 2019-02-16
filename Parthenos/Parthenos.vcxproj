@@ -203,6 +203,7 @@
   <ItemGroup>
     <Image Include="Command Icons\Candlestick.png" />
     <Image Include="Command Icons\Close.png" />
+    <Image Include="Command Icons\DownArrowHead.png" />
     <Image Include="Command Icons\Envelope.png" />
     <Image Include="Command Icons\Line.png" />
     <Image Include="Command Icons\Maximize.png" />

@@ -22,6 +22,8 @@ inline int GetResourceIndex(int resource)
 		return 6;
 	case IDB_ENVELOPE:
 		return 7;
+	case IDB_DOWNARROWHEAD:
+		return 8;
 	default:
 		return -1;
 	}
@@ -35,9 +37,9 @@ public:
 	// Data
 
 	// WIC
-	static const int nIcons = 8;
+	static const int nIcons = 9;
 	int resource_ids[nIcons] = { IDB_CLOSE, IDB_MAXIMIZE, IDB_MINIMIZE, IDB_RESTORE, IDB_PARTHENOS_WHITE,
-		IDB_CANDLESTICK, IDB_LINE, IDB_ENVELOPE };
+		IDB_CANDLESTICK, IDB_LINE, IDB_ENVELOPE, IDB_DOWNARROWHEAD };
 
 	////////////////////////////////////////////////////////
 	// Pointers
@@ -51,7 +53,8 @@ public:
 	// Direct Write pointers
 	IDWriteFactory          *pDWriteFactory			= NULL;
 	IDWriteTextFormat		*pTextFormat_10p		= NULL; // 10 point (DIPs)
-	IDWriteTextFormat		*pTextFormat_18p		= NULL; // 128 point (DIPs)
+	IDWriteTextFormat		*pTextFormat_14p		= NULL; // 14 point (DIPs)
+	IDWriteTextFormat		*pTextFormat_18p		= NULL; // 18 point (DIPs)
 
 	// WIC pointers
 	IWICImagingFactory      *pIWICFactory						= NULL;

@@ -105,15 +105,19 @@ public:
 	DropMenuButton(HWND hwnd, D2Objects const & d2, AppItem *parent) :
 		Button(hwnd, d2), m_menu(hwnd, d2), m_parent(parent) {};
 	void SetSize(D2D1_RECT_F dipRect);
-	//void Paint(D2D1_RECT_F updateRect);
+	void Paint(D2D1_RECT_F updateRect);
 	inline void OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam) { m_menu.OnMouseMove(cursor, wParam); }
 	bool OnLButtonDown(D2D1_POINT_2F cursor);
 
 	inline void SetText(std::wstring text) { m_text = text; }
-	inline void SetItems(std::vector<std::wstring> items) { m_menu.SetItems(items); }
+	inline void SetItems(std::vector<std::wstring> const & items) { m_menu.SetItems(items); }
 	void SetActive(size_t i);
 private:
 	PopupMenu m_menu;
 	AppItem *m_parent;
 	std::wstring m_text;
+
+	D2D1_RECT_F m_textRect;
+	D2D1_RECT_F m_iconRect;
+	IDWriteTextLayout* m_activeLayout;
 };

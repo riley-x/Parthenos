@@ -8,7 +8,7 @@
 
 float const Chart::m_commandSize = 20.0f;
 float const Chart::m_tickerBoxWidth = 100.0f;
-float const Chart::m_timeframeWidth = 50.0f;
+float const Chart::m_timeframeWidth = 60.0f;
 
 Chart::Chart(HWND hwnd, D2Objects const & d2)
 	: AppItem(hwnd, d2), m_axes(hwnd, d2), m_tickerBox(hwnd, d2, this), m_chartTypeButtons(hwnd, d2),
@@ -30,9 +30,6 @@ Chart::Chart(HWND hwnd, D2Objects const & d2)
 	m_chartTypeButtons.Add(temp);
 
 	m_chartTypeButtons.SetActive(0);
-
-	//m_timeframeButton.SetItems();
-	//m_timeframeButton.SetActive();
 }
 
 Chart::~Chart()
@@ -50,6 +47,8 @@ void Chart::Init(float leftOffset)
 	m_menuRect.top = m_dipRect.top;
 	m_menuRect.bottom = m_menuRect.top + m_menuHeight;
 
+
+	// Ticker box
 	float top = m_dipRect.top + (m_menuHeight - m_commandSize) / 2.0f;
 	float left = m_dipRect.left + m_commandHPad;
 	m_tickerBox.SetSize(D2D1::RectF(
@@ -61,6 +60,8 @@ void Chart::Init(float leftOffset)
 	left += m_tickerBoxWidth + m_commandHPad;
 
 	// Timeframe drop menu
+	m_timeframeButton.SetItems({ L"1D", L"1M", L"3M", L"1Y", L"2Y", L"5Y" });
+	m_timeframeButton.SetActive(3); // default 1 year
 	m_timeframeButton.SetSize(D2D1::RectF(
 		left,
 		top,
@@ -134,7 +135,6 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 
 	// Timeframe menu
 	m_timeframeButton.Paint(updateRect);
-
 
 	// Chart type button highlight
 	m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
