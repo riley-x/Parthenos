@@ -27,11 +27,22 @@ void PopupMenu::Paint(D2D1_RECT_F updateRect)
 	m_d2.pBrush->SetColor(Colors::MAIN_BACKGROUND);
 	m_d2.pRenderTarget->FillRectangle(m_dipRect, m_d2.pBrush);
 	
+	if (m_highlight >= 0)
+	{
+		m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
+		m_d2.pRenderTarget->FillRectangle(D2D1::RectF(
+			m_dipRect.left,
+			m_dipRect.top + m_highlight * (m_fontSize + m_vPad),
+			m_dipRect.right,
+			m_dipRect.top + (m_highlight + 1) * (m_fontSize + m_vPad)
+		), m_d2.pBrush);
+	}
+
 	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
 	for (size_t i = 0; i < m_pTextLayouts.size(); i++)
 	{
 		m_d2.pRenderTarget->DrawTextLayout(
-			D2D1::Point2F(m_dipRect.left + 1.0f, m_dipRect.top + i * (14.0f + m_vPad)),
+			D2D1::Point2F(m_dipRect.left + 1.0f, m_dipRect.top + i * (m_fontSize + m_vPad)),
 			m_pTextLayouts[i],
 			m_d2.pBrush
 		);
@@ -40,13 +51,35 @@ void PopupMenu::Paint(D2D1_RECT_F updateRect)
 
 void PopupMenu::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
 {
+	if (inRect(cursor, m_dipRect))
+	{
+		m_highlight = static_cast<int>((cursor.y - m_dipRect.top) / (m_fontSize + m_vPad));
+		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+	}
+	else if (m_highlight >= 0)
+	{
+		m_highlight = -1;
+		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+	}
 }
 
 // returns true when a selection is made and i, str are populated
-bool PopupMenu::OnLButtonDown(D2D1_POINT_2F cursor, int & i, std::wstring & str)
+// returns true only if item selected; no other selectable space
+bool PopupMenu::OnLButtonDown(D2D1_POINT_2F cursor, int & selection, std::wstring & str)
 {
-	return false;
-	// Do not hide! Owner should do that
+	if (!m_active) return false;
+
+	if (inRect(cursor, m_dipRect))
+	{
+		selection = static_cast<int>((cursor.y - m_dipRect.top) / (m_fontSize + m_vPad));
+		str = m_items[selection];
+		return true;
+	}
+	else
+	{
+		// Do not hide! Owner should do that
+		return false;
+	}
 }
 
 void PopupMenu::Show(bool show)
@@ -69,7 +102,7 @@ void PopupMenu::SetItems(std::vector<std::wstring> const & items)
 	}
 
 	m_width = max(50.0f, 50.0f * ceil(max_size * 18.0f / 50.0f));
-	m_height = items.size() * (14.0f + m_vPad);
+	m_height = items.size() * (m_fontSize + m_vPad);
 
 	for (size_t i = 0; i < items.size(); i++)
 	{
@@ -83,10 +116,4 @@ void PopupMenu::SetItems(std::vector<std::wstring> const & items)
 		);
 		if (FAILED(hr)) Error(L"CreateTextLayout failed");
 	}
-
-	//if (!m_pTextLayouts.empty())
-	//{
-	//	DWRITE_TEXT_METRICS metrics;
-	//	HRESULT hr = m_pTextLayouts[0]->GetMetrics(&metrics);
-	//}
 }

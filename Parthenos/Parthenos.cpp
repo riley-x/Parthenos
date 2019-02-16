@@ -168,7 +168,7 @@ void Parthenos::PreShow()
 			item->Init();
 		item->Resize(rc, dipRect);
 	}
-	m_chart->Load(L"AAPL", 20);
+	m_chart->Load(L"AAPL");
 }
 
 ///////////////////////////////////////////////////////////////////

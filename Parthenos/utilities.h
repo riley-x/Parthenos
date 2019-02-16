@@ -9,15 +9,21 @@ void OutputMessage(const std::wstring format, ...);
 ///////////////////////////////////////////////////////////
 // --- Datetime --- 
 typedef uint32_t date_t; // 10000*yyyy + 100*mm + dd
+time_t const DATE_T_1M = 100;
 time_t const DATE_T_1YR = 10000;
 
 time_t TruncateToDay(time_t time);
 std::wstring TimeToWString(time_t time);
 date_t GetDate(time_t time);
-date_t MkDate(int year, int month, int day); // make inline?
+inline date_t MkDate(int year, int month, int day) { return 10000 * year + 100 * month + day; }
 inline int GetYear(date_t date) { return (date / 10000); }
 inline int GetMonth(date_t date) { return (date / 100) % 100; }
 inline int GetDay(date_t date) { return date % 100; }
+inline void SetMonth(date_t & date, int month) 
+{ 
+	int year = GetYear(date); int day = GetDay(date);
+	date = MkDate(year, month, day);
+}
 int ApproxDateDiff(date_t a, date_t b); // returns a-b
 std::wstring DateToWString(date_t date);
 inline std::wstring toMonthWString_Short(date_t date)

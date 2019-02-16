@@ -108,17 +108,13 @@ bool DropMenuButton::OnLButtonDown(D2D1_POINT_2F cursor)
 	{
 		int i;
 		std::wstring str;
-		if (m_menu.OnLButtonDown(cursor, i, str)) // return true only if item selected
+		if (m_menu.OnLButtonDown(cursor, i, str)) // return true only if item selected; no other selectable space
 		{
 			SetActive(i);
 			m_parent->ReceiveMessage(str, 1);
-			m_menu.Show(false);
 		}
-		else
-		{
-			m_active = false;
-			m_menu.Show(false);
-		}
+		m_active = false;
+		m_menu.Show(false);
 	}
 	else if (inRect(cursor, m_dipRect))
 	{

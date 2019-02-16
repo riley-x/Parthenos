@@ -95,10 +95,6 @@ std::wstring TimeToWString(time_t time)
 	return std::wstring(buffer);
 }
 
-date_t MkDate(int year, int month, int day)
-{
-	return 10000 * year + 100 * month + day;
-}
 
 // APPROXIMATE DIFFERENCE IN DAYS
 // Typically larger than real difference

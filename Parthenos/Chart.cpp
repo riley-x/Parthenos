@@ -258,8 +258,13 @@ void Chart::ReceiveMessage(std::wstring msg, int i)
 	}
 	if (i == 1) // timeframe
 	{
-		Timeframe tf = Timeframe::year1;
-		if (msg == L"1M") tf = Timeframe::month1;
+		Timeframe tf = Timeframe::none;;
+		if (msg == L"1D");
+		else if (msg == L"1M") tf = Timeframe::month1;
+		else if (msg == L"3M");
+		else if (msg == L"1Y") tf = Timeframe::year1;
+		else if (msg == L"2Y");
+		else if (msg == L"5Y");
 		DrawMainChart(m_currentMChart, tf);
 	}
 }
@@ -321,23 +326,30 @@ int Chart::FindStart(Timeframe timeframe, OHLC* & data)
 
 	data = nullptr;
 	int n;
+	date_t end = m_OHLC.back().date;
+	std::vector<OHLC>::iterator it;
+	OHLC temp;
 
 	switch (timeframe)
 	{
+	case Timeframe::month1:
+	{
+		if (GetMonth(end) == 1)
+		{
+			temp.date = end - DATE_T_1YR;
+			SetMonth(temp.date, 12);
+		}
+		else
+		{
+			temp.date = end - DATE_T_1M;
+		}
+		break;
+	}
 	case Timeframe::year1:
 	{
-		date_t end = m_OHLC.back().date;
-		OHLC temp; temp.date = end - DATE_T_1YR;
-		auto it = std::lower_bound(m_OHLC.begin(), m_OHLC.end(), temp, OHLC_Compare);
-		if (it == m_OHLC.end())
-		{
-			OutputMessage(L"Didn't find data for candlestick\n");
-			return -1;
-		}
-		data = &(*it);
-		n = m_OHLC.end() - it;
+		temp.date = end - DATE_T_1YR;
+		break;
 	}
-	break;
 	default:
 	{
 		OutputMessage(L"Timeframe %s not implemented\n", timeframe);
@@ -345,6 +357,15 @@ int Chart::FindStart(Timeframe timeframe, OHLC* & data)
 	}
 	}
 
+	it = std::lower_bound(m_OHLC.begin(), m_OHLC.end(), temp, OHLC_Compare);
+	if (it == m_OHLC.end())
+	{
+		OutputMessage(L"Didn't find data for candlestick\n");
+		return -1;
+	}
+
+	data = &(*it);
+	n = m_OHLC.end() - it;
 	return n;
 }
 
