@@ -160,6 +160,20 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return DefWindowProc(m_hwnd, uMsg, wParam, lParam);
 }
 
+void Parthenos::ReceiveMessage(AppItem * sender, std::wstring msg, CTPMessage imsg)
+{
+	switch (imsg)
+	{
+	case CTPMessage::WATCHLIST_SELECTED:
+	{
+		if (std::find(m_activeItems.begin(), m_activeItems.end(), m_chart) != m_activeItems.end())
+		{
+			m_chart->Load(msg);
+		}
+		break;
+	}
+	}
+}
 
 void Parthenos::PreShow()
 {
@@ -178,7 +192,7 @@ void Parthenos::PreShow()
 			item->Init();
 		item->Resize(rc, dipRect);
 	}
-	m_watchlist->Load({ L"test" }, std::vector<Column>());
+	m_watchlist->Load({ L"AAPL", L"MSFT", L"NVDA" }, std::vector<Column>());
 	m_chart->Load(L"AAPL");
 }
 
@@ -189,7 +203,7 @@ LRESULT Parthenos::OnCreate()
 	m_d2.hwndParent = m_hwnd;
 	m_titleBar = new TitleBar(m_hwnd, m_d2);
 	m_chart = new Chart(m_hwnd, m_d2);
-	m_watchlist = new Watchlist(m_hwnd, m_d2);
+	m_watchlist = new Watchlist(m_hwnd, m_d2, this);
 
 	m_allItems.push_back(m_titleBar);
 	m_allItems.push_back(m_chart);

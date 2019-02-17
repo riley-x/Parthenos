@@ -62,7 +62,7 @@ private:
 	std::vector<float>	m_divisions;
 
 	// helper functions
-	void DrawMainChart(MainChartType type, Timeframe timeframe);
+	void DrawMainChart(std::wstring ticker, MainChartType type, Timeframe timeframe);
 	void DrawSavedState();
 	int FindStart(Timeframe timeframe, OHLC* & data);
 	void Candlestick(OHLC const *data, int n);

@@ -47,6 +47,7 @@ public:
 	~Parthenos();
 
 	LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);
+	void ReceiveMessage(AppItem *sender, std::wstring msg, CTPMessage imsg); // From an AppItem
 	// Handle initializations here instead of create
 	// ClientRect doesn't have correct size during WM_CREATE
 	void PreShow(); 

@@ -3,6 +3,7 @@
 #include "TitleBar.h"
 #include "utilities.h"
 #include "DataManaging.h"
+#include "Parthenos.h"
 
 float const Watchlist::m_hTextPad = 4.0f;
 
@@ -166,10 +167,15 @@ void Watchlist::ReceiveMessage(AppItem *sender, std::wstring msg, CTPMessage ims
 		temp->Load(L"", m_columns);
 		m_items.push_back(temp);
 		m_hLines.push_back(top + m_rowHeight);
+		break;
+	}
+	case CTPMessage::WATCHLIST_SELECTED:
+	{
+		m_parent->ReceiveMessage(this, msg, imsg);
+		break;
 	}
 	}
 }
-
 
 void Watchlist::Load(std::vector<std::wstring> tickers, std::vector<Column> const & columns)
 {
@@ -179,7 +185,7 @@ void Watchlist::Load(std::vector<std::wstring> tickers, std::vector<Column> cons
 			{90.0f, Column::Ticker, L""},
 			{60.0f, Column::Last, L"%.2lf"},
 			{60.0f, Column::ChangeP, L"%.2lf"},
-			{60.0f, Column::Change1YP, L"%.2lf%%"},
+			{60.0f, Column::Change1YP, L"%.2lf"},
 			{60.0f, Column::DivP, L"%.2lf"},
 			{20.0f, Column::None, L""}
 		};
@@ -256,6 +262,10 @@ void Watchlist::Load(std::vector<std::wstring> tickers, std::vector<Column> cons
 	}
 }
 
+///////////////////////////////////////////////////////////
+// --- WatchlistItem ---
+///////////////////////////////////////////////////////////
+
 
 void WatchlistItem::SetSize(D2D1_RECT_F dipRect)
 {
@@ -281,6 +291,17 @@ void WatchlistItem::Paint(D2D1_RECT_F updateRect)
 			m_d2.pBrush
 		);
 	}
+}
+
+inline bool WatchlistItem::OnLButtonDown(D2D1_POINT_2F cursor)
+{
+	if (m_ticker.OnLButtonDown(cursor)) return true;
+	else if (inRect(cursor, m_dipRect))
+	{
+		m_parent->ReceiveMessage(this, m_ticker.String(), CTPMessage::WATCHLIST_SELECTED);
+		return true;
+	}
+	return false;
 }
 
 void WatchlistItem::ReceiveMessage(AppItem *sender, std::wstring msg, CTPMessage imsg)

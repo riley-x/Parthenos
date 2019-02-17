@@ -5,6 +5,7 @@
 #include "TextBox.h"
 
 
+class Parthenos;
 
 struct Column
 {
@@ -20,8 +21,8 @@ struct Column
 		{
 		case Ticker: return L"Ticker";
 		case Last: return L"Last";
-		case ChangeP: return L"\u0394%"; // \u0394 == \Delta
-		case Change1YP: return L"\u0394% 1Y";
+		case ChangeP: return L"\u0394 %"; // \u0394 == \Delta
+		case Change1YP: return L"\u03941Y %";
 		case DivP: return L"Div %";
 		case None:
 		default:
@@ -43,7 +44,7 @@ public:
 	void SetSize(D2D1_RECT_F dipRect); // The height should not change, or else call Load() again
 	void Paint(D2D1_RECT_F updateRect);
 	inline void OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam) { m_ticker.OnMouseMove(cursor, wParam); }
-	inline bool OnLButtonDown(D2D1_POINT_2F cursor) { return m_ticker.OnLButtonDown(cursor); }
+	inline bool OnLButtonDown(D2D1_POINT_2F cursor);
 	inline void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam) { return m_ticker.OnLButtonDblclk(cursor, wParam); }
 	inline void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam) { return m_ticker.OnLButtonUp(cursor, wParam); }
 	inline bool OnChar(wchar_t c, LPARAM lParam) { return m_ticker.OnChar(c, lParam); }
@@ -76,10 +77,12 @@ private:
 
 };
 
+
 class Watchlist : public AppItem
 {
 public:
-	using AppItem::AppItem;
+	Watchlist(HWND hwnd, D2Objects const & d2, Parthenos * parent)
+		: AppItem(hwnd, d2), m_parent(parent) {}
 	~Watchlist();
 
 	// AppItem overrides
@@ -106,6 +109,8 @@ public:
 private:
 	Watchlist(const Watchlist&) = delete; // non construction-copyable
 	Watchlist& operator=(const Watchlist&) = delete; // non copyable
+
+	Parthenos *m_parent;
 
 	// Data
 	std::vector<WatchlistItem*> m_items;

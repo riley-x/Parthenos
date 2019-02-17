@@ -188,11 +188,11 @@ bool Chart::OnLButtonDown(D2D1_POINT_2F cursor)
 		if (m_chartTypeButtons.OnLButtonDown(cursor, name))
 		{
 			if (name == L"Candlestick")
-				DrawMainChart(MainChartType::candlestick, m_currentTimeframe);
+				DrawMainChart(m_ticker, MainChartType::candlestick, m_currentTimeframe);
 			else if (name == L"Line")
-				DrawMainChart(MainChartType::line, m_currentTimeframe);
+				DrawMainChart(m_ticker, MainChartType::line, m_currentTimeframe);
 			else if (name == L"Envelope")
-				DrawMainChart(MainChartType::envelope, m_currentTimeframe);
+				DrawMainChart(m_ticker, MainChartType::envelope, m_currentTimeframe);
 			return true;
 		}
 
@@ -229,15 +229,13 @@ void Chart::OnTimer(WPARAM wParam, LPARAM lParam)
 void Chart::Load(std::wstring ticker, int range)
 {
 	if (ticker == m_ticker && range < static_cast<int>(m_OHLC.size())) return;
-	m_ticker = ticker;
 	m_dates.clear();
 	m_closes.clear();
 	m_highs.clear();
 	m_lows.clear();
 	m_OHLC = GetOHLC(ticker, apiSource::alpha, range);
+	DrawMainChart(ticker, m_currentMChart, m_currentTimeframe);
 
-	m_tickerBox.SetText(ticker);
-	DrawSavedState(); // draw on load, default candlestick 1-year
 	//for (int i = 0; i < 10; i++)
 	//{
 	//	OutputDebugString(m_OHLC[i].to_wstring().c_str());
@@ -268,7 +266,7 @@ void Chart::ReceiveMessage(AppItem *sender, std::wstring msg, CTPMessage imsg)
 		else if (msg == L"2Y") tf = Timeframe::year2;
 		else if (msg == L"5Y") tf = Timeframe::year5;
 		if (tf == m_currentTimeframe) return;
-		DrawMainChart(m_currentMChart, tf);
+		DrawMainChart(m_ticker, m_currentMChart, tf);
 		break;
 	}
 	}
@@ -278,10 +276,14 @@ void Chart::ReceiveMessage(AppItem *sender, std::wstring msg, CTPMessage imsg)
 // --- Helpers ---
 
 // Sets the current state members.
-void Chart::DrawMainChart(MainChartType type, Timeframe timeframe)
+void Chart::DrawMainChart(std::wstring ticker, MainChartType type, Timeframe timeframe)
 {
+
 	if (timeframe == Timeframe::none) timeframe = Timeframe::year1;
 	if (type == MainChartType::none) type = MainChartType::candlestick;
+	if (ticker == m_ticker && m_currentMChart == type && m_currentTimeframe == timeframe) return;
+	
+	m_ticker = ticker;
 	m_currentTimeframe = timeframe;
 	m_currentMChart = type;
 	m_tickerBox.SetText(m_ticker);
@@ -316,7 +318,7 @@ void Chart::DrawMainChart(MainChartType type, Timeframe timeframe)
 // i.e. on resize
 void Chart::DrawSavedState()
 {
-	DrawMainChart(m_currentMChart, m_currentTimeframe);
+	DrawMainChart(m_ticker, m_currentMChart, m_currentTimeframe);
 }
 
 // Finds the starting date in OHLC data given 'timeframe', returning the pointer in 'data'.
