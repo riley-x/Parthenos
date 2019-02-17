@@ -94,6 +94,7 @@ void PopupMenu::SetItems(std::vector<std::wstring> const & items)
 	if (m_items.size() > 0) return; // only set once
 
 	m_items = items;
+	for (auto x : m_pTextLayouts) SafeRelease(&x);
 	m_pTextLayouts.resize(items.size());
 
 	size_t max_size = 0;

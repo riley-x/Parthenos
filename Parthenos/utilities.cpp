@@ -11,8 +11,9 @@ float DPIScale::halfPY = 0.5f;
 float DPIScale::fullPX = 1.0f;
 float DPIScale::fullPY = 1.0f;
 
-bool Timers::active[Timers::n_timers + 1] = {};
+int Timers::nActiveP1[Timers::n_timers + 1] = {};
 
+bool Cursor::isSet = false;
 HCURSOR Cursor::active = Cursor::hArrow;
 
 std::wstring OutputError(const std::wstring & msg)

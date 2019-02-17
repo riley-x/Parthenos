@@ -85,7 +85,6 @@ template <class T> void SafeRelease(T **ppT)
 	}
 }
 
-
 namespace Colors
 {
 	const D2D1_COLOR_F HIGHLIGHT		= D2D1::ColorF(0.3f, 0.3f, 0.3f, 1.0f);
@@ -107,23 +106,31 @@ namespace Timers
 {
 	const int n_timers = 1;
 	enum { IDT_CARET = 1 }; // no zero
-	extern bool active[n_timers + 1]; // extra entry for easy indexing
+	extern int nActiveP1[n_timers + 1]; // extra entry for easy indexing
+	// Set 0 for deleted, 1 to flag deletion (delays a little)
 
 	const UINT CARET_TIME = 750; // 0.75 seconds
 }
 
 namespace Cursor
 {
+	extern bool isSet; // refresh each WM_MOUSEMOVE
 	extern HCURSOR active;
 	const HCURSOR hArrow = LoadCursor(NULL, IDC_ARROW);
 	const HCURSOR hIBeam = LoadCursor(NULL, IDC_IBEAM);
 
 	inline void SetCursor(HCURSOR cursor) 
 	{
+		isSet = true;
 		active = cursor;
 		::SetCursor(cursor);
 	}
  }
+
+enum class CTPMessage
+{
+	TEXTBOX_ENTER, TEXTBOX_DEACTIVATED, DROPMENU_SELECTED,
+};
 
 ///////////////////////////////////////////////////////////
 class DPIScale

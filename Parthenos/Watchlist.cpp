@@ -89,6 +89,53 @@ void Watchlist::Resize(RECT pRect, D2D1_RECT_F pDipRect)
 	m_pixRect.bottom = pRect.bottom;
 }
 
+void Watchlist::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
+{
+	for (auto item : m_items) item->OnMouseMove(cursor, wParam);
+}
+
+bool Watchlist::OnLButtonDown(D2D1_POINT_2F cursor)
+{
+	for (auto item : m_items) item->OnLButtonDown(cursor);
+
+	return false;
+}
+
+void Watchlist::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)
+{
+	int i = GetItem(cursor.y);
+	if (i >= 0 && i < static_cast<int>(m_items.size())) 
+		m_items[i]->OnLButtonDblclk(cursor, wParam);
+}
+
+void Watchlist::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
+{
+	for (auto item : m_items) item->OnLButtonUp(cursor, wParam);
+}
+
+bool Watchlist::OnChar(wchar_t c, LPARAM lParam)
+{
+	for (auto item : m_items)
+	{
+		if (item->OnChar(c, lParam)) return true;
+	}
+	return false;
+}
+
+bool Watchlist::OnKeyDown(WPARAM wParam, LPARAM lParam)
+{
+	for (auto item : m_items)
+	{
+		if (item->OnKeyDown(wParam, lParam)) return true;
+	}
+	return false;
+}
+
+void Watchlist::OnTimer(WPARAM wParam, LPARAM lParam)
+{
+	for (auto item : m_items) item->OnTimer(wParam, lParam);
+}
+
 
 void Watchlist::Load(std::vector<std::wstring> tickers, std::vector<Column> const & columns)
 {
@@ -169,6 +216,17 @@ void Watchlist::Load(std::vector<std::wstring> tickers, std::vector<Column> cons
 }
 
 
+void WatchlistItem::SetSize(D2D1_RECT_F dipRect)
+{
+	m_dipRect = dipRect;
+	m_pixRect = DPIScale::DipsToPixels(m_dipRect);
+
+	D2D1_RECT_F temp = m_ticker.GetDIPRect();
+	temp.top = m_dipRect.top;
+	temp.bottom = m_dipRect.bottom;
+	m_ticker.SetSize(temp);
+}
+
 void WatchlistItem::Paint(D2D1_RECT_F updateRect)
 {
 	m_ticker.Paint(updateRect);
@@ -177,10 +235,22 @@ void WatchlistItem::Paint(D2D1_RECT_F updateRect)
 	for (size_t i = 0; i < m_data.size(); i++)
 	{
 		m_d2.pRenderTarget->DrawTextLayout(
-			m_origins[i],
+			D2D1::Point2F(m_origins[i], m_dipRect.top),
 			m_pTextLayouts[i],
 			m_d2.pBrush
 		);
+	}
+}
+
+void WatchlistItem::ReceiveMessage(std::wstring msg, CTPMessage imsg)
+{
+	switch (imsg)
+	{
+	case CTPMessage::TEXTBOX_DEACTIVATED:
+	case CTPMessage::TEXTBOX_ENTER:
+		if (msg != m_currTicker) Reload(msg);
+		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+		break;
 	}
 }
 
@@ -192,7 +262,9 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const 
 		return;
 	}
 
-	LoadData(ticker, columns);
+	m_columns = columns;
+	m_currTicker = ticker;
+	LoadData(ticker);
 
 	// Initialize text box
 	float left = m_dipRect.left;
@@ -206,6 +278,7 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const 
 	m_ticker.SetText(ticker);
 	left += columns[0].width;
 
+	for (auto item : m_pTextLayouts) SafeRelease(&item);
 	m_pTextLayouts.resize(m_data.size());
 	m_origins.resize(m_data.size());
 	for (size_t i = 0; i < m_data.size(); i++)
@@ -216,7 +289,7 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const 
 			throw std::invalid_argument("Columns exceed WatchlistItem width"); // exception so no clean up necessary
 		}
 
-		m_origins[i] = D2D1::Point2F(left + Watchlist::m_hTextPad, m_dipRect.top);
+		m_origins[i] = left + Watchlist::m_hTextPad;
 
 		HRESULT hr = m_d2.pDWriteFactory->CreateTextLayout(
 			m_data[i].second.c_str(),				// The string to be laid out and formatted.
@@ -233,14 +306,34 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const 
 }
 
 //TODO
-void WatchlistItem::LoadData(std::wstring const & ticker, std::vector<Column> const & columns)
+void WatchlistItem::LoadData(std::wstring const & ticker)
 {
-	// columns[0] == Ticker
-	m_data.resize(columns.size() - 1);
-	for (size_t i = 1; i < columns.size(); i++)
+	// m_columns[0] == Ticker
+	m_data.resize(m_columns.size() - 1);
+	for (size_t i = 1; i < m_columns.size(); i++)
 	{
 		m_data[i - 1].first = 0.0;
-		m_data[i - 1].second = L"test";
+		m_data[i - 1].second = ticker;
+	}
+}
+
+void WatchlistItem::Reload(std::wstring const & ticker)
+{
+	m_currTicker = ticker;
+	LoadData(ticker);
+
+	for (auto item : m_pTextLayouts) SafeRelease(&item);
+	for (size_t i = 0; i < m_data.size(); i++)
+	{
+		HRESULT hr = m_d2.pDWriteFactory->CreateTextLayout(
+			m_data[i].second.c_str(),				// The string to be laid out and formatted.
+			m_data[i].second.size(),				// The length of the string.
+			m_d2.pTextFormats[Watchlist::m_format],	// The text format to apply to the string (contains font information, etc).
+			m_columns[i + 1].width - 2 * Watchlist::m_hTextPad, // The width of the layout box.
+			m_dipRect.bottom - m_dipRect.top,		// The height of the layout box.
+			&m_pTextLayouts[i]						// The IDWriteTextLayout interface pointer.
+		);
+		if (FAILED(hr)) Error(L"CreateTextLayout failed");
 	}
 }
 

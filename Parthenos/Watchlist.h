@@ -39,25 +39,38 @@ public:
 		AppItem(hwnd, d2), m_ticker(hwnd, d2, this), m_data(10) {}
 	~WatchlistItem() { for (auto item : m_pTextLayouts) SafeRelease(&item); }
 
+	// AppItem overrides
+	void SetSize(D2D1_RECT_F dipRect); // The height should not change, or else call Load() again
 	void Paint(D2D1_RECT_F updateRect);
+	inline void OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam) { m_ticker.OnMouseMove(cursor, wParam); }
+	inline bool OnLButtonDown(D2D1_POINT_2F cursor) { return m_ticker.OnLButtonDown(cursor); }
+	inline void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam) { return m_ticker.OnLButtonDblclk(cursor, wParam); }
+	inline void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam) { return m_ticker.OnLButtonUp(cursor, wParam); }
+	inline bool OnChar(wchar_t c, LPARAM lParam) { return m_ticker.OnChar(c, lParam); }
+	inline bool OnKeyDown(WPARAM wParam, LPARAM lParam) { return m_ticker.OnKeyDown(wParam, lParam); }
+	inline void OnTimer(WPARAM wParam, LPARAM lParam) { return m_ticker.OnTimer(wParam, lParam); }
 
-	//void ReceiveMessage(std::wstring msg, int i);
+	void ReceiveMessage(std::wstring msg, CTPMessage imsg);
 
+	// Interface
 	void Load(std::wstring const & ticker, std::vector<Column> const & columns); // Queries
 	// Load should be called after SetSize
-
 	void Add(Column const & col); // Queries 
 	void Move(size_t iColumn, size_t iPos);
 	void Delete(size_t iColumn);
 
 private:
 	TextBox m_ticker;
+	std::wstring m_currTicker;
+	std::vector<Column> m_columns;
 	std::vector<std::pair<double, std::wstring>> m_data; // data, display string
 	std::vector<IDWriteTextLayout*> m_pTextLayouts;
-	std::vector<D2D1_POINT_2F> m_origins;
+	std::vector<float> m_origins; // left DIP for the text layouts
 
 	// Do the actual HTTP query and format the string
-	void LoadData(std::wstring const & ticker, std::vector<Column> const & columns);
+	void LoadData(std::wstring const & ticker);
+	// Ticker changed but nothing else
+	void Reload(std::wstring const & ticker);
 };
 
 class Watchlist : public AppItem
@@ -69,6 +82,13 @@ public:
 	void Init(float width);
 	void Paint(D2D1_RECT_F updateRect);
 	void Resize(RECT pRect, D2D1_RECT_F pDipRect);
+	void OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam);
+	bool OnLButtonDown(D2D1_POINT_2F cursor);
+	void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam);
+	void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam);
+	bool OnChar(wchar_t c, LPARAM lParam);
+	bool OnKeyDown(WPARAM wParam, LPARAM lParam);
+	void OnTimer(WPARAM wParam, LPARAM lParam);
 
 	void Load(std::vector<std::wstring> tickers, std::vector<Column> const & columns);
 
@@ -77,6 +97,7 @@ public:
 	static D2Objects::Formats const m_format = D2Objects::Segoe12;
 
 private:
+	// Data
 	std::vector<WatchlistItem*> m_items;
 	std::vector<Column> m_columns;
 	std::vector<IDWriteTextLayout*> m_pTextLayouts; // For column headers
@@ -89,4 +110,11 @@ private:
 	std::vector<float> m_vLines;
 	float m_rightBorder;
 	float m_headerBorder;
+
+	// Helpers
+
+	// Get top of item i
+	inline float GetHeight(int i) { return m_dipRect.top + m_headerHeight + i * m_rowHeight; }
+	// Get index given y coord
+	inline int GetItem(float y) { return static_cast<int>((y - (m_dipRect.top + m_headerHeight)) / m_rowHeight); }
 };

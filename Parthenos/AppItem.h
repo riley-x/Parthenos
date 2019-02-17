@@ -28,7 +28,7 @@ public:
 	virtual bool OnKeyDown(WPARAM wParam, LPARAM lParam) { return false; }
 	virtual void OnTimer(WPARAM wParam, LPARAM lParam) { return; }
 
-	virtual void ReceiveMessage(std::wstring msg, int i) { return; } 
+	virtual void ReceiveMessage(std::wstring msg, CTPMessage imsg) { return; } 
 
 	D2D1_RECT_F GetDIPRect() const { return m_dipRect; }
 

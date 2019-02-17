@@ -130,7 +130,7 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_SETCURSOR:
 		if (LOWORD(lParam) == HTCLIENT)
 		{
-			SetCursor(Cursor::active);
+			// Handled in WM_MOUSEMOVE
 			return TRUE;
 		}
 		break;
@@ -296,6 +296,7 @@ LRESULT Parthenos::OnSize(WPARAM wParam)
 LRESULT Parthenos::OnMouseMove(POINT cursor, WPARAM wParam)
 {
 	//::SetCursor(Cursor::active);
+	Cursor::isSet = false;
 	m_mouseTrack.OnMouseMove(m_hwnd);  // Start tracking.
 
 	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
@@ -304,6 +305,8 @@ LRESULT Parthenos::OnMouseMove(POINT cursor, WPARAM wParam)
 	{
 		item->OnMouseMove(dipCursor, wParam);
 	}
+
+	if (!Cursor::isSet) ::SetCursor(Cursor::hArrow);
 
 	return 0;
 }
@@ -378,6 +381,16 @@ LRESULT Parthenos::OnTimer(WPARAM wParam, LPARAM lParam)
 	for (auto item : m_activeItems)
 	{
 		item->OnTimer(wParam, lParam);
+	}
+
+	for (int i = 1; i < Timers::n_timers + 1; i++)
+	{
+		if (Timers::nActiveP1[i] == 1)
+		{
+			BOOL err = ::KillTimer(m_hwnd, i);
+			if (err == 0)  OutputError(L"Kill timer failed");
+			Timers::nActiveP1[i] = 0;
+		}
 	}
 	return 0;
 }

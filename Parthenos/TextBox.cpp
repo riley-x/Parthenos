@@ -54,6 +54,10 @@ void TextBox::Paint(D2D1_RECT_F updateRect)
 
 void TextBox::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
 {
+	if (inRect(cursor, m_dipRect))
+	{
+		Cursor::SetCursor(Cursor::hIBeam);
+	}
 	if (m_mouseSelection && (wParam & MK_LBUTTON))
 	{
 		DWRITE_HIT_TEST_METRICS hitTestMetrics;
@@ -83,24 +87,11 @@ void TextBox::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
 			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 		}
 	}
-	else if (inRect(cursor, m_dipRect) && !m_mouseOver)
-	{
-		m_mouseOver = true;
-		Cursor::SetCursor(Cursor::hIBeam);
-	}
-	else if (m_mouseOver && !inRect(cursor, m_dipRect))
-	{
-		m_mouseOver = false;
-		Cursor::SetCursor(Cursor::hArrow);
-	}
 }
 
 bool TextBox::OnLButtonDown(D2D1_POINT_2F cursor)
 {
-	if (!(cursor.x >= m_dipRect.left &&
-		cursor.x <= m_dipRect.right &&
-		cursor.y >= m_dipRect.top &&
-		cursor.y <= m_dipRect.bottom))
+	if (!inRect(cursor, m_dipRect))
 	{
 		if (m_active)
 		{
@@ -183,7 +174,6 @@ bool TextBox::OnChar(wchar_t c, LPARAM lParam)
 {
 	if (!m_active) return false;
 	
-	c = towupper(c);
 	switch (c)
 	{
 	case 0x09: // tab
@@ -289,7 +279,7 @@ bool TextBox::OnKeyDown(WPARAM wParam, LPARAM lParam)
 		}
 		return true;
 	case VK_RETURN:
-		m_parent->ReceiveMessage(m_text, 0); // will call SetText
+		m_parent->ReceiveMessage(m_text, CTPMessage::TEXTBOX_ENTER); // i.e. call SetText upon receipt
 		return true;
 	case VK_INSERT:
 		return false;
@@ -326,22 +316,24 @@ void TextBox::SetText(std::wstring text)
 void TextBox::Activate()
 {
 	m_active = true;
-	if (!Timers::active[Timers::IDT_CARET])
+	if (Timers::nActiveP1[Timers::IDT_CARET] == 0)
 	{
+		Timers::nActiveP1[Timers::IDT_CARET]++;
 		UINT_PTR err = ::SetTimer(m_hwnd, Timers::IDT_CARET, Timers::CARET_TIME, NULL);
 		if (err == 0) OutputError(L"Set timer failed");
-		else Timers::active[Timers::IDT_CARET] = true;
 	}
+	Timers::nActiveP1[Timers::IDT_CARET]++;
 }
 
+// Does not invalidate rect
 void TextBox::Deactivate()
 {
-	m_active = false;
-	if (Timers::active[Timers::IDT_CARET])
+	if (m_active)
 	{
-		BOOL err = ::KillTimer(m_hwnd, Timers::IDT_CARET);
-		if (err == 0)  OutputError(L"Kill timer failed");
-		else Timers::active[Timers::IDT_CARET] = false;
+		Timers::nActiveP1[Timers::IDT_CARET]--;
+		m_active = false;
+		m_flash = true; // So when click again, caret shown immediately
+		m_parent->ReceiveMessage(String(), CTPMessage::TEXTBOX_DEACTIVATED);
 	}
 }
 

@@ -212,6 +212,7 @@ void Chart::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 
 bool Chart::OnChar(wchar_t c, LPARAM lParam)
 {
+	c = towupper(c);
 	return m_tickerBox.OnChar(c, lParam);
 }
 
@@ -248,13 +249,16 @@ void Chart::Load(std::wstring ticker, int range)
 	//}
 }
 
-void Chart::ReceiveMessage(std::wstring msg, int i)
+void Chart::ReceiveMessage(std::wstring msg, CTPMessage imsg)
 {
-	if (i == 0) // ticker box
+	switch (imsg)
 	{
+	case CTPMessage::TEXTBOX_ENTER:
 		Load(msg);
-	}
-	if (i == 1) // timeframe
+		break;
+	case CTPMessage::TEXTBOX_DEACTIVATED:
+		break; // Do nothing
+	case CTPMessage::DROPMENU_SELECTED:
 	{
 		Timeframe tf = Timeframe::none;;
 		if (msg == L"1M") tf = Timeframe::month1;
@@ -265,6 +269,8 @@ void Chart::ReceiveMessage(std::wstring msg, int i)
 		else if (msg == L"5Y") tf = Timeframe::year5;
 		if (tf == m_currentTimeframe) return;
 		DrawMainChart(m_currentMChart, tf);
+		break;
+	}
 	}
 }
 
