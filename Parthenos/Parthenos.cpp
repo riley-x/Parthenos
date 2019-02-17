@@ -96,6 +96,13 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	//	}
 	//	return 0;
 	//}
+	case WM_GETMINMAXINFO:
+	{
+		LPMINMAXINFO lpMMI = reinterpret_cast<LPMINMAXINFO>(lParam);
+		lpMMI->ptMinTrackSize.x = 600;
+		lpMMI->ptMinTrackSize.y = 600;
+		return 0;
+	}
 	case WM_DESTROY:
 		m_d2.DiscardGraphicsResources();
 		m_d2.DiscardDeviceIndependentResources();
@@ -106,6 +113,7 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return OnPaint();
 	case WM_SIZE:
 		return OnSize(wParam);
+
 	case WM_MOUSEMOVE:
 		return OnMouseMove(
 			POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) },
@@ -170,7 +178,7 @@ void Parthenos::PreShow()
 			item->Init();
 		item->Resize(rc, dipRect);
 	}
-	m_watchlist->Load(std::vector<std::wstring>(), std::vector<Column>());
+	m_watchlist->Load({ L"test" }, std::vector<Column>());
 	m_chart->Load(L"AAPL");
 }
 

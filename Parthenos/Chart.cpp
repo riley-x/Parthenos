@@ -11,7 +11,7 @@ float const Chart::m_tickerBoxWidth = 100.0f;
 float const Chart::m_timeframeWidth = 60.0f;
 
 Chart::Chart(HWND hwnd, D2Objects const & d2)
-	: AppItem(hwnd, d2), m_axes(hwnd, d2), m_tickerBox(hwnd, d2, this, D2Objects::Segoe18), 
+	: AppItem(hwnd, d2), m_axes(hwnd, d2), m_tickerBox(hwnd, d2, this), 
 	m_chartTypeButtons(hwnd, d2), m_timeframeButton(hwnd, d2, this)
 {
 	auto temp = new IconButton(hwnd, d2);

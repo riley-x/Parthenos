@@ -214,6 +214,7 @@ void Axes::Rescale()
 void Axes::CalculateXTicks()
 {
 	size_t nmax = static_cast<size_t>(m_rect_xdiff / (3.0f * m_labelHeight));
+	if (nmax == 0) return;
 	size_t step = (m_dates.size() + nmax - 1) / nmax; // round up
 	float xdip = XtoDIP(0);
 	float spacing = XtoDIP(step) - xdip;
@@ -262,6 +263,7 @@ void Axes::CalculateXTicks()
 void Axes::CalculateYTicks()
 {
 	int nmax = static_cast<int>(-m_rect_ydiff / (2.0f * m_labelHeight));
+	if (nmax <= 0) return;
 	double step = 1.0;
 	double ex_step = m_data_ydiff / static_cast<double>(nmax);
 

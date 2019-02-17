@@ -42,18 +42,20 @@ void TextBox::Paint(D2D1_RECT_F updateRect)
 	}
 
 	// Draw bounding box
-	if (m_active)
-		m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
-	else
-		m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
-	m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 0.5f);
+	if (m_border)
+	{
+		if (m_active)
+			m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
+		else
+			m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
+		m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 0.5f);
+	}
 }
 
 void TextBox::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
 {
 	if (m_mouseSelection && (wParam & MK_LBUTTON))
 	{
-
 		DWRITE_HIT_TEST_METRICS hitTestMetrics;
 		BOOL isTrailingHit;
 		BOOL isInside;
@@ -307,10 +309,6 @@ void TextBox::OnTimer(WPARAM wParam, LPARAM lParam)
 	}
 }
 
-std::wstring TextBox::String() const
-{
-	return m_text;
-}
 
 void TextBox::SetText(std::wstring text)
 {
@@ -352,12 +350,12 @@ void TextBox::CreateTextLayout()
 	SafeRelease(&m_pTextLayout);
 	std::wstring str = String();
 	HRESULT hr = m_d2.pDWriteFactory->CreateTextLayout(
-		str.c_str(),			// The string to be laid out and formatted.
-		str.size(),				// The length of the string.
-		m_d2.pTextFormats[m_format],   // The text format to apply to the string (contains font information, etc).
-		Chart::m_tickerBoxWidth - 2 * m_leftOffset, // The width of the layout box.
-		Chart::m_commandSize,   // The height of the layout box.
-		&m_pTextLayout			// The IDWriteTextLayout interface pointer.
+		str.c_str(),					// The string to be laid out and formatted.
+		str.size(),						// The length of the string.
+		m_d2.pTextFormats[m_format],	// The text format to apply to the string (contains font information, etc).
+		m_dipRect.right - m_dipRect.left - 2 * m_leftOffset, // The width of the layout box.
+		m_dipRect.bottom - m_dipRect.top, // The height of the layout box.
+		&m_pTextLayout					// The IDWriteTextLayout interface pointer.
 	);
 	if (FAILED(hr)) Error(L"CreateTextLayout failed");
 }

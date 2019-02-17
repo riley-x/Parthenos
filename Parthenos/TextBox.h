@@ -25,8 +25,10 @@ public:
 	bool OnKeyDown(WPARAM wParam, LPARAM lParam);
 	void OnTimer(WPARAM wParam, LPARAM lParam);
 
-	std::wstring String() const;
+	inline std::wstring String() const { return m_text; }
 	void SetText(std::wstring text);
+	inline void SetParameters(float leftOffset, bool border) 
+		{ m_leftOffset = leftOffset; m_border = border; }
 	void Activate();
 	void Deactivate();
 
@@ -47,6 +49,7 @@ private:
 	bool				m_mouseOver = false;
 
 	// paramters
+	bool				m_border = true;
 	float				m_leftOffset = 2.0f;
 	size_t				m_maxChars = 9;
 	D2Objects::Formats	m_format;
