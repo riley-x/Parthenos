@@ -65,6 +65,15 @@ void Watchlist::Paint(D2D1_RECT_F updateRect)
 			0.5
 		);
 	}
+	for (float line : m_hLines)
+	{
+		m_d2.pRenderTarget->DrawLine(
+			D2D1::Point2F(m_dipRect.left, line),
+			D2D1::Point2F(m_dipRect.right, line),
+			m_d2.pBrush,
+			0.5
+		);
+	}
 
 	// Header and right dividing lines
 	m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
@@ -136,6 +145,29 @@ void Watchlist::OnTimer(WPARAM wParam, LPARAM lParam)
 	for (auto item : m_items) item->OnTimer(wParam, lParam);
 }
 
+void Watchlist::ReceiveMessage(AppItem *sender, std::wstring msg, CTPMessage imsg)
+{
+	switch (imsg)
+	{
+	case CTPMessage::WATCHLISTITEM_NEW:
+	{
+		float top = GetHeight(m_items.size());
+		if (top + m_rowHeight > m_dipRect.bottom) break;
+
+		WatchlistItem *temp = new WatchlistItem(m_hwnd, m_d2, this);
+		temp->SetSize(D2D1::RectF(
+			m_dipRect.left,
+			top,
+			m_dipRect.right,
+			top + m_rowHeight
+		));
+		temp->Load(L"", m_columns);
+		m_items.push_back(temp);
+		m_hLines.push_back(top + m_rowHeight);
+	}
+	}
+}
+
 
 void Watchlist::Load(std::vector<std::wstring> tickers, std::vector<Column> const & columns)
 {
@@ -159,8 +191,10 @@ void Watchlist::Load(std::vector<std::wstring> tickers, std::vector<Column> cons
 
 	// Create column headers, divider lines
 	float left = m_dipRect.left;
-	m_vLines.reserve(m_columns.size());
+	m_vLines.resize(m_columns.size() - 1);
+	for (auto x : m_pTextLayouts) SafeRelease(&x);
 	m_pTextLayouts.resize(m_columns.size());
+
 	for (size_t i = 0; i < m_columns.size(); i++)
 	{
 		if (left + m_columns[i].width >= m_dipRect.right)
@@ -179,7 +213,7 @@ void Watchlist::Load(std::vector<std::wstring> tickers, std::vector<Column> cons
 			break;
 		}
 
-		if (i != 0) m_vLines.push_back(left);
+		if (i != 0) m_vLines[i - 1] = left;
 
 		HRESULT hr = m_d2.pDWriteFactory->CreateTextLayout(
 			m_columns[i].Name().c_str(),	// The string to be laid out and formatted.
@@ -195,13 +229,17 @@ void Watchlist::Load(std::vector<std::wstring> tickers, std::vector<Column> cons
 	}
 
 	tickers.push_back(L""); // Empty WatchlistItem at end for input
+	m_hLines.resize(tickers.size());
+	for (auto x : m_items) if (x) delete x;
+	m_items.clear();
 	m_items.reserve(tickers.size() + 1);
+
 	float top = m_dipRect.top + m_headerHeight;
 	for (size_t i = 0; i < tickers.size(); i++)
 	{
 		if (top + m_rowHeight > m_dipRect.bottom) break;
 
-		WatchlistItem *temp = new WatchlistItem(m_hwnd, m_d2);
+		WatchlistItem *temp = new WatchlistItem(m_hwnd, m_d2, this);
 		temp->SetSize(D2D1::RectF(
 			m_dipRect.left,
 			top,
@@ -212,6 +250,7 @@ void Watchlist::Load(std::vector<std::wstring> tickers, std::vector<Column> cons
 		m_items.push_back(temp);
 
 		top += m_rowHeight;
+		m_hLines[i] = top;
 	}
 }
 
@@ -242,14 +281,18 @@ void WatchlistItem::Paint(D2D1_RECT_F updateRect)
 	}
 }
 
-void WatchlistItem::ReceiveMessage(std::wstring msg, CTPMessage imsg)
+void WatchlistItem::ReceiveMessage(AppItem *sender, std::wstring msg, CTPMessage imsg)
 {
 	switch (imsg)
 	{
 	case CTPMessage::TEXTBOX_DEACTIVATED:
 	case CTPMessage::TEXTBOX_ENTER:
-		if (msg != m_currTicker) Reload(msg);
-		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+		if (msg != m_currTicker)
+		{
+			if (m_currTicker.empty()) m_parent->ReceiveMessage(this, L"", CTPMessage::WATCHLISTITEM_NEW);
+			Reload(msg);
+			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+		}
 		break;
 	}
 }
@@ -281,6 +324,7 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const 
 	for (auto item : m_pTextLayouts) SafeRelease(&item);
 	m_pTextLayouts.resize(m_data.size());
 	m_origins.resize(m_data.size());
+
 	for (size_t i = 0; i < m_data.size(); i++)
 	{
 		// Shift index into columns by 1 to skip Ticker

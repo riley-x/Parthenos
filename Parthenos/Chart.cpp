@@ -249,7 +249,7 @@ void Chart::Load(std::wstring ticker, int range)
 	//}
 }
 
-void Chart::ReceiveMessage(std::wstring msg, CTPMessage imsg)
+void Chart::ReceiveMessage(AppItem *sender, std::wstring msg, CTPMessage imsg)
 {
 	switch (imsg)
 	{

@@ -33,6 +33,9 @@ public:
 	void Deactivate();
 
 private:
+	TextBox(const TextBox&) = delete; // non construction-copyable
+	TextBox& operator=(const TextBox&) = delete; // non copyable
+
 	// state
 	std::wstring		m_text;
 

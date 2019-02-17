@@ -279,7 +279,8 @@ bool TextBox::OnKeyDown(WPARAM wParam, LPARAM lParam)
 		}
 		return true;
 	case VK_RETURN:
-		m_parent->ReceiveMessage(m_text, CTPMessage::TEXTBOX_ENTER); // i.e. call SetText upon receipt
+		m_parent->ReceiveMessage(this, m_text, CTPMessage::TEXTBOX_ENTER); // i.e. call SetText upon receipt
+		Deactivate();
 		return true;
 	case VK_INSERT:
 		return false;
@@ -294,8 +295,8 @@ void TextBox::OnTimer(WPARAM wParam, LPARAM lParam)
 {
 	if (wParam == Timers::IDT_CARET)
 	{
-		m_flash = !m_flash;
 		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+		m_flash = !m_flash;
 	}
 }
 
@@ -315,14 +316,18 @@ void TextBox::SetText(std::wstring text)
 
 void TextBox::Activate()
 {
-	m_active = true;
-	if (Timers::nActiveP1[Timers::IDT_CARET] == 0)
+	if (!m_active)
 	{
+		m_active = true;
+		m_flash = true; // caret shown immediately
+		if (Timers::nActiveP1[Timers::IDT_CARET] == 0)
+		{
+			Timers::nActiveP1[Timers::IDT_CARET]++;
+			UINT_PTR err = ::SetTimer(m_hwnd, Timers::IDT_CARET, Timers::CARET_TIME, NULL);
+			if (err == 0) OutputError(L"Set timer failed");
+		}
 		Timers::nActiveP1[Timers::IDT_CARET]++;
-		UINT_PTR err = ::SetTimer(m_hwnd, Timers::IDT_CARET, Timers::CARET_TIME, NULL);
-		if (err == 0) OutputError(L"Set timer failed");
 	}
-	Timers::nActiveP1[Timers::IDT_CARET]++;
 }
 
 // Does not invalidate rect
@@ -332,8 +337,7 @@ void TextBox::Deactivate()
 	{
 		Timers::nActiveP1[Timers::IDT_CARET]--;
 		m_active = false;
-		m_flash = true; // So when click again, caret shown immediately
-		m_parent->ReceiveMessage(String(), CTPMessage::TEXTBOX_DEACTIVATED);
+		m_parent->ReceiveMessage(this, String(), CTPMessage::TEXTBOX_DEACTIVATED);
 	}
 }
 

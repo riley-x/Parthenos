@@ -38,6 +38,8 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	bool	OnKeyDown(WPARAM wParam, LPARAM lParam);
 	LRESULT OnTimer(WPARAM wParam, LPARAM lParam);
 
+	Parthenos(const Parthenos&) = delete; // non construction-copyable
+	Parthenos& operator=(const Parthenos&) = delete; // non copyable
 public:
 
 	Parthenos() : BorderlessWindow() {}

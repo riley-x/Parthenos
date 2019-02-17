@@ -35,8 +35,8 @@ struct Column
 class WatchlistItem : public AppItem
 {
 public:
-	WatchlistItem(HWND hwnd, D2Objects const & d2) :
-		AppItem(hwnd, d2), m_ticker(hwnd, d2, this), m_data(10) {}
+	WatchlistItem(HWND hwnd, D2Objects const & d2, AppItem *parent) :
+		AppItem(hwnd, d2), m_parent(parent), m_ticker(hwnd, d2, this), m_data(10) {}
 	~WatchlistItem() { for (auto item : m_pTextLayouts) SafeRelease(&item); }
 
 	// AppItem overrides
@@ -50,7 +50,7 @@ public:
 	inline bool OnKeyDown(WPARAM wParam, LPARAM lParam) { return m_ticker.OnKeyDown(wParam, lParam); }
 	inline void OnTimer(WPARAM wParam, LPARAM lParam) { return m_ticker.OnTimer(wParam, lParam); }
 
-	void ReceiveMessage(std::wstring msg, CTPMessage imsg);
+	void ReceiveMessage(AppItem *sender, std::wstring msg, CTPMessage imsg);
 
 	// Interface
 	void Load(std::wstring const & ticker, std::vector<Column> const & columns); // Queries
@@ -60,6 +60,10 @@ public:
 	void Delete(size_t iColumn);
 
 private:
+	WatchlistItem(const WatchlistItem&) = delete; // non construction-copyable
+	WatchlistItem& operator=(const WatchlistItem&) = delete; // non copyable
+
+	AppItem *m_parent;
 	TextBox m_ticker;
 	std::wstring m_currTicker;
 	std::vector<Column> m_columns;
@@ -79,6 +83,7 @@ public:
 	using AppItem::AppItem;
 	~Watchlist();
 
+	// AppItem overrides
 	void Init(float width);
 	void Paint(D2D1_RECT_F updateRect);
 	void Resize(RECT pRect, D2D1_RECT_F pDipRect);
@@ -90,6 +95,9 @@ public:
 	bool OnKeyDown(WPARAM wParam, LPARAM lParam);
 	void OnTimer(WPARAM wParam, LPARAM lParam);
 
+	void ReceiveMessage(AppItem* sender, std::wstring msg, CTPMessage imsg);
+
+	// Interface
 	void Load(std::vector<std::wstring> tickers, std::vector<Column> const & columns);
 
 	// Parameters
@@ -97,6 +105,9 @@ public:
 	static D2Objects::Formats const m_format = D2Objects::Segoe12;
 
 private:
+	Watchlist(const Watchlist&) = delete; // non construction-copyable
+	Watchlist& operator=(const Watchlist&) = delete; // non copyable
+
 	// Data
 	std::vector<WatchlistItem*> m_items;
 	std::vector<Column> m_columns;
@@ -104,10 +115,11 @@ private:
 	
 	// Paramters
 	float const m_headerHeight = 18.0f;
-	float const m_rowHeight = 14.0f;
+	float const m_rowHeight = 18.0f;
 
 	// Drawing
 	std::vector<float> m_vLines;
+	std::vector<float> m_hLines;
 	float m_rightBorder;
 	float m_headerBorder;
 

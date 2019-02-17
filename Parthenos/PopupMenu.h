@@ -9,6 +9,7 @@ class PopupMenu : public AppItem
 public:
 	using AppItem::AppItem;
 	~PopupMenu();
+
 	void SetSize(D2D1_RECT_F dipRect);
 	void Paint(D2D1_RECT_F updateRect);
 	void OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam);
@@ -22,6 +23,9 @@ public:
 	float const m_fontSize = 12.0f;
 	D2Objects::Formats const m_format = D2Objects::Segoe12;
 private:
+	PopupMenu(const PopupMenu&) = delete; // non construction-copyable
+	PopupMenu& operator=(const PopupMenu&) = delete; // non copyable
+
 	// Data
 	std::vector<std::wstring> m_items;
 	std::vector<IDWriteTextLayout*> m_pTextLayouts;

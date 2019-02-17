@@ -106,6 +106,9 @@ public:
 	}
 
 private:
+	ButtonGroup(const ButtonGroup&) = delete; // non construction-copyable
+	ButtonGroup& operator=(const ButtonGroup&) = delete; // non copyable
+
 	int m_active;
 	std::vector<Button*> m_buttons;
 };

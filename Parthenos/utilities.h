@@ -129,7 +129,7 @@ namespace Cursor
 
 enum class CTPMessage
 {
-	TEXTBOX_ENTER, TEXTBOX_DEACTIVATED, DROPMENU_SELECTED,
+	TEXTBOX_ENTER, TEXTBOX_DEACTIVATED, DROPMENU_SELECTED, WATCHLISTITEM_NEW
 };
 
 ///////////////////////////////////////////////////////////
