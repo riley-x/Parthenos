@@ -114,7 +114,7 @@ bool DropMenuButton::OnLButtonDown(D2D1_POINT_2F cursor)
 		if (m_menu.OnLButtonDown(cursor, i, str)) // return true only if item selected; no other selectable space
 		{
 			SetActive(i);
-			m_parent->ReceiveMessage(this, str, CTPMessage::DROPMENU_SELECTED);
+			m_parent->PostClientMessage(this, str, CTPMessage::DROPMENU_SELECTED);
 		}
 		m_active = false;
 		m_menu.Show(false);

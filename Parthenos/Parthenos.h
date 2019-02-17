@@ -22,6 +22,7 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	// Resource management
 	MouseTrackEvents		m_mouseTrack;
 	D2Objects				m_d2;
+	std::deque<ClientMessage> m_messages;
 
 	// Data memebers
 	float m_leftPanelWidth = 350.0f; // in DIPs
@@ -38,6 +39,8 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	bool	OnKeyDown(WPARAM wParam, LPARAM lParam);
 	LRESULT OnTimer(WPARAM wParam, LPARAM lParam);
 
+	void ProcessMessages();
+
 	Parthenos(const Parthenos&) = delete; // non construction-copyable
 	Parthenos& operator=(const Parthenos&) = delete; // non copyable
 public:
@@ -47,7 +50,8 @@ public:
 	~Parthenos();
 
 	LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);
-	void ReceiveMessage(AppItem *sender, std::wstring msg, CTPMessage imsg); // From an AppItem
+	// From an AppItem
+	void PostClientMessage(AppItem *sender, std::wstring msg, CTPMessage imsg) { m_messages.push_back({ sender,msg,imsg }); }
 	// Handle initializations here instead of create
 	// ClientRect doesn't have correct size during WM_CREATE
 	void PreShow(); 

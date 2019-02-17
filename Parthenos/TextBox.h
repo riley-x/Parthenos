@@ -32,7 +32,7 @@ public:
 		m_leftOffset = leftOffset; m_border = border; m_maxChars = maxChars;
 	}
 	void Activate();
-	void Deactivate();
+	void Deactivate(bool message = false); // message parent?
 
 private:
 	TextBox(const TextBox&) = delete; // non construction-copyable

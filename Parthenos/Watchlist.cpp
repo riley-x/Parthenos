@@ -103,13 +103,14 @@ void Watchlist::Resize(RECT pRect, D2D1_RECT_F pDipRect)
 void Watchlist::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
 {
 	for (auto item : m_items) item->OnMouseMove(cursor, wParam);
+	//ProcessMessages();
 }
 
 bool Watchlist::OnLButtonDown(D2D1_POINT_2F cursor)
 {
 	for (auto item : m_items) item->OnLButtonDown(cursor);
-
-	return false;
+	ProcessMessages();
+	return false; // unused
 }
 
 void Watchlist::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)
@@ -117,11 +118,13 @@ void Watchlist::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)
 	int i = GetItem(cursor.y);
 	if (i >= 0 && i < static_cast<int>(m_items.size())) 
 		m_items[i]->OnLButtonDblclk(cursor, wParam);
+	//ProcessMessages();
 }
 
 void Watchlist::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 {
 	for (auto item : m_items) item->OnLButtonUp(cursor, wParam);
+	ProcessMessages();
 }
 
 bool Watchlist::OnChar(wchar_t c, LPARAM lParam)
@@ -131,50 +134,63 @@ bool Watchlist::OnChar(wchar_t c, LPARAM lParam)
 	{
 		if (item->OnChar(c, lParam)) return true;
 	}
+	//ProcessMessages();
 	return false;
 }
 
 bool Watchlist::OnKeyDown(WPARAM wParam, LPARAM lParam)
 {
+	bool out = false;
 	for (auto item : m_items)
 	{
-		if (item->OnKeyDown(wParam, lParam)) return true;
+		if (item->OnKeyDown(wParam, lParam)) out = true;
 	}
-	return false;
+	ProcessMessages();
+	return out;
 }
 
 void Watchlist::OnTimer(WPARAM wParam, LPARAM lParam)
 {
 	for (auto item : m_items) item->OnTimer(wParam, lParam);
+	//ProcessMessages();
 }
 
-void Watchlist::ReceiveMessage(AppItem *sender, std::wstring msg, CTPMessage imsg)
+void Watchlist::ProcessMessages()
 {
-	switch (imsg)
+	for (ClientMessage msg : m_messages)
 	{
-	case CTPMessage::WATCHLISTITEM_NEW:
-	{
-		float top = GetHeight(m_items.size());
-		if (top + m_rowHeight > m_dipRect.bottom) break;
+		switch (msg.imsg)
+		{
+		case CTPMessage::WATCHLISTITEM_NEW:
+		{
+			float top = GetHeight(m_items.size());
+			if (top + m_rowHeight > m_dipRect.bottom) break;
 
-		WatchlistItem *temp = new WatchlistItem(m_hwnd, m_d2, this);
-		temp->SetSize(D2D1::RectF(
-			m_dipRect.left,
-			top,
-			m_dipRect.right,
-			top + m_rowHeight
-		));
-		temp->Load(L"", m_columns);
-		m_items.push_back(temp);
-		m_hLines.push_back(top + m_rowHeight);
-		break;
+			WatchlistItem *temp = new WatchlistItem(m_hwnd, m_d2, this);
+			temp->SetSize(D2D1::RectF(
+				m_dipRect.left,
+				top,
+				m_dipRect.right,
+				top + m_rowHeight
+			));
+			temp->Load(L"", m_columns);
+			m_items.push_back(temp);
+			m_hLines.push_back(top + m_rowHeight);
+			break;
+		}
+		case CTPMessage::WATCHLISTITEM_EMPTY:
+		{
+			// Delete end watchlsit
+			break;
+		}
+		case CTPMessage::WATCHLIST_SELECTED:
+		{
+			m_parent->PostClientMessage(this, msg.msg, msg.imsg);
+			break;
+		}
+		}
 	}
-	case CTPMessage::WATCHLIST_SELECTED:
-	{
-		m_parent->ReceiveMessage(this, msg, imsg);
-		break;
-	}
-	}
+	if (!m_messages.empty()) m_messages.clear();
 }
 
 void Watchlist::Load(std::vector<std::wstring> tickers, std::vector<Column> const & columns)
@@ -293,31 +309,35 @@ void WatchlistItem::Paint(D2D1_RECT_F updateRect)
 	}
 }
 
-inline bool WatchlistItem::OnLButtonDown(D2D1_POINT_2F cursor)
+inline void WatchlistItem::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 {
-	if (m_ticker.OnLButtonDown(cursor)) return true;
-	else if (inRect(cursor, m_dipRect))
+	m_ticker.OnLButtonUp(cursor, wParam);
+	if (inRect(cursor, m_dipRect) && cursor.x > m_columns.front().width + m_dipRect.left)
 	{
-		m_parent->ReceiveMessage(this, m_ticker.String(), CTPMessage::WATCHLIST_SELECTED);
-		return true;
+		m_parent->PostClientMessage(this, m_ticker.String(), CTPMessage::WATCHLIST_SELECTED);
 	}
-	return false;
+	//ProcessMessages(); // not needed
 }
 
-void WatchlistItem::ReceiveMessage(AppItem *sender, std::wstring msg, CTPMessage imsg)
+void WatchlistItem::ProcessMessages()
 {
-	switch (imsg)
+	for (ClientMessage msg : m_messages)
 	{
-	case CTPMessage::TEXTBOX_DEACTIVATED:
-	case CTPMessage::TEXTBOX_ENTER:
-		if (msg != m_currTicker)
+		switch (msg.imsg)
 		{
-			if (m_currTicker.empty()) m_parent->ReceiveMessage(this, L"", CTPMessage::WATCHLISTITEM_NEW);
-			Load(msg, m_columns, true);
-			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+		case CTPMessage::TEXTBOX_DEACTIVATED:
+		case CTPMessage::TEXTBOX_ENTER:
+			if (msg.msg != m_currTicker)
+			{
+				if (m_currTicker.empty()) m_parent->PostClientMessage(this, L"", CTPMessage::WATCHLISTITEM_NEW);
+				else if (msg.msg.empty()) m_parent->PostClientMessage(this, L"", CTPMessage::WATCHLISTITEM_EMPTY);
+				Load(msg.msg, m_columns, true);
+				::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+			}
+			break;
 		}
-		break;
 	}
+	if (!m_messages.empty()) m_messages.clear();
 }
 
 // If reload, don't initialize text box again

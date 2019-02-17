@@ -23,6 +23,7 @@
 #include <exception>
 #include <algorithm>
 #include <cmath>
+#include <deque>
 
 // reference additional headers your program requires here
 #include <d2d1.h>

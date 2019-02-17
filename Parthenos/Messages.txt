@@ -1,0 +1,29 @@
+A summary of messages
+
+TextBox:
+	Sends:
+		OnKeyDown: TEXTBOX_ENTER
+		OnLButtonDown: TEXTBOX_DEACTIVATED
+
+Chart:
+	Receives:
+		TextBox
+
+WatchlistItem:
+	Receives:
+		TextBox
+	Sends:
+		On TextBox: WATCHLIST_NEW, WATCHLIST_EMTPY
+		OnLButtonUp: WATCHLIST_SELECTED
+
+Watchlist:
+	Receives:
+		WatchlistItem
+	Sends:
+		On WatchlistItem: WATCHLIST_SELECTED
+
+Parthenos:
+	Receives:
+		Watchlist
+
+

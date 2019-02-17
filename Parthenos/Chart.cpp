@@ -175,6 +175,7 @@ void Chart::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
 {
 	m_tickerBox.OnMouseMove(cursor, wParam);
 	m_timeframeButton.OnMouseMove(cursor, wParam);
+	//ProcessMessages(); // not needed
 }
 
 bool Chart::OnLButtonDown(D2D1_POINT_2F cursor)
@@ -193,37 +194,44 @@ bool Chart::OnLButtonDown(D2D1_POINT_2F cursor)
 				DrawMainChart(m_ticker, MainChartType::line, m_currentTimeframe);
 			else if (name == L"Envelope")
 				DrawMainChart(m_ticker, MainChartType::envelope, m_currentTimeframe);
-			return true;
 		}
-
 	}
-	return false;
+
+	ProcessMessages();
+	return false; // unused
 }
 
 void Chart::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)
 {
 	m_tickerBox.OnLButtonDblclk(cursor, wParam);
+	// ProcessMessages(); // not needed
 }
 
 void Chart::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 {
 	m_tickerBox.OnLButtonUp(cursor, wParam);
+	// ProcessMessages(); // not needed
 }
 
 bool Chart::OnChar(wchar_t c, LPARAM lParam)
 {
 	c = towupper(c);
-	return m_tickerBox.OnChar(c, lParam);
+	bool out = m_tickerBox.OnChar(c, lParam);
+	// ProcessMessages(); // not needed
+	return out;
 }
 
 bool Chart::OnKeyDown(WPARAM wParam, LPARAM lParam)
 {
-	return m_tickerBox.OnKeyDown(wParam, lParam);
+	bool out = m_tickerBox.OnKeyDown(wParam, lParam);
+	ProcessMessages();
+	return out;
 }
 
 void Chart::OnTimer(WPARAM wParam, LPARAM lParam)
 {
 	m_tickerBox.OnTimer(wParam, lParam);
+	//ProcessMessages(); // not needed
 }
 
 void Chart::Load(std::wstring ticker, int range)
@@ -247,29 +255,33 @@ void Chart::Load(std::wstring ticker, int range)
 	//}
 }
 
-void Chart::ReceiveMessage(AppItem *sender, std::wstring msg, CTPMessage imsg)
+void Chart::ProcessMessages()
 {
-	switch (imsg)
+	for (ClientMessage msg : m_messages)
 	{
-	case CTPMessage::TEXTBOX_ENTER:
-		Load(msg);
-		break;
-	case CTPMessage::TEXTBOX_DEACTIVATED:
-		break; // Do nothing
-	case CTPMessage::DROPMENU_SELECTED:
-	{
-		Timeframe tf = Timeframe::none;;
-		if (msg == L"1M") tf = Timeframe::month1;
-		else if (msg == L"3M") tf = Timeframe::month3;
-		else if (msg == L"6M") tf = Timeframe::month6;
-		else if (msg == L"1Y") tf = Timeframe::year1;
-		else if (msg == L"2Y") tf = Timeframe::year2;
-		else if (msg == L"5Y") tf = Timeframe::year5;
-		if (tf == m_currentTimeframe) return;
-		DrawMainChart(m_ticker, m_currentMChart, tf);
-		break;
+		switch (msg.imsg)
+		{
+		case CTPMessage::TEXTBOX_ENTER:
+			Load(msg.msg);
+			break;
+		case CTPMessage::TEXTBOX_DEACTIVATED:
+			break; // Do nothing
+		case CTPMessage::DROPMENU_SELECTED:
+		{
+			Timeframe tf = Timeframe::none;;
+			if (msg.msg == L"1M") tf = Timeframe::month1;
+			else if (msg.msg == L"3M") tf = Timeframe::month3;
+			else if (msg.msg == L"6M") tf = Timeframe::month6;
+			else if (msg.msg == L"1Y") tf = Timeframe::year1;
+			else if (msg.msg == L"2Y") tf = Timeframe::year2;
+			else if (msg.msg == L"5Y") tf = Timeframe::year5;
+			if (tf == m_currentTimeframe) return;
+			DrawMainChart(m_ticker, m_currentMChart, tf);
+			break;
+		}
+		}
 	}
-	}
+	if (!m_messages.empty()) m_messages.clear();
 }
 
 ///////////////////////////////////////////////////////////

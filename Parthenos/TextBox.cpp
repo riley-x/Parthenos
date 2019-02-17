@@ -95,7 +95,7 @@ bool TextBox::OnLButtonDown(D2D1_POINT_2F cursor)
 	{
 		if (m_active)
 		{
-			Deactivate();
+			Deactivate(true);
 			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 		}
 		return false;
@@ -278,7 +278,7 @@ bool TextBox::OnKeyDown(WPARAM wParam, LPARAM lParam)
 		}
 		return true;
 	case VK_RETURN:
-		m_parent->ReceiveMessage(this, m_text, CTPMessage::TEXTBOX_ENTER);
+		m_parent->PostClientMessage(this, m_text, CTPMessage::TEXTBOX_ENTER);
 		Deactivate();
 		return true;
 	case VK_INSERT:
@@ -332,14 +332,14 @@ void TextBox::Activate()
 }
 
 // Does not invalidate rect
-void TextBox::Deactivate()
+void TextBox::Deactivate(bool message)
 {
 	if (m_active)
 	{
 		Timers::nActiveP1[Timers::IDT_CARET]--;
 		m_selection = false;
 		m_active = false;
-		m_parent->ReceiveMessage(this, String(), CTPMessage::TEXTBOX_DEACTIVATED);
+		if (message) m_parent->PostClientMessage(this, String(), CTPMessage::TEXTBOX_DEACTIVATED);
 	}
 }
 

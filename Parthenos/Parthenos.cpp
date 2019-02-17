@@ -160,19 +160,23 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return DefWindowProc(m_hwnd, uMsg, wParam, lParam);
 }
 
-void Parthenos::ReceiveMessage(AppItem * sender, std::wstring msg, CTPMessage imsg)
+void Parthenos::ProcessMessages()
 {
-	switch (imsg)
+	for (ClientMessage msg : m_messages)
 	{
-	case CTPMessage::WATCHLIST_SELECTED:
-	{
-		if (std::find(m_activeItems.begin(), m_activeItems.end(), m_chart) != m_activeItems.end())
+		switch (msg.imsg)
 		{
-			m_chart->Load(msg);
+		case CTPMessage::WATCHLIST_SELECTED:
+		{
+			if (std::find(m_activeItems.begin(), m_activeItems.end(), m_chart) != m_activeItems.end())
+			{
+				m_chart->Load(msg.msg);
+			}
+			break;
 		}
-		break;
+		}
 	}
-	}
+	if (!m_messages.empty()) m_messages.clear();
 }
 
 void Parthenos::PreShow()
@@ -322,6 +326,7 @@ LRESULT Parthenos::OnMouseMove(POINT cursor, WPARAM wParam)
 
 	if (!Cursor::isSet) ::SetCursor(Cursor::hArrow);
 
+	//ProcessMessages();
 	return 0;
 }
 
@@ -349,6 +354,7 @@ LRESULT Parthenos::OnLButtonDown(POINT cursor, WPARAM wParam)
 		item->OnLButtonDown(dipCursor);
 	}
 	
+	//ProcessMessages();
 	return 0;
 }
 
@@ -359,6 +365,7 @@ LRESULT Parthenos::OnLButtonDblclk(POINT cursor, WPARAM wParam)
 	{
 		item->OnLButtonDblclk(dipCursor, wParam);
 	}
+	//ProcessMessages();
 	return 0;
 }
 
@@ -369,6 +376,7 @@ LRESULT Parthenos::OnLButtonUp(POINT cursor, WPARAM wParam)
 	{
 		item->OnLButtonUp(dipCursor, wParam);
 	}
+	ProcessMessages();
 	return 0;
 }
 
@@ -378,16 +386,19 @@ LRESULT Parthenos::OnChar(wchar_t c, LPARAM lParam)
 	{
 		if (item->OnChar(c, lParam)) break;
 	}
+	//ProcessMessages();
 	return 0;
 }
 
 bool Parthenos::OnKeyDown(WPARAM wParam, LPARAM lParam)
 {
+	bool out = false;
 	for (auto item : m_activeItems)
 	{
-		if (item->OnKeyDown(wParam, lParam)) return true;
+		if (item->OnKeyDown(wParam, lParam)) out = true;
 	}
-	return false;
+	//ProcessMessages();
+	return out;
 }
 
 LRESULT Parthenos::OnTimer(WPARAM wParam, LPARAM lParam)
@@ -406,6 +417,7 @@ LRESULT Parthenos::OnTimer(WPARAM wParam, LPARAM lParam)
 			Timers::nActiveP1[i] = 0;
 		}
 	}
+	//ProcessMessages();
 	return 0;
 }
 

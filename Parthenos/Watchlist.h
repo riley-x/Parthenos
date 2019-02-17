@@ -44,14 +44,24 @@ public:
 	void SetSize(D2D1_RECT_F dipRect); // The height should not change, or else call Load() again
 	void Paint(D2D1_RECT_F updateRect);
 	inline void OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam) { m_ticker.OnMouseMove(cursor, wParam); }
-	inline bool OnLButtonDown(D2D1_POINT_2F cursor);
+	inline bool OnLButtonDown(D2D1_POINT_2F cursor)
+	{
+		bool out = m_ticker.OnLButtonDown(cursor);
+		ProcessMessages();
+		return out;
+	}
 	inline void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam) { return m_ticker.OnLButtonDblclk(cursor, wParam); }
-	inline void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam) { return m_ticker.OnLButtonUp(cursor, wParam); }
+	inline void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam);
 	inline bool OnChar(wchar_t c, LPARAM lParam) { return m_ticker.OnChar(c, lParam); }
-	inline bool OnKeyDown(WPARAM wParam, LPARAM lParam) { return m_ticker.OnKeyDown(wParam, lParam); }
+	inline bool OnKeyDown(WPARAM wParam, LPARAM lParam) 
+	{
+		bool out = m_ticker.OnKeyDown(wParam, lParam); 
+		ProcessMessages();
+		return out;
+	}
 	inline void OnTimer(WPARAM wParam, LPARAM lParam) { return m_ticker.OnTimer(wParam, lParam); }
 
-	void ReceiveMessage(AppItem *sender, std::wstring msg, CTPMessage imsg);
+	void ProcessMessages();
 
 	// Interface
 	void Load(std::wstring const & ticker, std::vector<Column> const & columns, bool reload = false); // Queries
@@ -97,7 +107,7 @@ public:
 	bool OnKeyDown(WPARAM wParam, LPARAM lParam);
 	void OnTimer(WPARAM wParam, LPARAM lParam);
 
-	void ReceiveMessage(AppItem* sender, std::wstring msg, CTPMessage imsg);
+	void ProcessMessages();
 
 	// Interface
 	void Load(std::vector<std::wstring> tickers, std::vector<Column> const & columns);
@@ -114,6 +124,8 @@ private:
 
 	// Data
 	std::vector<WatchlistItem*> m_items;
+	std::vector<WatchlistItem*> m_adds;
+	std::vector<WatchlistItem*> m_deletes;
 	std::vector<Column> m_columns;
 	std::vector<IDWriteTextLayout*> m_pTextLayouts; // For column headers
 	

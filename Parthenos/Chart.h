@@ -26,7 +26,7 @@ public:
 	void OnTimer(WPARAM wParam, LPARAM lParam);
 
 	void Load(std::wstring ticker, int range = 1260); // # datapoints in days. default to 5 years 
-	void ReceiveMessage(AppItem *sender, std::wstring msg, CTPMessage imsg);
+	void ProcessMessages();
 
 	static const float	m_commandSize;
 	static const float	m_tickerBoxWidth;

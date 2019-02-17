@@ -67,21 +67,19 @@ private:
 
 		// Get file size
 		LONGLONG fileSize;
-		if (all || m_access == GENERIC_READ)
+		LARGE_INTEGER fileSize_struct;
+
+		bErrorFlag = GetFileSizeEx(m_hFile, &fileSize_struct);
+		if (bErrorFlag == 0)
 		{
-			LARGE_INTEGER fileSize_struct;
-
-			bErrorFlag = GetFileSizeEx(m_hFile, &fileSize_struct);
-			if (bErrorFlag == 0)
-			{
-				OutputMessage(L"Couldn't get filesize.\n");
-				return std::vector<T>();
-			}
-			fileSize = fileSize_struct.QuadPart;
+			OutputMessage(L"Couldn't get filesize.\n");
+			return std::vector<T>();
 		}
+		fileSize = fileSize_struct.QuadPart;
 
-		if (all)
+		if (all || bytesToRead > static_cast<DWORD>(fileSize))
 			bytesToRead = static_cast<DWORD>(fileSize);
+
 		char *ReadBuffer = new char[bytesToRead];
 
 		if (m_access == GENERIC_READ)

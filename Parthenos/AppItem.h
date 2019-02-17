@@ -4,6 +4,15 @@
 #include "utilities.h"
 #include "D2Objects.h"
 
+class AppItem;
+
+typedef struct ClientMessage_struct
+{
+	AppItem *sender;
+	std::wstring msg;
+	CTPMessage imsg;
+} ClientMessage;
+
 class AppItem
 {
 public:
@@ -28,7 +37,8 @@ public:
 	virtual bool OnKeyDown(WPARAM wParam, LPARAM lParam) { return false; }
 	virtual void OnTimer(WPARAM wParam, LPARAM lParam) { return; }
 
-	virtual void ReceiveMessage(AppItem *sender, std::wstring msg, CTPMessage imsg) { return; } 
+	virtual void PostClientMessage(AppItem *sender, std::wstring msg, CTPMessage imsg) { m_messages.push_back({ sender,msg,imsg }); }
+	virtual void ProcessMessages() { if (!m_messages.empty()) m_messages.clear(); }
 
 	D2D1_RECT_F GetDIPRect() const { return m_dipRect; }
 
@@ -38,4 +48,6 @@ protected:
 
 	RECT		m_pixRect; // pixels in main window client coordinates
 	D2D1_RECT_F m_dipRect;
+
+	std::deque<ClientMessage> m_messages;
 };

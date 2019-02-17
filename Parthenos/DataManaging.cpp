@@ -123,10 +123,11 @@ std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source, size_t last_n)
 			out = GetOHLC_IEX(ticker, last_n);
 			break;
 		}
-		if (last_n > 0 && out.size() > last_n)
-		{
-			return std::vector<OHLC>(out.end() - last_n, out.end());
-		}
+		// A little redundant. Don't need to be exact here -> be exact in chart
+		//if (last_n > 0 && out.size() > last_n)
+		//{
+		//	return std::vector<OHLC>(out.end() - last_n, out.end());
+		//}
 	}
 	catch (const std::invalid_argument& ia) {
 		OutputDebugStringA(ia.what()); OutputDebugStringA("\n");

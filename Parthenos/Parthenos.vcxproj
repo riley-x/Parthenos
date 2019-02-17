@@ -214,6 +214,9 @@
     <Image Include="Parthenos.ico" />
     <Image Include="Parthenos_white.png" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="Messages.txt" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
