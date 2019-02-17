@@ -23,25 +23,27 @@ OHLC parseAlphaChartItem(std::string json);
 
 // Queries IEX for a quote with fields
 //		open, close, latestPrice, latestSource, latestUpdate (timestamp truncated to seconds)
-//		latestVolume, avgTotalVolume
+//		latestVolume, avgTotalVolume, previousClose, change, changePercent
 // Throws std::invalid_argument if failed
 Quote GetQuote(std::wstring ticker)
 {
 	std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::tolower);
 	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/" + ticker + L"/quote",
-		L"filter=open,close,latestPrice,latestSource,latestUpdate,latestVolume,avgTotalVolume");
-
+		L"filter=open,close,latestPrice,latestSource,latestUpdate,latestVolume,avgTotalVolume,"
+		L"previousClose,change,changePercent");
 	Quote quote;
 	char buffer[50] = { 0 };
 
 	const char format[] = R"({"open":%lf,"close":%lf,"latestPrice":%lf,"latestSource":"%49[^"]","latestUpdate":%I64d,)"
-		R"("latestVolume":%d,"avgTotalVolume":%d})";
+		R"("latestVolume":%d,"avgTotalVolume":%d,"previousClose":%lf,"change":%lf,"changePercent":%lf})";
 
 	int n = sscanf_s(json.c_str(), format, &quote.open, &quote.close, &quote.latestPrice, buffer,
-		static_cast<unsigned>(_countof(buffer)), &quote.latestUpdate, &quote.latestVolume, &quote.avgTotalVolume);
-	if (n != 7)
+		static_cast<unsigned>(_countof(buffer)), &quote.latestUpdate, &quote.latestVolume, &quote.avgTotalVolume,
+		&quote.previousClose, &quote.change, &quote.changePercent
+	);
+	if (n != 10)
 	{
-		OutputMessage(L"sscanf_s failed! Only read %d/%d\n", n, 7);
+		OutputMessage(L"sscanf_s failed! Only read %d/%d\n", n, 10);
 		throw std::invalid_argument("GetQuote failed");
 	}
 
@@ -54,11 +56,55 @@ Quote GetQuote(std::wstring ticker)
 	else if (strcmp(buffer, "Previous close") == 0)
 		quote.latestSource = iexLSource::prevclose;
 	else
+	{
 		OutputMessage(L"Couldn't decipher latestSource %hs\n", buffer);
+		throw std::invalid_argument("GetQuote failed");
+	}
 
 	quote.latestUpdate /= 1000; // remove milliseconds
 	return quote;
 }
+
+// Queries IEX for key stats.
+// Throws std::invalid_argument if failed
+Stats GetStats(std::wstring ticker)
+{
+	std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::tolower);
+	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/" + ticker + L"/stats",
+		L"filter=beta,week52high,week52low,dividendRate,dividendYield,year1ChangePercent,exDividendDate");
+
+	Stats stats;
+	char buffer[50] = { 0 };
+
+	const char format[] = R"({"beta":%lf,"week52high":%lf,"week52low":%lf,"dividendRate":%lf,"dividendYield":%lf,)"
+		R"("year1ChangePercent":%lf,"exDividendDate":"%49[^"]"})";
+
+	int n = sscanf_s(json.c_str(), format, &stats.beta, &stats.week52high, &stats.week52low, &stats.dividendRate,
+		&stats.dividendYield, &stats.year1ChangePercent, buffer, static_cast<unsigned>(_countof(buffer))
+	);
+	if (n == 6) // exDividendDate failed
+	{
+		stats.exDividendDate = 0;
+		return stats;
+	}
+	else if (n != 7)
+	{
+		OutputMessage(L"GetStats sscanf_s failed! Only read %d/%d\n", n, 7);
+		throw std::invalid_argument("GetQuote failed");
+	}
+
+	int year, month, date;
+	n = sscanf_s(buffer, "%d-%d-%d", &year, &month, &date);
+	if (n != 3)
+	{
+		OutputMessage(L"GetStats sscanf_s 2 failed! Only read %d/%d\n", n, 3);
+		throw std::invalid_argument("praseIEXChartItem failed");
+	}
+	stats.exDividendDate = MkDate(year, month, date);
+
+	return stats;
+}
+
 
 
 // Reads, writes, and fetches data as necessary

@@ -38,15 +38,18 @@ typedef struct OHLC_struct {
 } OHLC;
 
 typedef struct Quote_struct {
+	int latestVolume;
+	int avgTotalVolume;
+	iexLSource latestSource;
 	double open;
 	double close;
 	double latestPrice;
-	iexLSource latestSource;
+	double previousClose;
+	double change;
+	double changePercent;
 	time_t latestUpdate;
-	int latestVolume;
-	int avgTotalVolume;
 
-	std::wstring to_wstring() const
+	inline std::wstring to_wstring() const
 	{
 		return L"Date: "			+ TimeToWString(latestUpdate)
 			+ L", Open: "			+ std::to_wstring(open)
@@ -55,11 +58,38 @@ typedef struct Quote_struct {
 			+ L", latestSource: "	+ std::to_wstring(static_cast<int>(latestSource))
 			+ L", latestVolume: "	+ std::to_wstring(latestVolume)
 			+ L", avgTotalVolume: " + std::to_wstring(avgTotalVolume)
-			+ L", latestUpdate: "	+ std::to_wstring(latestUpdate)
+			+ L"\nlatestUpdate: "	+ std::to_wstring(latestUpdate)
+			+ L", previousClose: "	+ std::to_wstring(previousClose)
+			+ L", change: "			+ std::to_wstring(change)
+			+ L", changePercent: "	+ std::to_wstring(changePercent)
 			+ L"\n";
 	}
 } Quote;
 
+
+typedef struct Stats_struct {
+	date_t exDividendDate;
+	double beta;
+	double week52high;
+	double week52low;
+	double dividendRate;
+	double dividendYield;
+	double year1ChangePercent;
+
+	inline std::wstring to_wstring() const
+	{
+		return L"Beta: "			+ std::to_wstring(beta)
+			+ L", 52WeekHigh: "		+ std::to_wstring(week52high)
+			+ L", 52WeekLow: "		+ std::to_wstring(week52low)
+			+ L", dividendRate: "	+ std::to_wstring(dividendRate)
+			+ L", dividendYield: "	+ std::to_wstring(dividendYield)
+			+ L", exDividendDate: " + DateToWString(exDividendDate)
+			+ L", 1YearChange%: "	+ std::to_wstring(year1ChangePercent)
+			+ L"\n";
+	}
+} Stats;
+
 std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source = apiSource::iex, size_t last_n = 0);
 Quote GetQuote(std::wstring ticker);
+Stats GetStats(std::wstring ticker);
 bool OHLC_Compare(const OHLC & a, const OHLC & b);

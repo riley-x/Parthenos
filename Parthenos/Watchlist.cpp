@@ -2,6 +2,7 @@
 #include "Watchlist.h"
 #include "TitleBar.h"
 #include "utilities.h"
+#include "DataManaging.h"
 
 float const Watchlist::m_hTextPad = 4.0f;
 
@@ -124,6 +125,7 @@ void Watchlist::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 
 bool Watchlist::OnChar(wchar_t c, LPARAM lParam)
 {
+	c = towupper(c);
 	for (auto item : m_items)
 	{
 		if (item->OnChar(c, lParam)) return true;
@@ -174,12 +176,12 @@ void Watchlist::Load(std::vector<std::wstring> tickers, std::vector<Column> cons
 	if (columns.empty())
 	{
 		m_columns = {
-			{60.0f, Column::Ticker, L""},
+			{90.0f, Column::Ticker, L""},
 			{60.0f, Column::Last, L"%.2lf"},
 			{60.0f, Column::ChangeP, L"%.2lf"},
 			{60.0f, Column::Change1YP, L"%.2lf%%"},
 			{60.0f, Column::DivP, L"%.2lf"},
-			{50.0f, Column::None, L""}
+			{20.0f, Column::None, L""}
 		};
 	}
 	else
@@ -290,14 +292,15 @@ void WatchlistItem::ReceiveMessage(AppItem *sender, std::wstring msg, CTPMessage
 		if (msg != m_currTicker)
 		{
 			if (m_currTicker.empty()) m_parent->ReceiveMessage(this, L"", CTPMessage::WATCHLISTITEM_NEW);
-			Reload(msg);
+			Load(msg, m_columns, true);
 			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 		}
 		break;
 	}
 }
 
-void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const & columns)
+// If reload, don't initialize text box again
+void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const & columns, bool reload)
 {
 	if (columns.empty() || columns.front().field != Column::Ticker)
 	{
@@ -305,20 +308,24 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const 
 		return;
 	}
 
-	m_columns = columns;
+	if (!reload)
+		m_columns = columns;
 	m_currTicker = ticker;
 	LoadData(ticker);
 
-	// Initialize text box
 	float left = m_dipRect.left;
-	m_ticker.SetSize(D2D1::RectF(
-		left,
-		m_dipRect.top,
-		left + columns[0].width,
-		m_dipRect.bottom
-	));
-	m_ticker.SetParameters(Watchlist::m_hTextPad, false);
-	m_ticker.SetText(ticker);
+	if (!reload)
+	{
+		// Initialize text box
+		m_ticker.SetSize(D2D1::RectF(
+			left,
+			m_dipRect.top,
+			left + columns[0].width,
+			m_dipRect.bottom
+		));
+		m_ticker.SetParameters(Watchlist::m_hTextPad, false, 7);
+		m_ticker.SetText(ticker);
+	}
 	left += columns[0].width;
 
 	for (auto item : m_pTextLayouts) SafeRelease(&item);
@@ -349,35 +356,62 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const 
 	}
 }
 
-//TODO
 void WatchlistItem::LoadData(std::wstring const & ticker)
 {
+	if (ticker.empty())
+	{
+		m_data.clear();
+		return;
+	}
+
 	// m_columns[0] == Ticker
 	m_data.resize(m_columns.size() - 1);
-	for (size_t i = 1; i < m_columns.size(); i++)
+	try
 	{
-		m_data[i - 1].first = 0.0;
-		m_data[i - 1].second = ticker;
+		Quote quote = GetQuote(ticker);
+		Stats stats = GetStats(ticker);
+
+		wchar_t buffer[50] = {};
+		for (size_t i = 1; i < m_columns.size(); i++)
+		{
+			switch (m_columns[i].field)
+			{
+			case Column::Last:
+			{
+				swprintf_s(buffer, _countof(buffer), m_columns[i].format.c_str(), quote.latestPrice);
+				m_data[i - 1] = { quote.latestPrice, buffer };
+				break;
+			}
+			case Column::ChangeP:
+			{
+				swprintf_s(buffer, _countof(buffer), m_columns[i].format.c_str(), quote.changePercent * 100);
+				m_data[i - 1] = { quote.changePercent, buffer };
+				break;
+			}
+			case Column::Change1YP:
+			{
+				swprintf_s(buffer, _countof(buffer), m_columns[i].format.c_str(), stats.year1ChangePercent * 100);
+				m_data[i - 1] = { stats.year1ChangePercent, buffer };
+				break;
+			}
+			case Column::DivP:
+			{
+				swprintf_s(buffer, _countof(buffer), m_columns[i].format.c_str(), stats.dividendYield);
+				m_data[i - 1] = { stats.dividendYield, buffer };
+				break;
+			}
+			case Column::None:
+			default:
+				m_data[i - 1] = { 0.0, L"" };
+				break;
+			}
+		}
+	}
+	catch (const std::invalid_argument& ia) {
+		OutputDebugString((ticker + L": ").c_str());
+		OutputDebugStringA(ia.what()); OutputDebugStringA("\n");
+		m_data.clear();
 	}
 }
 
-void WatchlistItem::Reload(std::wstring const & ticker)
-{
-	m_currTicker = ticker;
-	LoadData(ticker);
-
-	for (auto item : m_pTextLayouts) SafeRelease(&item);
-	for (size_t i = 0; i < m_data.size(); i++)
-	{
-		HRESULT hr = m_d2.pDWriteFactory->CreateTextLayout(
-			m_data[i].second.c_str(),				// The string to be laid out and formatted.
-			m_data[i].second.size(),				// The length of the string.
-			m_d2.pTextFormats[Watchlist::m_format],	// The text format to apply to the string (contains font information, etc).
-			m_columns[i + 1].width - 2 * Watchlist::m_hTextPad, // The width of the layout box.
-			m_dipRect.bottom - m_dipRect.top,		// The height of the layout box.
-			&m_pTextLayouts[i]						// The IDWriteTextLayout interface pointer.
-		);
-		if (FAILED(hr)) Error(L"CreateTextLayout failed");
-	}
-}
 

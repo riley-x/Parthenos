@@ -27,8 +27,10 @@ public:
 
 	inline std::wstring String() const { return m_text; }
 	void SetText(std::wstring text);
-	inline void SetParameters(float leftOffset, bool border) 
-		{ m_leftOffset = leftOffset; m_border = border; }
+	inline void SetParameters(float leftOffset, bool border, size_t maxChars = 9) 
+	{
+		m_leftOffset = leftOffset; m_border = border; m_maxChars = maxChars;
+	}
 	void Activate();
 	void Deactivate();
 

@@ -96,7 +96,6 @@ bool TextBox::OnLButtonDown(D2D1_POINT_2F cursor)
 		if (m_active)
 		{
 			Deactivate();
-			m_selection = false;
 			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 		}
 		return false;
@@ -279,7 +278,7 @@ bool TextBox::OnKeyDown(WPARAM wParam, LPARAM lParam)
 		}
 		return true;
 	case VK_RETURN:
-		m_parent->ReceiveMessage(this, m_text, CTPMessage::TEXTBOX_ENTER); // i.e. call SetText upon receipt
+		m_parent->ReceiveMessage(this, m_text, CTPMessage::TEXTBOX_ENTER);
 		Deactivate();
 		return true;
 	case VK_INSERT:
@@ -303,15 +302,17 @@ void TextBox::OnTimer(WPARAM wParam, LPARAM lParam)
 
 void TextBox::SetText(std::wstring text)
 {
-	if (text.length() > m_maxChars)
+	if (text != m_text || m_pTextLayout == NULL) // can be null if initialized with empty string
 	{
-		OutputMessage(L"%s too long\n", text);
-		return;
+		if (text.length() > m_maxChars)
+		{
+			OutputMessage(L"%s too long\n", text);
+			return;
+		}
+		m_text = text;
+		CreateTextLayout();
 	}
-	m_text = text;
 	Deactivate();
-	m_selection = false;
-	CreateTextLayout();
 }
 
 void TextBox::Activate()
@@ -336,6 +337,7 @@ void TextBox::Deactivate()
 	if (m_active)
 	{
 		Timers::nActiveP1[Timers::IDT_CARET]--;
+		m_selection = false;
 		m_active = false;
 		m_parent->ReceiveMessage(this, String(), CTPMessage::TEXTBOX_DEACTIVATED);
 	}

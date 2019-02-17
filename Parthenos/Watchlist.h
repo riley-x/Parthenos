@@ -53,7 +53,7 @@ public:
 	void ReceiveMessage(AppItem *sender, std::wstring msg, CTPMessage imsg);
 
 	// Interface
-	void Load(std::wstring const & ticker, std::vector<Column> const & columns); // Queries
+	void Load(std::wstring const & ticker, std::vector<Column> const & columns, bool reload = false); // Queries
 	// Load should be called after SetSize
 	void Add(Column const & col); // Queries 
 	void Move(size_t iColumn, size_t iPos);
@@ -73,8 +73,7 @@ private:
 
 	// Do the actual HTTP query and format the string
 	void LoadData(std::wstring const & ticker);
-	// Ticker changed but nothing else
-	void Reload(std::wstring const & ticker);
+
 };
 
 class Watchlist : public AppItem
