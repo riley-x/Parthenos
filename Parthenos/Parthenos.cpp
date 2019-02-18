@@ -120,7 +120,7 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			wParam
 		);
 	case WM_MOUSELEAVE:
-		m_titleBar->MouseOn(HTNOWHERE);
+		m_titleBar->SetMouseOn(TitleBar::Buttons::NONE);
 		m_mouseTrack.Reset(m_hwnd);
 		return 0;
 	case WM_MOUSEHOVER:
@@ -166,6 +166,16 @@ void Parthenos::ProcessMessages()
 	{
 		switch (msg.imsg)
 		{
+		case CTPMessage::TITLEBAR_CLOSE:
+			SendMessage(m_hwnd, WM_CLOSE, 0, 0);
+			break;
+		case CTPMessage::TITLEBAR_MAXRESTORE:
+			if (maximized()) ShowWindow(m_hwnd, SW_RESTORE);
+			else ShowWindow(m_hwnd, SW_MAXIMIZE);
+			break;
+		case CTPMessage::TITLEBAR_MIN:
+			ShowWindow(m_hwnd, SW_MINIMIZE);
+			break;
 		case CTPMessage::WATCHLIST_SELECTED:
 		{
 			if (std::find(m_activeItems.begin(), m_activeItems.end(), m_chart) != m_activeItems.end())
@@ -205,7 +215,7 @@ void Parthenos::PreShow()
 LRESULT Parthenos::OnCreate()
 {
 	m_d2.hwndParent = m_hwnd;
-	m_titleBar = new TitleBar(m_hwnd, m_d2);
+	m_titleBar = new TitleBar(m_hwnd, m_d2, this);
 	m_chart = new Chart(m_hwnd, m_d2);
 	m_watchlist = new Watchlist(m_hwnd, m_d2, this);
 
@@ -234,21 +244,11 @@ LRESULT Parthenos::OnNCHitTest(POINT cursor)
 {
 	if (!::ScreenToClient(m_hwnd, &cursor)) Error(L"ScreenToClient failed");
 
-	LRESULT ret = m_titleBar->HitTest(cursor);
-	switch (ret)
-	{
-	case HTMINBUTTON:
-	case HTMAXBUTTON:
-	case HTCLOSE:
-		m_titleBar->MouseOn(ret);
+	TitleBar::Buttons but = m_titleBar->HitTest(cursor);
+	if (but == TitleBar::Buttons::CAPTION)
+		return HTCAPTION;
+	else
 		return HTCLIENT;
-	case HTCAPTION:
-		m_titleBar->MouseOn(HTNOWHERE);
-		return ret;
-	default:
-		m_titleBar->MouseOn(HTNOWHERE);
-		return HTCLIENT;
-	}
 }
 
 LRESULT Parthenos::OnPaint()
@@ -288,9 +288,9 @@ LRESULT Parthenos::OnPaint()
 LRESULT Parthenos::OnSize(WPARAM wParam)
 {
 	if (wParam == SIZE_MAXIMIZED)
-		m_titleBar->Maximize(true);
+		m_titleBar->SetMaximized(true);
 	else if (wParam == SIZE_RESTORED)
-		m_titleBar->Maximize(false);
+		m_titleBar->SetMaximized(false);
 	if (m_d2.pRenderTarget != NULL)
 	{
 		RECT rc;
@@ -320,7 +320,8 @@ LRESULT Parthenos::OnMouseMove(POINT cursor, WPARAM wParam)
 
 	for (auto item : m_activeItems)
 	{
-		item->OnMouseMove(dipCursor, wParam);
+		if (item == m_titleBar) m_titleBar->OnMouseMoveP(cursor, wParam);
+		else item->OnMouseMove(dipCursor, wParam);
 	}
 
 	if (!Cursor::isSet) ::SetCursor(Cursor::hArrow);
@@ -331,29 +332,14 @@ LRESULT Parthenos::OnMouseMove(POINT cursor, WPARAM wParam)
 
 LRESULT Parthenos::OnLButtonDown(POINT cursor, WPARAM wParam)
 {
-	LRESULT ret = m_titleBar->HitTest(cursor);
-	switch (ret)
-	{
-	case HTMINBUTTON:
-		ShowWindow(m_hwnd, SW_MINIMIZE);
-		return 0;
-	case HTMAXBUTTON:
-		if (maximized()) ShowWindow(m_hwnd, SW_RESTORE);
-		else ShowWindow(m_hwnd, SW_MAXIMIZE);
-		return 0;
-	case HTCLOSE:
-		SendMessage(m_hwnd, WM_CLOSE, 0, 0);
-		return 0;
-	}
-
 	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
 	for (auto item : m_activeItems)
 	{
-		//if (item->OnLButtonDown(dipCursor)) break;
-		item->OnLButtonDown(dipCursor);
+		if (item == m_titleBar) m_titleBar->OnLButtonDownP(cursor);
+		else item->OnLButtonDown(dipCursor);
 	}
 	
-	//ProcessMessages();
+	ProcessMessages();
 	return 0;
 }
 

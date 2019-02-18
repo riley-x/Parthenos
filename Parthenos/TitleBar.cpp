@@ -6,7 +6,6 @@
 float const TitleBar::iconHPad = 6.0f;
 float const TitleBar::height = 30.0f;
 
-
 // This must be called AFTER DPIScale is initialized
 void TitleBar::Init()
 {
@@ -29,6 +28,19 @@ void TitleBar::Init()
 	m_TitleIconRect = D2D1::RectF(3.0f, 3.0f, 27.0f, 27.0f);
 }
 
+// 'pRect': client RECT of parent
+void TitleBar::Resize(RECT pRect, D2D1_RECT_F pDipRect)
+{
+	m_pixRect.right = pRect.right;
+	m_dipRect.right = pDipRect.right;
+
+	float width = 32;
+	for (int i = 0; i < nIcons; i++)
+	{
+		m_CommandIconRects[i].right = pRect.right - (width + 2 * iconHPad)*i - iconHPad;
+		m_CommandIconRects[i].left = m_CommandIconRects[i].right - width;
+	}
+}
 
 void TitleBar::Paint(D2D1_RECT_F updateRect)
 {
@@ -47,13 +59,14 @@ void TitleBar::Paint(D2D1_RECT_F updateRect)
 		);
 	}
 
-	// Paint highlight of command icons
-	m_d2.pRenderTarget->SetDpi(96.0f, 96.0f); // paint pixels, not DIPs
+	// paint pixels, not DIPs, for command icons
+	m_d2.pRenderTarget->SetDpi(96.0f, 96.0f); 
 
+	// Paint highlight of command icons
 	int mouse_on = -1;
-	if (m_mouseOn == HTCLOSE) mouse_on = 0;
-	else if (m_mouseOn == HTMAXBUTTON) mouse_on = 1;
-	else if (m_mouseOn == HTMINBUTTON) mouse_on = 2;
+	if (m_mouseOn == Buttons::CLOSE) mouse_on = 0;
+	else if (m_mouseOn == Buttons::MAXRESTORE) mouse_on = 1;
+	else if (m_mouseOn == Buttons::MIN) mouse_on = 2;
 	if (mouse_on >= 0)
 	{
 		m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
@@ -75,48 +88,53 @@ void TitleBar::Paint(D2D1_RECT_F updateRect)
 				m_CommandIconRects[i]
 			);
 	}
-	m_d2.pRenderTarget->SetDpi(0, 0); // restore DIPs
+
+	// restore DIPs
+	m_d2.pRenderTarget->SetDpi(0, 0); 
 }
 
-
-// 'pRect': client RECT of parent
-void TitleBar::Resize(RECT pRect, D2D1_RECT_F pDipRect)
-{ 
-	m_pixRect.right = pRect.right;
-	m_dipRect.right = pDipRect.right;
-
-	float width = 32;
-	for (int i = 0; i < nIcons; i++)
-	{
-		m_CommandIconRects[i].right = pRect.right - (width + 2*iconHPad)*i - iconHPad;
-		m_CommandIconRects[i].left = m_CommandIconRects[i].right - width;
-	}
-}
-
-// Do hit test for titlebar / command icons in pixel coordinates.
-// Don't actually return the LRESULT values on handling messages. (Bad functionality).
-// Just use pre-defined macros for convenience. 
-LRESULT TitleBar::HitTest(POINT cursor)
+void TitleBar::OnMouseMoveP(POINT cursor, WPARAM wParam)
 {
+	Buttons button = HitTest(cursor);
+	SetMouseOn(button);
+}
+
+bool TitleBar::OnLButtonDownP(POINT cursor)
+{
+	Buttons button = HitTest(cursor);
+	switch (button)
+	{
+	case Buttons::CLOSE:
+		m_parent->SendClientMessage(this, L"", CTPMessage::TITLEBAR_CLOSE);
+		break;
+	case Buttons::MAXRESTORE:
+		m_parent->SendClientMessage(this, L"", CTPMessage::TITLEBAR_MAXRESTORE);
+		break;
+	case Buttons::MIN:
+		m_parent->SendClientMessage(this, L"", CTPMessage::TITLEBAR_MIN);
+		break;
+	case Buttons::CAPTION:
+	case Buttons::NONE:
+	default:
+		break;
+	}
+	return false;
+}
+
+TitleBar::Buttons TitleBar::HitTest(POINT cursor)
+{
+	// Since command icons are flush right, test right to left
+	// Recall command icon rects are in pixels!
 	if (cursor.y > m_pixRect.top && cursor.y < m_pixRect.bottom)
 	{
 		if (cursor.x > m_CommandIconRects[0].left - iconHPad)
-			return HTCLOSE;
+			return Buttons::CLOSE;
 		else if (cursor.x > m_CommandIconRects[1].left - iconHPad)
-			return HTMAXBUTTON;
+			return Buttons::MAXRESTORE;
 		else if (cursor.x > m_CommandIconRects[2].left - iconHPad)
-			return HTMINBUTTON;
+			return Buttons::MIN;
 		else
-			return HTCAPTION;
+			return Buttons::CAPTION;
 	}
-	return HTCLIENT;
-}
-
-void TitleBar::MouseOn(LRESULT button)
-{
-	if (m_mouseOn != button)
-	{
-		m_mouseOn = button;
-		InvalidateRect(m_hwnd, &m_pixRect, FALSE);
-	}
+	return Buttons::NONE;
 }

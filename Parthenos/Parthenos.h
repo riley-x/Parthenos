@@ -51,6 +51,7 @@ public:
 
 	LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);
 	// From an AppItem
+	void SendClientMessage(AppItem *sender, std::wstring msg, CTPMessage imsg) { m_messages.push_front({ sender,msg,imsg }); }
 	void PostClientMessage(AppItem *sender, std::wstring msg, CTPMessage imsg) { m_messages.push_back({ sender,msg,imsg }); }
 	// Handle initializations here instead of create
 	// ClientRect doesn't have correct size during WM_CREATE
