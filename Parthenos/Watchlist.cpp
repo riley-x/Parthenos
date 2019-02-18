@@ -92,6 +92,18 @@ void Watchlist::Paint(D2D1_RECT_F updateRect)
 		DPIScale::py()
 	);
 
+	// Drag-drop insertion line
+	if (m_LButtonDown >= 0 && m_hover >= 0)
+	{
+		m_d2.pBrush->SetColor(Colors::MENU_BACKGROUND);
+		m_d2.pRenderTarget->DrawLine(
+			D2D1::Point2F(m_dipRect.left, GetHeight(m_hover)),
+			D2D1::Point2F(m_dipRect.right, GetHeight(m_hover)),
+			m_d2.pBrush,
+			1.5f
+		);
+	}
+
 }
 
 void Watchlist::Resize(RECT pRect, D2D1_RECT_F pDipRect)
@@ -103,12 +115,39 @@ void Watchlist::Resize(RECT pRect, D2D1_RECT_F pDipRect)
 void Watchlist::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
 {
 	for (auto item : m_items) item->OnMouseMove(cursor, wParam);
+
+	int i = GetItem(cursor.y);
+	if (m_LButtonDown >= 0 && (wParam & MK_LBUTTON) && i != m_hover)
+	{
+		m_ignoreSelection = true; // is dragging, so don't update even if dropped in same location
+		if (i >= 0 && i < static_cast<int>(m_items.size()))
+		{
+			m_hover = i;
+			::InvalidateRect(m_hwnd, &m_pixRect, false);
+		}
+		else
+		{
+			m_hover = -1;
+			::InvalidateRect(m_hwnd, &m_pixRect, false);
+		}
+	}
 	//ProcessMessages();
 }
 
 bool Watchlist::OnLButtonDown(D2D1_POINT_2F cursor)
 {
 	for (auto item : m_items) item->OnLButtonDown(cursor);
+	if (inRect(cursor, m_dipRect))
+	{
+		int i = GetItem(cursor.y);
+		if (i >= 0 && i < static_cast<int>(m_items.size()))
+		{
+			m_LButtonDown = i;
+			// Prepare flags for dragging, but not dragging yet
+			m_hover = -1;
+			m_ignoreSelection = false; 
+		}
+	}
 	ProcessMessages();
 	return false; // unused
 }
@@ -121,9 +160,73 @@ void Watchlist::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)
 	//ProcessMessages();
 }
 
+// If dragging an element, does the insertion above the drop location
 void Watchlist::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 {
 	for (auto item : m_items) item->OnLButtonUp(cursor, wParam);
+	if (m_LButtonDown >= 0)
+	{
+		int iNew = GetItem(cursor.y);
+		bool draw = false;
+
+		// check for drag + drop
+		if (iNew >= 0 && iNew < static_cast<int>(m_items.size()))
+		{
+			// need to shift stuff down
+			if (iNew < m_LButtonDown)
+			{
+				WatchlistItem *temp = m_items[m_LButtonDown];
+				for (int j = m_LButtonDown; j > iNew; j--) // j is new position of j-1
+				{
+					m_items[j] = m_items[j - 1];
+					m_items[j]->SetSize(D2D1::RectF(
+						m_dipRect.left,
+						GetHeight(j),
+						m_dipRect.right,
+						GetHeight(j + 1)
+					));
+				}
+				m_items[iNew] = temp;
+				m_items[iNew]->SetSize(D2D1::RectF(
+					m_dipRect.left,
+					GetHeight(iNew),
+					m_dipRect.right,
+					GetHeight(iNew + 1)
+				));
+				draw = true;
+			}
+			else if (iNew == m_LButtonDown || iNew == m_LButtonDown + 1) // don't allow move to same position
+			{
+				if (m_hover >= 0) draw = true; // get rid of hover line
+			}
+			// need to shift stuff up
+			else if (iNew > m_LButtonDown + 1)
+			{
+				WatchlistItem *temp = m_items[m_LButtonDown];
+				for (int j = m_LButtonDown; j < iNew - 1; j++) // j is new position of j+1
+				{
+					m_items[j] = m_items[j + 1];
+					m_items[j]->SetSize(D2D1::RectF(
+						m_dipRect.left,
+						GetHeight(j),
+						m_dipRect.right,
+						GetHeight(j + 1)
+					));
+				}
+				m_items[iNew - 1] = temp;
+				m_items[iNew - 1]->SetSize(D2D1::RectF(
+					m_dipRect.left,
+					GetHeight(iNew - 1),
+					m_dipRect.right,
+					GetHeight(iNew)
+				));
+				draw = true;
+			}
+		}
+		m_hover = -1;
+		m_LButtonDown = -1;
+		if (draw) ::InvalidateRect(m_hwnd, &m_pixRect, false);
+	}
 	ProcessMessages();
 }
 
@@ -185,6 +288,7 @@ void Watchlist::ProcessMessages()
 		}
 		case CTPMessage::WATCHLIST_SELECTED:
 		{
+			if (m_ignoreSelection) break; // LButtonDown will reset to false
 			m_parent->PostClientMessage(this, msg.msg, msg.imsg);
 			break;
 		}
@@ -312,9 +416,14 @@ void WatchlistItem::Paint(D2D1_RECT_F updateRect)
 inline void WatchlistItem::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 {
 	m_ticker.OnLButtonUp(cursor, wParam);
-	if (inRect(cursor, m_dipRect) && cursor.x > m_columns.front().width + m_dipRect.left)
+	if (m_LButtonDown)
 	{
-		m_parent->PostClientMessage(this, m_ticker.String(), CTPMessage::WATCHLIST_SELECTED);
+		m_LButtonDown = false;
+		if (inRect(cursor, m_dipRect) && cursor.x > m_columns.front().width + m_dipRect.left
+			&& !m_ticker.String().empty())
+		{
+			m_parent->PostClientMessage(this, m_ticker.String(), CTPMessage::WATCHLIST_SELECTED);
+		}
 	}
 	//ProcessMessages(); // not needed
 }

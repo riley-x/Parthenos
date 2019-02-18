@@ -47,6 +47,7 @@ public:
 	inline bool OnLButtonDown(D2D1_POINT_2F cursor)
 	{
 		bool out = m_ticker.OnLButtonDown(cursor);
+		if (!out && inRect(cursor, m_dipRect)) m_LButtonDown = true;
 		ProcessMessages();
 		return out;
 	}
@@ -81,6 +82,8 @@ private:
 	std::vector<std::pair<double, std::wstring>> m_data; // data, display string
 	std::vector<IDWriteTextLayout*> m_pTextLayouts;
 	std::vector<float> m_origins; // left DIP for the text layouts
+
+	bool m_LButtonDown = false;
 
 	// Do the actual HTTP query and format the string
 	void LoadData(std::wstring const & ticker);
@@ -129,6 +132,11 @@ private:
 	std::vector<Column> m_columns;
 	std::vector<IDWriteTextLayout*> m_pTextLayouts; // For column headers
 	
+	// Flags
+	int m_LButtonDown = -1; // Left button pressed on an item
+	int m_hover = -1; // Currently hovering over
+	bool m_ignoreSelection = false; // Flag to check if drag + drop on same location
+
 	// Paramters
 	float const m_headerHeight = 18.0f;
 	float const m_rowHeight = 18.0f;
