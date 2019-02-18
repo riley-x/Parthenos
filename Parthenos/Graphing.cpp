@@ -214,11 +214,15 @@ void Axes::Rescale()
 void Axes::CalculateXTicks()
 {
 	size_t nmax = static_cast<size_t>(m_rect_xdiff / (3.0f * m_labelHeight));
-	if (nmax == 0) return;
+	if (nmax == 0 || m_dates.empty()) return;
 	size_t step = (m_dates.size() + nmax - 1) / nmax; // round up
 	float xdip = XtoDIP(0);
 	float spacing = XtoDIP(step) - xdip;
+	
 	int last_month = -1;
+	int last_year = -1;
+	bool show_days = GetYear(m_dates.back()) - GetYear(m_dates.front()) < 2; 
+	// if granularity is small enough, show days. Otherwise show months always
 
 	m_xTicks.clear();
 	m_grid_lines[0].clear();
@@ -227,18 +231,32 @@ void Axes::CalculateXTicks()
 		wchar_t buffer[20] = {};
 		date_t date = m_dates[i];
 		int month = GetMonth(date);
-		if (month != last_month)
+		int year = GetYear(date);
+
+		if (show_days)
 		{
-			if (GetMonth(date) == 1) 
-				swprintf_s(buffer, _countof(buffer), L"%d\n%d", GetYear(date), GetDay(date));
-			else 
-				swprintf_s(buffer, _countof(buffer), L"%s\n%d", toMonthWString_Short(date).c_str(), GetDay(date));
+			if (month != last_month)
+			{
+				if (last_month == 12)
+					swprintf_s(buffer, _countof(buffer), L"%d\n%d", year, GetDay(date));
+				else
+					swprintf_s(buffer, _countof(buffer), L"%s\n%d", toMonthWString_Short(date).c_str(), GetDay(date));
+			}
+			else
+			{
+				swprintf_s(buffer, _countof(buffer), L"%d", GetDay(date));
+			}
 			last_month = month;
 		}
 		else
 		{
-			swprintf_s(buffer, _countof(buffer), L"%d", GetDay(date));
+			if (year != last_year)
+				swprintf_s(buffer, _countof(buffer), L"%d", year);
+			else
+				swprintf_s(buffer, _countof(buffer), L"%s\n%d", toMonthWString_Short(date).c_str(), GetDay(date));
+			last_year = year;
 		}
+
 
 		m_xTicks.push_back({ xdip, m_dates[i], std::wstring(buffer) });
 		m_grid_lines[0].push_back(
