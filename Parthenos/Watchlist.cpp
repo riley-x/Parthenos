@@ -275,8 +275,7 @@ void Watchlist::Load(std::vector<std::wstring> tickers, std::vector<Column> cons
 			{60.0f, Column::Last, L"%.2lf"},
 			{60.0f, Column::ChangeP, L"%.2lf"},
 			{60.0f, Column::Change1YP, L"%.2lf"},
-			{60.0f, Column::DivP, L"%.2lf"},
-			{20.0f, Column::None, L""}
+			{60.0f, Column::DivP, L"%.2lf"}
 		};
 	}
 	else

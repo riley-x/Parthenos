@@ -230,9 +230,8 @@ LRESULT Parthenos::OnCreate()
 	return 0;
 }
 
-LRESULT Parthenos::OnNCHitTest(POINT cursor) {
-	//RECT window;
-	//if (!::GetWindowRect(m_hwnd, &window)) Error("GetWindowRect failed");
+LRESULT Parthenos::OnNCHitTest(POINT cursor) 
+{
 	if (!::ScreenToClient(m_hwnd, &cursor)) Error(L"ScreenToClient failed");
 
 	LRESULT ret = m_titleBar->HitTest(cursor);
