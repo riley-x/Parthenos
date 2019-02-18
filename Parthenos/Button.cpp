@@ -1,21 +1,13 @@
 #include "stdafx.h"
 #include "Button.h"
 
-bool Button::OnLButtonDown(D2D1_POINT_2F cursor)
-{
-	if (inRect(cursor, m_dipRect))
-	{
-		return true;
-	}
-	return false;
-}
 
 ///////////////////////////////////////////////////////////
 // --- IconButton ---
 
 void IconButton::Paint(D2D1_RECT_F updateRect)
 {
-		if (m_iBitmap != -1 && m_d2.pD2DBitmaps[m_iBitmap])
+	if (m_iBitmap != -1 && m_d2.pD2DBitmaps[m_iBitmap])
 	{
 		m_d2.pRenderTarget->DrawBitmap(
 			m_d2.pD2DBitmaps[m_iBitmap],
@@ -130,4 +122,36 @@ bool DropMenuButton::OnLButtonDown(D2D1_POINT_2F cursor)
 void DropMenuButton::SetActive(size_t i)
 {
 	m_activeLayout = m_menu.GetLayout(i);
+}
+
+///////////////////////////////////////////////////////////
+// --- TextButton ---
+
+void TextButton::Paint(D2D1_RECT_F updateRect)
+{
+	// Fill
+	if (m_fill)
+	{
+		m_d2.pBrush->SetColor(m_fillColor);
+		m_d2.pRenderTarget->FillRectangle(m_dipRect, m_d2.pBrush);
+	}
+
+	// Border
+	if (m_border)
+	{
+		m_d2.pBrush->SetColor(m_borderColor);
+		m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush);
+	}
+
+	// Text
+	m_d2.pTextFormats[m_format]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
+	m_d2.pRenderTarget->DrawText(
+		m_name.c_str(),
+		m_name.size(),
+		m_d2.pTextFormats[m_format],
+		m_dipRect,
+		m_d2.pBrush
+	);
+	m_d2.pTextFormats[m_format]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
 }

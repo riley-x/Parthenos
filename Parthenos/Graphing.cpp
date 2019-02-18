@@ -73,9 +73,11 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 {
 	if (!m_ismade) Make();
 
+	// Background
 	m_d2.pBrush->SetColor(Colors::AXES_BACKGROUND);
 	m_d2.pRenderTarget->FillRectangle(m_dipRect, m_d2.pBrush);
 
+	// Grid lines
 	m_d2.pBrush->SetColor(Colors::DULL_LINE);
 	for (auto line : m_grid_lines[0]) // x lines
 	{
@@ -86,12 +88,14 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 		m_d2.pRenderTarget->DrawLine(line.start, line.end, m_d2.pBrush, 0.8f, m_d2.pDashedStyle);
 	}
 
+	// Axes
 	m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
 	for (auto line : m_axes_lines)
 	{
 		m_d2.pRenderTarget->DrawLine(line.start, line.end, m_d2.pBrush);
 	}
 
+	// Labels
 	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
 	for (auto tick : m_xTicks)
 	{
@@ -126,6 +130,7 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 		);
 	}
 
+	// Graphs
 	for (auto graph : m_graphObjects)
 		graph->Paint(m_d2);
 }

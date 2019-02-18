@@ -1,6 +1,7 @@
 #pragma once
 #include "stdafx.h"
 #include "AppItem.h"
+#include "Button.h"
 
 class Parthenos;
 
@@ -8,7 +9,7 @@ class TitleBar : public AppItem
 {
 public:
 	TitleBar(HWND hwnd, D2Objects const & d2, Parthenos *parent)
-		: AppItem(hwnd, d2), m_parent(parent) {}
+		: AppItem(hwnd, d2), m_parent(parent), m_tabButtons(hwnd, d2) {}
 	void Init();
 
 	void Resize(RECT pRect, D2D1_RECT_F pDipRect);
@@ -30,18 +31,26 @@ public:
 		}
 	}
 
+	static float const iconHPad; // 6 DIPs
 	static float const height; // 30 DIPs
 
 	int bottom() { return m_pixRect.bottom; }
 
 private:
-	Parthenos *m_parent;
+	// Objects
+	Parthenos			*m_parent;
+	ButtonGroup			m_tabButtons;
 
+	// Parameters
 	static int const	nIcons		= 3;
-	static float const	iconHPad;
+	float const			m_tabLeftStart = 35.0f;
+	float const			m_tabWidth	= 150.0f;
+
+	// Flags
 	bool				m_maximized = false;
 	Buttons				m_mouseOn	= Buttons::NONE; // for icon highlighting
 
+	// Data
 	D2D1_RECT_F	m_CommandIconRects[nIcons]; // 32x24 command icons. These are PIXEL coordinates, not DIPs!!!
 	D2D1_RECT_F m_TitleIconRect; // 48x48 Parthenos icon. In DIP coordinates.
 

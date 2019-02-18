@@ -9,13 +9,14 @@ class Button : public AppItem
 public:
 	using AppItem::AppItem;
 
-	bool OnLButtonDown(D2D1_POINT_2F cursor);
-	void OnLButtonUp(D2D1_POINT_2F cursor) { return; }
-	virtual void SetClickRect(D2D1_RECT_F rect) { return; }
-	virtual D2D1_RECT_F GetClickRect() { return D2D1::RectF(0,0,0,0); }
+	virtual inline bool OnLButtonDown(D2D1_POINT_2F cursor) { return inRect(cursor, m_dipRect); }
+	virtual inline void SetClickRect(D2D1_RECT_F rect) { return; }
+	virtual inline D2D1_RECT_F GetClickRect() { return m_dipRect; }
 
-	std::wstring m_name;
+	std::wstring Name() const { return m_name; }
+	void SetName(std::wstring name) { m_name = name; }
 protected:
+	std::wstring m_name;
 	bool m_isDown = false; // pressed
 };
 
@@ -51,7 +52,7 @@ public:
 		{
 			if (m_buttons[i]->OnLButtonDown(cursor))
 			{
-				name = m_buttons[i]->m_name;
+				name = m_buttons[i]->Name();
 				m_active = i;
 				return true;
 			}
@@ -68,7 +69,7 @@ public:
 	{
 		for (size_t i = 0; i < m_buttons.size(); i++)
 		{
-			if (m_buttons[i]->m_name == name)
+			if (m_buttons[i]->Name() == name)
 			{
 				m_active = i;
 				return;
@@ -138,4 +139,31 @@ private:
 	D2D1_RECT_F m_textRect;
 	D2D1_RECT_F m_iconRect;
 	IDWriteTextLayout* m_activeLayout;
+};
+
+class TextButton : public Button
+{
+public:
+	using Button::Button;
+
+	void Paint(D2D1_RECT_F updateRect);
+
+	inline void SetBorderColor(bool hasBorder, D2D1_COLOR_F color = Colors::MEDIUM_LINE)
+	{
+		m_border = hasBorder; 
+		m_borderColor = color;
+	}
+	inline void SetFillColor(bool hasFill, D2D1_COLOR_F color)
+	{
+		m_fill = hasFill;
+		m_fillColor = color;
+	}
+	inline void SetFormat(D2Objects::Formats format) { m_format = format; }
+private:
+	bool m_border = true;
+	bool m_fill = false;
+
+	D2D1_COLOR_F m_borderColor = Colors::MEDIUM_LINE;
+	D2D1_COLOR_F m_fillColor;
+	D2Objects::Formats m_format = D2Objects::Segoe12;
 };

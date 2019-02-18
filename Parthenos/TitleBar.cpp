@@ -2,6 +2,7 @@
 #include "Parthenos.h"
 #include "TitleBar.h"
 #include "utilities.h"
+#include "Button.h"
 
 float const TitleBar::iconHPad = 6.0f;
 float const TitleBar::height = 30.0f;
@@ -26,6 +27,25 @@ void TitleBar::Init()
 	}
 
 	m_TitleIconRect = D2D1::RectF(3.0f, 3.0f, 27.0f, 27.0f);
+
+	std::wstring names[2] = { L"Portfolio", L"Chart" };
+
+	float left = m_tabLeftStart;
+	for (int i = 0; i < 2; i++)
+	{
+		TextButton *temp = new TextButton(m_hwnd, m_d2);
+		temp->SetName(names[i]);
+		temp->SetSize(D2D1::RectF(
+			left,
+			m_dipRect.top,
+			left + m_tabWidth,
+			m_dipRect.bottom
+		));
+		temp->SetBorderColor(false);
+		temp->SetFormat(D2Objects::Segoe18);
+		m_tabButtons.Add(temp);
+		left += m_tabWidth;
+	}
 }
 
 // 'pRect': client RECT of parent
@@ -59,7 +79,24 @@ void TitleBar::Paint(D2D1_RECT_F updateRect)
 		);
 	}
 
-	// paint pixels, not DIPs, for command icons
+	// Paint tab buttons
+	m_tabButtons.Paint(updateRect);
+	// TODO get active rect and highlight
+
+	// Paint tab dividers
+	m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
+	for (size_t i = 1; i <= m_tabButtons.Size(); i++)
+	{
+		float x = m_tabLeftStart + i * m_tabWidth;
+		m_d2.pRenderTarget->DrawLine(
+			D2D1::Point2F(x, m_dipRect.top + 5.0f),
+			D2D1::Point2F(x, m_dipRect.bottom - 5.0f),
+			m_d2.pBrush,
+			1.0f
+		);
+	}
+
+	// Paint pixels, not DIPs, for command icons
 	m_d2.pRenderTarget->SetDpi(96.0f, 96.0f); 
 
 	// Paint highlight of command icons
@@ -118,6 +155,8 @@ bool TitleBar::OnLButtonDownP(POINT cursor)
 	default:
 		break;
 	}
+
+	// TODO pass to tab buttons
 	return false;
 }
 

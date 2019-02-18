@@ -15,17 +15,17 @@ Chart::Chart(HWND hwnd, D2Objects const & d2)
 	m_chartTypeButtons(hwnd, d2), m_timeframeButton(hwnd, d2, this)
 {
 	auto temp = new IconButton(hwnd, d2);
-	temp->m_name = L"Candlestick";
+	temp->SetName(L"Candlestick");
 	temp->SetIcon(GetResourceIndex(IDB_CANDLESTICK));
 	m_chartTypeButtons.Add(temp);
 	
 	temp = new IconButton(hwnd, d2);
-	temp->m_name = L"Line";
+	temp->SetName(L"Line");
 	temp->SetIcon(GetResourceIndex(IDB_LINE));
 	m_chartTypeButtons.Add(temp);
 
 	temp = new IconButton(hwnd, d2);
-	temp->m_name = L"Envelope";
+	temp->SetName(L"Envelope");
 	temp->SetIcon(GetResourceIndex(IDB_ENVELOPE));
 	m_chartTypeButtons.Add(temp);
 
