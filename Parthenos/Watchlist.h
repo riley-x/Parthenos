@@ -65,6 +65,7 @@ public:
 	void ProcessMessages();
 
 	// Interface
+	inline std::wstring Ticker() const { return m_currTicker; }
 	void Load(std::wstring const & ticker, std::vector<Column> const & columns, bool reload = false); // Queries
 	// Load should be called after SetSize
 	void Add(Column const & col); // Queries 
@@ -153,4 +154,9 @@ private:
 	inline float GetHeight(int i) { return m_dipRect.top + m_headerHeight + i * m_rowHeight; }
 	// Get index given y coord
 	inline int GetItem(float y) { return static_cast<int>((y - (m_dipRect.top + m_headerHeight)) / m_rowHeight); }
+	// Move item iOld to iNew, shifting everything in between appropriately.
+	// If iNew < iOld, moves iOld to above the current item at iNew.
+	// If iNew > iOld, moves iOld to below the current item at iNew.
+	// No bounds check. Make sure iOld and iNew are valid indices.
+	void MoveItem(int iOld, int iNew);
 };

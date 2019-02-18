@@ -95,12 +95,13 @@ void Watchlist::Paint(D2D1_RECT_F updateRect)
 	// Drag-drop insertion line
 	if (m_LButtonDown >= 0 && m_hover >= 0)
 	{
-		m_d2.pBrush->SetColor(Colors::MENU_BACKGROUND);
+		float y = DPIScale::SnapToPixelY(GetHeight(m_hover)) - DPIScale::hpy();
+		m_d2.pBrush->SetColor(Colors::ACCENT);
 		m_d2.pRenderTarget->DrawLine(
-			D2D1::Point2F(m_dipRect.left, GetHeight(m_hover)),
-			D2D1::Point2F(m_dipRect.right, GetHeight(m_hover)),
+			D2D1::Point2F(m_dipRect.left, y),
+			D2D1::Point2F(m_dipRect.right, y),
 			m_d2.pBrush,
-			1.5f
+			DPIScale::py()
 		);
 	}
 
@@ -136,14 +137,18 @@ void Watchlist::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
 
 bool Watchlist::OnLButtonDown(D2D1_POINT_2F cursor)
 {
-	for (auto item : m_items) item->OnLButtonDown(cursor);
-	if (inRect(cursor, m_dipRect))
+	bool isTextBox = false;
+	for (auto item : m_items)
+	{
+		if (item->OnLButtonDown(cursor)) isTextBox = true;
+	}
+	if (!isTextBox && inRect(cursor, m_dipRect))
 	{
 		int i = GetItem(cursor.y);
 		if (i >= 0 && i < static_cast<int>(m_items.size()))
 		{
 			m_LButtonDown = i;
-			// Prepare flags for dragging, but not dragging yet
+			// Reset flags for dragging -- not dragging yet
 			m_hover = -1;
 			m_ignoreSelection = false; 
 		}
@@ -172,60 +177,14 @@ void Watchlist::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 		// check for drag + drop
 		if (iNew >= 0 && iNew < static_cast<int>(m_items.size()))
 		{
-			// need to shift stuff down
 			if (iNew < m_LButtonDown)
-			{
-				WatchlistItem *temp = m_items[m_LButtonDown];
-				for (int j = m_LButtonDown; j > iNew; j--) // j is new position of j-1
-				{
-					m_items[j] = m_items[j - 1];
-					m_items[j]->SetSize(D2D1::RectF(
-						m_dipRect.left,
-						GetHeight(j),
-						m_dipRect.right,
-						GetHeight(j + 1)
-					));
-				}
-				m_items[iNew] = temp;
-				m_items[iNew]->SetSize(D2D1::RectF(
-					m_dipRect.left,
-					GetHeight(iNew),
-					m_dipRect.right,
-					GetHeight(iNew + 1)
-				));
-				draw = true;
-			}
-			else if (iNew == m_LButtonDown || iNew == m_LButtonDown + 1) // don't allow move to same position
-			{
-				if (m_hover >= 0) draw = true; // get rid of hover line
-			}
-			// need to shift stuff up
+				MoveItem(m_LButtonDown, iNew);
 			else if (iNew > m_LButtonDown + 1)
-			{
-				WatchlistItem *temp = m_items[m_LButtonDown];
-				for (int j = m_LButtonDown; j < iNew - 1; j++) // j is new position of j+1
-				{
-					m_items[j] = m_items[j + 1];
-					m_items[j]->SetSize(D2D1::RectF(
-						m_dipRect.left,
-						GetHeight(j),
-						m_dipRect.right,
-						GetHeight(j + 1)
-					));
-				}
-				m_items[iNew - 1] = temp;
-				m_items[iNew - 1]->SetSize(D2D1::RectF(
-					m_dipRect.left,
-					GetHeight(iNew - 1),
-					m_dipRect.right,
-					GetHeight(iNew)
-				));
-				draw = true;
-			}
+				MoveItem(m_LButtonDown, iNew - 1); // want insertion above drop location, not below
+			if (m_hover >= 0) ::InvalidateRect(m_hwnd, &m_pixRect, false);
 		}
 		m_hover = -1;
 		m_LButtonDown = -1;
-		if (draw) ::InvalidateRect(m_hwnd, &m_pixRect, false);
 	}
 	ProcessMessages();
 }
@@ -283,7 +242,17 @@ void Watchlist::ProcessMessages()
 		}
 		case CTPMessage::WATCHLISTITEM_EMPTY:
 		{
-			// Delete end watchlsit
+			// Move empty watchlist item to end then delete
+			bool bDelete = m_items.back()->Ticker().empty(); // empty item at end already
+			auto it = std::find(m_items.begin(), m_items.end(), msg.sender);
+			if (it == m_items.end() || it + 1 == m_items.end()) break;
+			MoveItem(it - m_items.begin(), m_items.size() - 1);
+			if (bDelete)
+			{
+				delete m_items.back();
+				m_items.pop_back();
+				m_hLines.pop_back();
+			}
 			break;
 		}
 		case CTPMessage::WATCHLIST_SELECTED:
@@ -382,6 +351,53 @@ void Watchlist::Load(std::vector<std::wstring> tickers, std::vector<Column> cons
 	}
 }
 
+// Move item iOld to iNew, shifting everything in between appropriately.
+// If iNew < iOld, moves iOld to above the current item at iNew.
+// If iNew > iOld, moves iOld to below the current item at iNew.
+// No bounds check. Make sure iOld and iNew are valid indices.
+void Watchlist::MoveItem(int iOld, int iNew)
+{
+	if (iOld == iNew) return;
+	WatchlistItem *temp = m_items[iOld];
+
+	// need to shift stuff down
+	if (iNew < iOld)
+	{
+		for (int j = iOld; j > iNew; j--) // j is new position of j-1
+		{
+			m_items[j] = m_items[j - 1];
+			m_items[j]->SetSize(D2D1::RectF(
+				m_dipRect.left,
+				GetHeight(j),
+				m_dipRect.right,
+				GetHeight(j + 1)
+			));
+		}
+	}
+	// need to shift stuff up
+	else
+	{
+		for (int j = iOld; j < iNew; j++) // j is new position of j+1
+		{
+			m_items[j] = m_items[j + 1];
+			m_items[j]->SetSize(D2D1::RectF(
+				m_dipRect.left,
+				GetHeight(j),
+				m_dipRect.right,
+				GetHeight(j + 1)
+			));
+		}
+	}
+
+	m_items[iNew] = temp;
+	m_items[iNew]->SetSize(D2D1::RectF(
+		m_dipRect.left,
+		GetHeight(iNew),
+		m_dipRect.right,
+		GetHeight(iNew + 1)
+	));
+}
+
 ///////////////////////////////////////////////////////////
 // --- WatchlistItem ---
 ///////////////////////////////////////////////////////////
@@ -474,8 +490,8 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const 
 			m_dipRect.bottom
 		));
 		m_ticker.SetParameters(Watchlist::m_hTextPad, false, 7);
-		m_ticker.SetText(ticker);
 	}
+	m_ticker.SetText(ticker);
 	left += columns[0].width;
 
 	for (auto item : m_pTextLayouts) SafeRelease(&item);

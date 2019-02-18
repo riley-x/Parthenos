@@ -29,6 +29,7 @@ public:
 		m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 0.5f); 
 	}
 
+	// generally, should return true when mouse/keyboard captured
 	virtual void OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam) { return; }
 	virtual bool OnLButtonDown(D2D1_POINT_2F cursor) { return false; }
 	virtual void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam) { return; }
