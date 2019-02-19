@@ -98,6 +98,7 @@ namespace Colors
 	const D2D1_COLOR_F MEDIUM_LINE		= D2D1::ColorF(0.5f, 0.5f, 0.5f, 1.0f);
 	const D2D1_COLOR_F DULL_LINE		= D2D1::ColorF(0.25f, 0.25f, 0.25f, 1.0f);
 
+	const D2D1_COLOR_F ALMOST_WHITE		= D2D1::ColorF(0.95f, 0.95f, 0.95f, 1.0f);
 	const D2D1_COLOR_F MAIN_TEXT		= D2D1::ColorF(0.8f, 0.8f, 0.8f, 1.0f);
 	const D2D1_COLOR_F ACCENT			= D2D1::ColorF(0.8f, 0.0f, 0.5f, 1.0f);
 }
@@ -127,13 +128,6 @@ namespace Cursor
 	}
  }
 
-enum class CTPMessage
-{
-	TITLEBAR_CLOSE, TITLEBAR_MAXRESTORE, TITLEBAR_MIN,
-	TEXTBOX_ENTER, TEXTBOX_DEACTIVATED, 
-	DROPMENU_SELECTED, 
-	WATCHLISTITEM_NEW, WATCHLISTITEM_EMPTY, WATCHLIST_SELECTED
-};
 
 ///////////////////////////////////////////////////////////
 class DPIScale

@@ -145,7 +145,7 @@ void TextButton::Paint(D2D1_RECT_F updateRect)
 
 	// Text
 	m_d2.pTextFormats[m_format]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
-	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
+	m_d2.pBrush->SetColor(m_textColor);
 	m_d2.pRenderTarget->DrawText(
 		m_name.c_str(),
 		m_name.size(),

@@ -8,13 +8,15 @@ class Button : public AppItem
 {
 public:
 	using AppItem::AppItem;
-
 	virtual inline bool OnLButtonDown(D2D1_POINT_2F cursor) { return inRect(cursor, m_dipRect); }
+
+	virtual inline bool HitTest(D2D1_POINT_2F cursor) { return inRect(cursor, m_dipRect); }
+
 	virtual inline void SetClickRect(D2D1_RECT_F rect) { return; }
 	virtual inline D2D1_RECT_F GetClickRect() { return m_dipRect; }
-
-	std::wstring Name() const { return m_name; }
 	void SetName(std::wstring name) { m_name = name; }
+	std::wstring Name() const { return m_name; }
+
 protected:
 	std::wstring m_name;
 	bool m_isDown = false; // pressed
@@ -46,11 +48,13 @@ public:
 	inline size_t Size() const { return m_buttons.size(); } 
 
 	inline void Paint(D2D1_RECT_F updateRect) { for (auto button : m_buttons) button->Paint(updateRect); }
+
+	// Does not allow clicking the current active button
 	inline bool OnLButtonDown(D2D1_POINT_2F cursor, std::wstring & name)
 	{
 		for (int i = 0; i < static_cast<int>(m_buttons.size()); i++)
 		{
-			if (m_buttons[i]->OnLButtonDown(cursor))
+			if (i != m_active && m_buttons[i]->OnLButtonDown(cursor))
 			{
 				name = m_buttons[i]->Name();
 				m_active = i;
@@ -60,22 +64,46 @@ public:
 		return false;
 	}
 
-	inline void SetActive(int i) 
-	{ 
-		if (i < static_cast<int>(m_buttons.size())) m_active = i; 
-		else OutputMessage(L"%d exceeds ButtonGroup size\n", i);
+	inline bool HitTest(D2D1_POINT_2F cursor, std::wstring & name)
+	{
+		for (int i = 0; i < static_cast<int>(m_buttons.size()); i++)
+		{
+			if (m_buttons[i]->HitTest(cursor))
+			{
+				name = m_buttons[i]->Name();
+				return true;
+			}
+		}
+		return false;
 	}
-	inline void SetActive(std::wstring const & name)
+
+	inline bool SetActive(int i) 
+	{ 
+		if (i < static_cast<int>(m_buttons.size()))
+		{
+			if (i == m_active) return false;
+			m_active = i;
+			return true;
+		}
+		else
+		{
+			OutputMessage(L"%d exceeds ButtonGroup size\n", i);
+			return false;
+		}
+	}
+	inline bool SetActive(std::wstring const & name)
 	{
 		for (size_t i = 0; i < m_buttons.size(); i++)
 		{
 			if (m_buttons[i]->Name() == name)
 			{
+				if (m_active == i) return false;
 				m_active = i;
-				return;
+				return true;
 			}
 		}
 		OutputMessage(L"Button %s not found\n", name);
+		return false;
 	}
 	inline void SetSize(size_t i, D2D1_RECT_F const & rect)
 	{
@@ -87,6 +115,15 @@ public:
 		if (i < m_buttons.size()) m_buttons[i]->SetClickRect(rect);
 		else OutputMessage(L"%u exceeds ButtonGroup size\n", i);
 	}
+	inline bool GetActive(Button* & item) const
+	{
+		if (m_active >= 0)
+		{
+			item = m_buttons[m_active];
+			return true;
+		}
+		return false;
+	}
 	inline bool GetActiveRect(D2D1_RECT_F & rect) const
 	{ 
 		if (m_active >= 0)
@@ -94,7 +131,7 @@ public:
 			rect = m_buttons[m_active]->GetDIPRect();
 			return true;
 		}
-		else return false;
+		return false;
 	}
 	inline bool GetActiveClickRect(D2D1_RECT_F & rect) const
 	{
@@ -103,7 +140,7 @@ public:
 			rect = m_buttons[m_active]->GetClickRect();
 			return true;
 		}
-		else return false;
+		return false;
 	}
 
 private:
@@ -159,11 +196,13 @@ public:
 		m_fillColor = color;
 	}
 	inline void SetFormat(D2Objects::Formats format) { m_format = format; }
+	inline void SetTextColor(D2D1_COLOR_F color) { m_textColor = color; }
 private:
 	bool m_border = true;
 	bool m_fill = false;
 
 	D2D1_COLOR_F m_borderColor = Colors::MEDIUM_LINE;
 	D2D1_COLOR_F m_fillColor;
+	D2D1_COLOR_F m_textColor = Colors::MAIN_TEXT;
 	D2Objects::Formats m_format = D2Objects::Segoe12;
 };

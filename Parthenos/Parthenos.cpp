@@ -120,6 +120,7 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			wParam
 		);
 	case WM_MOUSELEAVE:
+		// TODO this should really should pass to OnMouseMove or OnMouseLeave...
 		m_titleBar->SetMouseOn(TitleBar::Buttons::NONE);
 		m_mouseTrack.Reset(m_hwnd);
 		return 0;
@@ -184,6 +185,9 @@ void Parthenos::ProcessMessages()
 			}
 			break;
 		}
+		default:
+			OutputMessage(L"Unknown message %d received\n", static_cast<int>(msg.imsg));
+			break;
 		}
 	}
 	if (!m_messages.empty()) m_messages.clear();
