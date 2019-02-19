@@ -177,6 +177,27 @@ void Parthenos::ProcessMessages()
 		case CTPMessage::TITLEBAR_MIN:
 			ShowWindow(m_hwnd, SW_MINIMIZE);
 			break;
+		case CTPMessage::TITLEBAR_TAB:
+		{
+			switch (TitleBar::WStringToButton(msg.msg))
+			{
+			case TitleBar::Buttons::PORTFOLIO:
+				m_activeItems.clear();
+				m_activeItems.push_back(m_titleBar);
+				::InvalidateRect(m_hwnd, NULL, false);
+				break;
+			case TitleBar::Buttons::CHART:
+				m_activeItems.clear();
+				m_activeItems.push_back(m_titleBar);
+				m_activeItems.push_back(m_chart);
+				m_activeItems.push_back(m_watchlist);
+				::InvalidateRect(m_hwnd, NULL, false);
+				break;
+			default:
+				break;
+			}
+			break;
+		}
 		case CTPMessage::WATCHLIST_SELECTED:
 		{
 			if (std::find(m_activeItems.begin(), m_activeItems.end(), m_chart) != m_activeItems.end())
@@ -210,6 +231,7 @@ void Parthenos::PreShow()
 			item->Init();
 		item->Resize(rc, dipRect);
 	}
+	m_titleBar->SetActiveTab(TitleBar::Buttons::CHART);
 	m_watchlist->Load({ L"AAPL", L"MSFT", L"NVDA" }, std::vector<Column>());
 	m_chart->Load(L"AAPL");
 }

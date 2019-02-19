@@ -46,7 +46,6 @@ void TitleBar::Init()
 		m_tabButtons.Add(temp);
 		left += m_tabWidth;
 	}
-	m_tabButtons.SetActive(0);
 
 	// Create brackets
 	CreateBracketGeometry(0);
@@ -170,12 +169,11 @@ bool TitleBar::OnLButtonDownP(POINT cursor)
 	case Buttons::PORTFOLIO:
 	case Buttons::CHART:
 		if (m_tabButtons.SetActive(ButtonToWString(button)))
-			::InvalidateRect(m_hwnd, &m_pixRect, false);
 		// fallthrough
 	case Buttons::CLOSE:
 	case Buttons::MAXRESTORE:
 	case Buttons::MIN:
-		m_parent->SendClientMessage(this, ButtonToWString(button), ButtonToCTPMessage(button));
+		m_parent->SendClientMessage(this, ButtonToWString(button), ButtonToCTPMessage(button)); // Invalidates
 		break;
 	case Buttons::CAPTION:
 	case Buttons::NONE:

@@ -32,11 +32,17 @@ public:
 			InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 		}
 	}
+	inline void SetActiveTab(Buttons button)
+	{
+		m_tabButtons.SetActive(ButtonToWString(button));
+	}
 
 	static float const iconHPad; // 6 DIPs
 	static float const height; // 30 DIPs
 
 	int bottom() { return m_pixRect.bottom; }
+	static std::wstring ButtonToWString(Buttons button);
+	static Buttons WStringToButton(std::wstring name);
 
 private:
 	// Objects
@@ -61,7 +67,5 @@ private:
 
 	// Helpers
 	CTPMessage ButtonToCTPMessage(Buttons button);
-	std::wstring ButtonToWString(Buttons button);
-	Buttons WStringToButton(std::wstring name);
 	void CreateBracketGeometry(int i);
 };
