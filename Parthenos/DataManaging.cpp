@@ -110,7 +110,9 @@ Stats GetStats(std::wstring ticker)
 	return stats;
 }
 
-// Reads, writes, and fetches data as necessary
+// Reads, writes, and fetches data as necessary.
+// 'last_n' is how many elements to read from disk, not the size of output,
+// which gets appended to after fetching from the API
 std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source, size_t last_n)
 {
 	std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::tolower);
@@ -126,11 +128,6 @@ std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source, size_t last_n)
 			out = GetOHLC_IEX(ticker, last_n);
 			break;
 		}
-		// A little redundant. Don't need to be exact here -> be exact in chart
-		//if (last_n > 0 && out.size() > last_n)
-		//{
-		//	return std::vector<OHLC>(out.end() - last_n, out.end());
-		//}
 	}
 	catch (const std::invalid_argument& ia) {
 		OutputDebugStringA(ia.what()); OutputDebugStringA("\n");
@@ -138,7 +135,8 @@ std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source, size_t last_n)
 	return out;
 }
 
-
+// CSV with columns date,account,ticker,n,value,price,type,expiration,strike
+// separated by \r\n (generate from excel)
 std::vector<Transaction> CSVtoTransactions(std::wstring filepath)
 {
 	FileIO file;
@@ -147,7 +145,7 @@ std::vector<Transaction> CSVtoTransactions(std::wstring filepath)
 	std::vector<char> fileData = file.Read<char>();
 	fileData.push_back('\0');
 	
-	// Converting to CSV seems to add 3 junk characters in beginning
+	// Converting to CSV seems to add 3 metacharacters in beginning
 	std::string data(fileData.begin() + 3, fileData.end());
 	std::vector<Transaction> out;
 
@@ -164,6 +162,11 @@ std::vector<Transaction> CSVtoTransactions(std::wstring filepath)
 	// No need to check final substr because \r\n at end of CSV
 
 	return out;
+}
+
+std::vector<Holdings> FullTransactionsToHoldings(std::vector<Transaction> transactions)
+{
+	return std::vector<Holdings>();
 }
 
 
@@ -483,7 +486,7 @@ bool OHLC_Compare(const OHLC & a, const OHLC & b)
 	return a.date < b.date;
 }
 
-
+// Columns date,account,ticker,n,value,price,type,expiration,strike
 Transaction parseTransactionItem(std::string str)
 {
 	Transaction out;
@@ -503,7 +506,7 @@ Transaction parseTransactionItem(std::string str)
 	out.type = static_cast<TransactionType>(type);
 	
 	size_t convertedChars = 0;
-	mbstowcs_s(&convertedChars, out.ticker, Transaction::maxTickerLen + 1, buffer, _TRUNCATE);
+	mbstowcs_s(&convertedChars, out.ticker, PortfolioObjects::maxTickerLen + 1, buffer, _TRUNCATE);
 
 	return out;
 }

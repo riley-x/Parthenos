@@ -5,12 +5,15 @@
 
 const std::wstring ROOTDIR(L"C:/Users/Riley/Documents/Finances/Parthenos/"); // C:/Users/Riley/Documents/Finances/Parthenos/
 
+///////////////////////////////////////////////////////////
+// --- OHLC ---
 
 enum class apiSource { iex, alpha };
 
 enum class iexLSource { real, delayed, close, prevclose };
 
-typedef struct OHLC_struct {
+typedef struct OHLC_struct 
+{
 	double open;
 	double high;
 	double low;
@@ -30,7 +33,8 @@ typedef struct OHLC_struct {
 	}
 } OHLC;
 
-typedef struct Quote_struct {
+typedef struct Quote_struct 
+{
 	int latestVolume;
 	int avgTotalVolume;
 	iexLSource latestSource;
@@ -62,7 +66,8 @@ typedef struct Quote_struct {
 } Quote;
 
 
-typedef struct Stats_struct {
+typedef struct Stats_struct 
+{
 	date_t exDividendDate;
 	double beta;
 	double week52high;
@@ -90,11 +95,19 @@ Quote GetQuote(std::wstring ticker);
 Stats GetStats(std::wstring ticker);
 bool OHLC_Compare(const OHLC & a, const OHLC & b);
 
+///////////////////////////////////////////////////////////
+// --- Portfolio ---
 
 enum class Account : char { Robinhood, Arista };
 enum class TransactionType : char { Transfer, Stock, Dividend, Interest, Fee, PutShort, PutLong, CallShort, CallLong };
 
-typedef struct Transaction_struct {
+namespace PortfolioObjects
+{
+	const size_t maxTickerLen = 12;
+}
+
+typedef struct Transaction_struct 
+{
 	Account account;			// 1
 	TransactionType type;		// 2
 	wchar_t ticker[13] = {};	// 28
@@ -105,7 +118,6 @@ typedef struct Transaction_struct {
 	double price;				// 56
 	double strike;				// 64
 
-	static size_t const maxTickerLen = 12;
 	inline std::wstring to_wstring() const
 	{
 		return L"Account: "		+ std::to_wstring(static_cast<int>(account))
@@ -122,4 +134,39 @@ typedef struct Transaction_struct {
 } Transaction;
 
 
+typedef struct TaxLot_struct 
+{
+	int PAD;
+	int n;
+	time_t date;
+	double price; 
+	double realized; // i.e. dividends
+	// 32 bytes
+} TaxLot;
+
+typedef struct APY_struct
+{
+	int PAD;
+	int nLots;
+	// Running sums from sold lots to calculate APY. DOESN'T include stored lots
+	double sumWeights; // cost
+	double sumReal1Y; // realized * 365 / days_held
+	double sumReal; // realized
+	// 32 bytes
+} APY;
+
+typedef union Holdings_union
+{
+	wchar_t ticker[16];
+	TaxLot lot;
+	APY apy;
+} Holdings;
+
+class Portfolio
+{
+public:
+	Account m_account;
+};
+
 std::vector<Transaction> CSVtoTransactions(std::wstring filepath);
+std::vector<Holdings> FullTransactionsToHoldings(std::vector<Transaction> transactions);

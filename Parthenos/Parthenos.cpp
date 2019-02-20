@@ -227,13 +227,37 @@ void Parthenos::PreShow()
 	//	OutputDebugString(item.to_wstring().c_str());
 	//}
 
-	//FileIO hist;
-	//hist.Init(ROOTDIR + L"hist.transaction");
-	//hist.Open();
-	//hist.Write(test.data(), sizeof(Transaction) * test.size());
-	//hist.Close();
+	/*FileIO hist;
+	hist.Init(ROOTDIR + L"hist.trans");
+	hist.Open(GENERIC_READ);
+	std::vector<Transaction> trans = hist.Read<Transaction>();
+	hist.Close();
 
-	//OutputMessage(L"%hu", sizeof(Transaction));
+	std::vector<Holdings> hold;
+	Holdings temp;
+	wcscpy_s(temp.ticker, PortfolioObjects::maxTickerLen + 1, L"TEST");
+	hold.push_back(temp);
+
+	temp.apy.nLots = 5;
+	temp.apy.sumReal = 100.0;
+	temp.apy.sumReal1Y = 133.7;
+	temp.apy.sumWeights = 6969;
+	hold.push_back(temp);
+
+	FileIO port;
+	port.Init(ROOTDIR + L"test.test");
+	port.Open();
+	port.Write(hold.data(), sizeof(Holdings) * 2);
+	port.Close();
+
+	port.Open();
+	std::vector<Holdings> out = port.Read<Holdings>();
+	port.Close();
+
+	OutputMessage(L"%s\n", out[0].ticker);
+	OutputMessage(L"%lf\n", out[1].apy.sumWeights);
+	OutputMessage(L"%lf\n", out[1].lot.realized);
+	OutputMessage(L"%hu", sizeof(Holdings));*/
 	//
 	//return;
 
