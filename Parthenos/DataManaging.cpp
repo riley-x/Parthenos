@@ -22,28 +22,29 @@ OHLC parseAlphaChartItem(std::string json);
 
 
 // Queries IEX for a quote with fields
-//		open, close, latestPrice, latestSource, latestUpdate (timestamp truncated to seconds)
-//		latestVolume, avgTotalVolume, previousClose, change, changePercent
+//		open, close, latestPrice, latestSource, latestUpdate 
+//		latestVolume, avgTotalVolume, previousClose, change, changePercent, closeTime
+//		(timestamps truncated to seconds)
 // Throws std::invalid_argument if failed
 Quote GetQuote(std::wstring ticker)
 {
 	std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::tolower);
 	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/" + ticker + L"/quote",
 		L"filter=open,close,latestPrice,latestSource,latestUpdate,latestVolume,avgTotalVolume,"
-		L"previousClose,change,changePercent");
+		L"previousClose,change,changePercent,closeTime");
 	Quote quote;
 	char buffer[50] = { 0 };
 
 	const char format[] = R"({"open":%lf,"close":%lf,"latestPrice":%lf,"latestSource":"%49[^"]","latestUpdate":%I64d,)"
-		R"("latestVolume":%d,"avgTotalVolume":%d,"previousClose":%lf,"change":%lf,"changePercent":%lf})";
+		R"("latestVolume":%d,"avgTotalVolume":%d,"previousClose":%lf,"change":%lf,"changePercent":%lf,"closeTime":%I64d})";
 
 	int n = sscanf_s(json.c_str(), format, &quote.open, &quote.close, &quote.latestPrice, buffer,
 		static_cast<unsigned>(_countof(buffer)), &quote.latestUpdate, &quote.latestVolume, &quote.avgTotalVolume,
-		&quote.previousClose, &quote.change, &quote.changePercent
+		&quote.previousClose, &quote.change, &quote.changePercent, &quote.closeTime
 	);
-	if (n != 10)
+	if (n != 11)
 	{
-		OutputMessage(L"sscanf_s failed! Only read %d/%d\n", n, 10);
+		OutputMessage(L"sscanf_s failed! Only read %d/%d\n", n, 11);
 		throw std::invalid_argument("GetQuote failed");
 	}
 
@@ -62,6 +63,7 @@ Quote GetQuote(std::wstring ticker)
 	}
 
 	quote.latestUpdate /= 1000; // remove milliseconds
+	quote.closeTime /= 1000;
 	return quote;
 }
 
@@ -105,8 +107,6 @@ Stats GetStats(std::wstring ticker)
 	return stats;
 }
 
-
-
 // Reads, writes, and fetches data as necessary
 std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source, size_t last_n)
 {
@@ -140,8 +140,11 @@ std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source, size_t last_n)
 // --- Helper Functions ---
 
 // Reads saved data from 'filename', initializing 'ohlcFile' and populating 'days_to_get'.
-// Only returns the 'last_n' entries from file.
+//
+// 'days_to_get' is only approximate; doesn't account for trading vs. non-trading days.
 // Sets 'days_to_get' == -1 if there's no saved data.
+//
+// Only returns the 'last_n' entries from file.
 std::vector<OHLC> GetSavedOHLC(std::wstring const & ticker, std::wstring const & filename, 
 	FileIO & ohlcFile, size_t last_n, int & days_to_get)
 {
@@ -163,14 +166,14 @@ std::vector<OHLC> GetSavedOHLC(std::wstring const & ticker, std::wstring const &
 		date_t latestDate = ohlcData.back().date;
 
 		Quote quote = GetQuote(ticker);
-		date_t quoteDay = GetDate(quote.latestUpdate);
+		date_t lastCloseDate = GetDate(quote.closeTime);
 
-		if (quoteDay > latestDate)
+		if (lastCloseDate > latestDate)
 		{
 			if (quote.latestSource == iexLSource::close) // When is prev close used?
-				days_to_get = ApproxDateDiff(quoteDay, latestDate);
+				days_to_get = ApproxDateDiff(lastCloseDate, latestDate);
 			else
-				days_to_get = ApproxDateDiff(quoteDay, latestDate) - 1;
+				days_to_get = ApproxDateDiff(lastCloseDate, latestDate) - 1;
 		}
 		else
 		{
@@ -256,16 +259,33 @@ std::vector<OHLC> GetOHLC_Alpha(std::wstring ticker, size_t last_n)
 	std::vector<OHLC> extra = parseAlphaChart(json, latestDate);
 	std::reverse(extra.begin(), extra.end());
 
-	
+	// Write to file
+	DWORD nBytes = sizeof(OHLC) * extra.size();
+
+	// AlphaVantage adds the current trading day to the time series, even if not closed yet.
+	// Pass on this data, but don't write it to file.
+	SYSTEMTIME utc, now;
+	GetSystemTime(&utc);
+	if (!SystemTimeToEasternTime(&utc, &now)) OutputMessage(L"SystemTimeToEasternTime failed\n");
+	if (extra.back().date == MkDate(now.wYear, now.wMonth, now.wDay) &&
+		now.wHour < 16)
+	{
+		nBytes -= sizeof(OHLC);
+	}
+
 	if (days_to_get == -1)
 	{
 		ohlcData = extra;
-		ohlcFile.Write(reinterpret_cast<const void*>(ohlcData.data()), sizeof(OHLC) * ohlcData.size());
+		if (nBytes > 0)
+			ohlcFile.Write(reinterpret_cast<const void*>(ohlcData.data()), nBytes);
 	}
 	else if (extra.size() > 0)
 	{
-		bool err = ohlcFile.Append(reinterpret_cast<const void*>(extra.data()), extra.size() * sizeof(OHLC));
-		if (!err) OutputMessage(L"Append OHLC failed\n");
+		if (nBytes > 0)
+		{
+			bool err = ohlcFile.Append(reinterpret_cast<const void*>(extra.data()), nBytes);
+			if (!err) OutputMessage(L"Append OHLC failed\n");
+		}
 		ohlcData.insert(ohlcData.end(), extra.begin(), extra.end());
 	}
 
@@ -384,8 +404,9 @@ OHLC parseAlphaChartItem(std::string json)
 			int n = sscanf_s(token.c_str(), "%d-%d-%d", &year, &month, &date);
 			if (n != 3)
 			{
-				OutputMessage(L"parseAlphaChart sscanf_s %d failed! Only read %d/%d\n", i, n, 3);
-				throw std::invalid_argument("praseAlphaChartItem failed");
+				OutputMessage(L"parseAlphaChartItem sscanf_s failed! Only read %d/%d\n", n, 3);
+				OutputDebugStringA(json.c_str()); OutputDebugString(L"\n");
+				throw std::invalid_argument("parseAlphaChartItem failed");
 			}
 			out.date = MkDate(year, month, date);
 		}
@@ -395,27 +416,27 @@ OHLC parseAlphaChartItem(std::string json)
 		else if (i == 5)
 		{
 			int n = sscanf_s(token.c_str(), "%lf", &out.open);
-			if (n != 1)	throw std::invalid_argument("praseAlphaChartItem failed");
+			if (n != 1)	throw std::invalid_argument("parseAlphaChartItem failed");
 		}
 		else if (i == 9)
 		{
 			int n = sscanf_s(token.c_str(), "%lf", &out.high);
-			if (n != 1) throw std::invalid_argument("praseAlphaChartItem failed");
+			if (n != 1) throw std::invalid_argument("parseAlphaChartItem failed");
 		}
 		else if (i == 13)
 		{
 			int n = sscanf_s(token.c_str(), "%lf", &out.low);
-			if (n != 1) throw std::invalid_argument("praseAlphaChartItem failed");
+			if (n != 1) throw std::invalid_argument("parseAlphaChartItem failed");
 		}
 		else if (i == 17)
 		{
 			int n = sscanf_s(token.c_str(), "%lf", &out.close);
-			if (n != 1) throw std::invalid_argument("praseAlphaChartItem failed");
+			if (n != 1) throw std::invalid_argument("parseAlphaChartItem failed");
 		}
 		else if (i == 21)
 		{
 			int n = sscanf_s(token.c_str(), "%I32u", &out.volume);
-			if (n != 1) throw std::invalid_argument("praseAlphaChartItem failed");
+			if (n != 1) throw std::invalid_argument("parseAlphaChartItem failed");
 			break;
 		}
 		start = end + delim.length();

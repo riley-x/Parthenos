@@ -9,8 +9,10 @@ void OutputMessage(const std::wstring format, ...);
 ///////////////////////////////////////////////////////////
 // --- Datetime --- 
 typedef uint32_t date_t; // 10000*yyyy + 100*mm + dd
-time_t const DATE_T_1M = 100;
-time_t const DATE_T_1YR = 10000;
+date_t const DATE_T_1M = 100;
+date_t const DATE_T_1YR = 10000;
+
+BOOL SystemTimeToEasternTime(SYSTEMTIME const * sysTime, SYSTEMTIME * eastTime);
 
 time_t TruncateToDay(time_t time);
 std::wstring TimeToWString(time_t time);

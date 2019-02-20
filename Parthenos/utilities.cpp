@@ -65,6 +65,16 @@ void OutputMessage(const std::wstring format, ...)
 	OutputDebugString(msg);
 }
 
+BOOL SystemTimeToEasternTime(SYSTEMTIME const * sysTime, SYSTEMTIME * eastTime)
+{
+	DYNAMIC_TIME_ZONE_INFORMATION pdtzi; 
+	EnumDynamicTimeZoneInformation(118, &pdtzi);
+	// this indexes into the registry to get the timezone under
+	// HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Time Zones
+	if (pdtzi.Bias != 300) return FALSE;
+	return SystemTimeToTzSpecificLocalTimeEx(&pdtzi, sysTime, eastTime);
+}
+
 time_t TruncateToDay(time_t time)
 {
 	struct tm out;

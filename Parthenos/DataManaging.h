@@ -48,6 +48,7 @@ typedef struct Quote_struct {
 	double change;
 	double changePercent;
 	time_t latestUpdate;
+	time_t closeTime;
 
 	inline std::wstring to_wstring() const
 	{
@@ -62,6 +63,7 @@ typedef struct Quote_struct {
 			+ L", previousClose: "	+ std::to_wstring(previousClose)
 			+ L", change: "			+ std::to_wstring(change)
 			+ L", changePercent: "	+ std::to_wstring(changePercent)
+			+ L", closeTime: "		+ TimeToWString(closeTime)
 			+ L"\n";
 	}
 } Quote;
