@@ -3,11 +3,11 @@
 #include "FileIO.h"
 #include "HTTP.h"
 
-const std::wstring ROOTDIR(L"C:/Users/Riley/Documents/Finances/Parthenos/"); // C:/Users/Riley/Documents/Finances/Parthenos/
 const std::wstring IEXHOST(L"api.iextrading.com"); // api.iextrading.com
 const std::wstring ALPHAHOST(L"www.alphavantage.co");
 const std::wstring ALPHAKEY(L"FJHB2XGE0A43171J"); // FJHB2XGE0A43171J
 
+///////////////////////////////////////////////////////////
 // --- Forward declarations ---
 
 bool OHLC_Compare(const OHLC & a, const OHLC & b);
@@ -17,7 +17,10 @@ std::vector<OHLC> parseIEXChart(std::string json, date_t latest_date = 0);
 std::vector<OHLC> parseAlphaChart(std::string json, date_t latestDate = 0);
 OHLC parseIEXChartItem(std::string json);
 OHLC parseAlphaChartItem(std::string json);
+Transaction parseTransactionItem(std::string str);
 
+
+///////////////////////////////////////////////////////////
 // --- Interface Functions ---
 
 
@@ -136,7 +139,35 @@ std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source, size_t last_n)
 }
 
 
-/////////////////////////////////////////////////////////////////////////////////////////
+std::vector<Transaction> CSVtoTransactions(std::wstring filepath)
+{
+	FileIO file;
+	file.Init(filepath);
+	file.Open(GENERIC_READ);
+	std::vector<char> fileData = file.Read<char>();
+	fileData.push_back('\0');
+	
+	// Converting to CSV seems to add 3 junk characters in beginning
+	std::string data(fileData.begin() + 3, fileData.end());
+	std::vector<Transaction> out;
+
+	std::string delim = "\r\n";
+	size_t start = 0; 
+	size_t end = data.find(delim);
+	while (end != std::string::npos)
+	{
+		Transaction temp = parseTransactionItem(data.substr(start, end - start));
+		out.push_back(temp);
+		start = end + delim.length();
+		end = data.find(delim, start);
+	}
+	// No need to check final substr because \r\n at end of CSV
+
+	return out;
+}
+
+
+///////////////////////////////////////////////////////////
 // --- Helper Functions ---
 
 // Reads saved data from 'filename', initializing 'ohlcFile' and populating 'days_to_get'.
@@ -268,7 +299,7 @@ std::vector<OHLC> GetOHLC_Alpha(std::wstring ticker, size_t last_n)
 	GetSystemTime(&utc);
 	if (!SystemTimeToEasternTime(&utc, &now)) OutputMessage(L"SystemTimeToEasternTime failed\n");
 	if (extra.back().date == MkDate(now.wYear, now.wMonth, now.wDay) &&
-		now.wHour < 16)
+		(now.wHour < 16 || (now.wHour == 16 && now.wMinute < 1))) // give 1 minute leway
 	{
 		nBytes -= sizeof(OHLC);
 	}
@@ -450,4 +481,29 @@ OHLC parseAlphaChartItem(std::string json)
 bool OHLC_Compare(const OHLC & a, const OHLC & b)
 {
 	return a.date < b.date;
+}
+
+
+Transaction parseTransactionItem(std::string str)
+{
+	Transaction out;
+	char account;
+	char type;
+	char buffer[50] = {};
+	const char format[] = "%I32u,%hhd,%49[^,],%d,%lf,%lf,%hhd,%I32u,%lf";
+
+	int n = sscanf_s(str.c_str(), format, &out.date, &account, buffer, static_cast<unsigned>(_countof(buffer)),
+		&out.n, &out.value, &out.price, &type, &out.expiration, &out.strike);
+	if (n != 9)
+	{
+		OutputMessage(L"parseTransactionItem sscanf_s failed! Only read %d/%d\n", n, 9);
+	}
+
+	out.account = static_cast<Account>(account);
+	out.type = static_cast<TransactionType>(type);
+	
+	size_t convertedChars = 0;
+	mbstowcs_s(&convertedChars, out.ticker, Transaction::maxTickerLen + 1, buffer, _TRUNCATE);
+
+	return out;
 }

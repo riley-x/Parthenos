@@ -3,19 +3,12 @@
 #include "stdafx.h"
 #include "utilities.h"
 
-enum class apiSource
-{
-	iex,
-	alpha
-};
+const std::wstring ROOTDIR(L"C:/Users/Riley/Documents/Finances/Parthenos/"); // C:/Users/Riley/Documents/Finances/Parthenos/
 
-enum class iexLSource 
-{
-	real,
-	delayed,
-	close,
-	prevclose
-};
+
+enum class apiSource { iex, alpha };
+
+enum class iexLSource { real, delayed, close, prevclose };
 
 typedef struct OHLC_struct {
 	double open;
@@ -91,7 +84,42 @@ typedef struct Stats_struct {
 	}
 } Stats;
 
+
 std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source = apiSource::iex, size_t last_n = 0);
 Quote GetQuote(std::wstring ticker);
 Stats GetStats(std::wstring ticker);
 bool OHLC_Compare(const OHLC & a, const OHLC & b);
+
+
+enum class Account : char { Robinhood, Arista };
+enum class TransactionType : char { Transfer, Stock, Dividend, Interest, Fee, PutShort, PutLong, CallShort, CallLong };
+
+typedef struct Transaction_struct {
+	Account account;			// 1
+	TransactionType type;		// 2
+	wchar_t ticker[13] = {};	// 28
+	int n;						// 32
+	date_t date;				// 36
+	date_t expiration;			// 40
+	double value;				// 48
+	double price;				// 56
+	double strike;				// 64
+
+	static size_t const maxTickerLen = 12;
+	inline std::wstring to_wstring() const
+	{
+		return L"Account: "		+ std::to_wstring(static_cast<int>(account))
+			+ L", Type: "		+ std::to_wstring(static_cast<int>(type))
+			+ L", Ticker: "		+ std::wstring(ticker)
+			+ L", n: "			+ std::to_wstring(n)
+			+ L", Date: "		+ std::to_wstring(date)
+			+ L", Expiration: " + DateToWString(expiration)
+			+ L", Value: "		+ std::to_wstring(value)
+			+ L", Price: "		+ std::to_wstring(price)
+			+ L", Strike: "		+ std::to_wstring(strike)
+			+ L"\n";
+	}
+} Transaction;
+
+
+std::vector<Transaction> CSVtoTransactions(std::wstring filepath);

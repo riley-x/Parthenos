@@ -221,6 +221,22 @@ void Parthenos::PreShow()
 	if (bErr == 0) OutputError(L"GetClientRect failed");
 	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
 
+	//std::vector<Transaction> test = CSVtoTransactions(L"C:/Users/Riley/Desktop/history_all.csv");
+	//for (Transaction & item : test)
+	//{
+	//	OutputDebugString(item.to_wstring().c_str());
+	//}
+
+	//FileIO hist;
+	//hist.Init(ROOTDIR + L"hist.transaction");
+	//hist.Open();
+	//hist.Write(test.data(), sizeof(Transaction) * test.size());
+	//hist.Close();
+
+	//OutputMessage(L"%hu", sizeof(Transaction));
+	//
+	//return;
+
 	for (auto item : m_allItems)
 	{
 		if (item == m_chart)

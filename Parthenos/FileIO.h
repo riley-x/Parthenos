@@ -44,7 +44,6 @@ public:
 		return _Read<T>(bytesToRead, false);
 	}
 
-	
 
 private:
 	std::wstring m_filename;
