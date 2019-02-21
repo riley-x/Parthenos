@@ -110,6 +110,20 @@ std::wstring TimeToWString(time_t time)
 	return std::wstring(buffer);
 }
 
+time_t DateToTime(date_t date)
+{
+	struct tm out;
+	out.tm_year = GetYear(date) - 1900;
+	out.tm_mon = GetMonth(date) - 1;
+	out.tm_mday = GetDay(date);
+	out.tm_sec = 0;
+	out.tm_min = 0;
+	out.tm_hour = 0;
+	out.tm_isdst = -1;
+
+	return _mkgmtime(&out);
+}
+
 
 // APPROXIMATE DIFFERENCE IN DAYS
 // Typically larger than real difference

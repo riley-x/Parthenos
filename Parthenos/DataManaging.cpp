@@ -10,7 +10,6 @@ const std::wstring ALPHAKEY(L"FJHB2XGE0A43171J"); // FJHB2XGE0A43171J
 ///////////////////////////////////////////////////////////
 // --- Forward declarations ---
 
-bool OHLC_Compare(const OHLC & a, const OHLC & b);
 std::vector<OHLC> GetOHLC_IEX(std::wstring ticker, size_t last_n);
 std::vector<OHLC> GetOHLC_Alpha(std::wstring ticker, size_t last_n);
 std::vector<OHLC> parseIEXChart(std::string json, date_t latest_date = 0);
@@ -18,7 +17,10 @@ std::vector<OHLC> parseAlphaChart(std::string json, date_t latestDate = 0);
 OHLC parseIEXChartItem(std::string json);
 OHLC parseAlphaChartItem(std::string json);
 Transaction parseTransactionItem(std::string str);
-
+bool OHLC_Compare(const OHLC & a, const OHLC & b);
+bool Holdings_Compare(const std::vector<Holdings>& a, std::wstring const & ticker);
+void AddTransactionToHoldings(std::vector<Holdings> & h, Transaction const & t);
+void ReduceSalesLots(std::vector<Holdings> & h, size_t i_header, date_t end);
 
 ///////////////////////////////////////////////////////////
 // --- Interface Functions ---
@@ -136,7 +138,7 @@ std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source, size_t last_n)
 }
 
 // CSV with columns date,account,ticker,n,value,price,type,expiration,strike
-// separated by \r\n (generate from excel)
+// separated by \r\n (generate from excel). Assumes tax_lot = 0.
 std::vector<Transaction> CSVtoTransactions(std::wstring filepath)
 {
 	FileIO file;
@@ -164,9 +166,32 @@ std::vector<Transaction> CSVtoTransactions(std::wstring filepath)
 	return out;
 }
 
-std::vector<Holdings> FullTransactionsToHoldings(std::vector<Transaction> transactions)
+std::vector<std::vector<Holdings>> FullTransactionsToHoldings(std::vector<Transaction> const & transactions)
 {
-	return std::vector<Holdings>();
+	// TODO make a list and then turn into vector
+	std::vector<std::vector<Holdings>> TickerHoldings;
+	// Holdings for each ticker, sorted by ticker
+
+	for (Transaction const & t : transactions)
+	{
+		// See if ticker is present already
+		std::wstring ticker(t.ticker);
+		auto it = std::lower_bound(TickerHoldings.begin(), TickerHoldings.end(), ticker, Holdings_Compare);
+		if (it == TickerHoldings.end() ||
+			std::wstring(it->front().ticker) != ticker) 
+		{
+			// insert (rare, so using vectors is better than a list)
+			Holdings h_ticker;
+			wcscpy_s(h_ticker.ticker, PortfolioObjects::maxTickerLen + 1, t.ticker);
+
+			std::vector<Holdings> temp = { h_ticker };
+			it = TickerHoldings.insert(it, temp);
+		}
+
+		AddTransactionToHoldings(*it, t);
+	}
+
+	return TickerHoldings;
 }
 
 
@@ -203,16 +228,9 @@ std::vector<OHLC> GetSavedOHLC(std::wstring const & ticker, std::wstring const &
 		date_t lastCloseDate = GetDate(quote.closeTime);
 
 		if (lastCloseDate > latestDate)
-		{
-			if (quote.latestSource == iexLSource::close) // When is prev close used?
-				days_to_get = ApproxDateDiff(lastCloseDate, latestDate);
-			else
-				days_to_get = ApproxDateDiff(lastCloseDate, latestDate) - 1;
-		}
+			days_to_get = ApproxDateDiff(lastCloseDate, latestDate);
 		else
-		{
 			days_to_get = 0;
-		}
 	}
 	return ohlcData;
 }
@@ -480,13 +498,9 @@ OHLC parseAlphaChartItem(std::string json)
 	return out;
 }
 
-// returns a.date < b.date
-bool OHLC_Compare(const OHLC & a, const OHLC & b)
-{
-	return a.date < b.date;
-}
 
 // Columns date,account,ticker,n,value,price,type,expiration,strike
+// Assumes tax_lot = 0
 Transaction parseTransactionItem(std::string str)
 {
 	Transaction out;
@@ -502,11 +516,294 @@ Transaction parseTransactionItem(std::string str)
 		OutputMessage(L"parseTransactionItem sscanf_s failed! Only read %d/%d\n", n, 9);
 	}
 
+	out.tax_lot = 0;
 	out.account = static_cast<Account>(account);
 	out.type = static_cast<TransactionType>(type);
-	
+
 	size_t convertedChars = 0;
 	mbstowcs_s(&convertedChars, out.ticker, PortfolioObjects::maxTickerLen + 1, buffer, _TRUNCATE);
 
 	return out;
+}
+
+// returns a.date < b.date
+bool OHLC_Compare(const OHLC & a, const OHLC & b)
+{
+	return a.date < b.date;
+}
+
+// returns a.front().ticker < ticker
+bool Holdings_Compare(const std::vector<Holdings>& a, std::wstring const & ticker)
+{
+	if (a.empty()) throw std::invalid_argument("Holdings_Compare empty vector");
+	return std::wstring(a.front().ticker) < ticker;
+}
+
+// Assumes h has the ticker struct
+void AddTransactionToHoldings(std::vector<Holdings> & h, Transaction const & t)
+{
+	if (h.size() < 1) throw std::invalid_argument("AddTransactionToHoldings no ticker!");
+
+	////////////////////////////////////////////////
+	// Get the header for the proper account. 
+
+	HoldingHeader *header = nullptr; // Pointer so can initialize below
+	size_t i_header = 1; // 0 is the ticker 
+	while (i_header < h.size())
+	{
+		header = &(h[i_header].head);
+		if (header->account == t.account) break;
+		i_header += header->nLots + header->nOptions + 1;
+	}
+
+	if (i_header == h.size()) // new account == new header
+	{
+		Holdings h_header; // zero except for account; re-use code below
+		h_header.head.account = t.account;
+		h_header.head.nLots = 0;
+		h_header.head.nOptions = 0;
+		h_header.head.sumReal = 0;
+		h_header.head.sumReal1Y = 0;
+		h_header.head.sumWeights = 0;
+		h_header.head.PAD[0] = 0;
+		h_header.head.PAD[1] = 0;
+		h_header.head.PAD[2] = 0;
+
+		h.push_back(h_header);
+		header = &(h.back().head);
+	}
+	else if (i_header > h.size()) throw std::invalid_argument("AddTransactionToHoldings nLots wrong?");
+	if (!header) return OutputMessage(L"header is null for some reason\n");
+
+	////////////////////////////////////////////////
+	// Don't add lots for cash
+	if (std::wstring(t.ticker) == L"CASH")
+	{
+		if (t.type == TransactionType::Transfer)
+			header->sumWeights += t.value;
+		else if (t.type == TransactionType::Interest)
+			header->sumReal += t.value;
+		else
+			OutputMessage(L"Unrecognized transaction:\n%s", t.to_wstring().c_str());
+		return;
+	}
+
+	////////////////////////////////////////////////
+	// open position -> push back new lot
+	if (t.n > 0) 
+	{
+		if (isOption(t.type))
+		{
+			header->nOptions++;
+
+			Holdings temp;
+			temp.option.type = t.type;
+			temp.option.n = t.n * 100; // FIXME if not always 100 / contract
+			temp.option.date = t.date;
+			temp.option.expiration = t.expiration;
+			temp.option.price = static_cast<float>(t.price);
+			temp.option.strike = static_cast<float>(t.strike);
+			temp.option.realized = 0;
+			temp.option.RESERVED = 0;
+			temp.option.PAD[0] = 0;
+			temp.option.PAD[1] = 0;
+			temp.option.PAD[2] = 0;
+			if (isShort(t.type))
+				temp.option.realized = static_cast<float>(t.value);
+
+			h.insert(h.begin() + i_header + header->nLots + header->nOptions, temp);
+		}
+		else
+		{
+			header->nLots++;
+
+			Holdings temp;
+			temp.lot.active = 1;
+			temp.lot.n = t.n;
+			temp.lot.date = t.date;
+			temp.lot.PAD = 0;
+			temp.lot.price = t.price;
+			temp.lot.realized = 0.0;
+
+			h.insert(h.begin() + i_header + header->nLots, temp);
+		}
+	}
+	////////////////////////////////////////////////
+	// Fee / dividend
+	else if (t.n == 0)
+	{
+		switch (t.type)
+		{
+		case TransactionType::Dividend: // Search through lots to assign realized to lot
+		{
+			ReduceSalesLots(h, i_header, t.expiration);
+
+			int nshares = static_cast<int>(round(t.value / t.price));
+			double rounding_error = t.value;
+			for (size_t i = i_header + 1; i < i_header + header->nLots + 1; i++)
+			{
+				TaxLot *lot = &(h.at(i).lot);
+				if (lot->date >= t.expiration) break; // >= ex-div date
+
+				lot->realized += lot->n * t.price;
+				nshares -= lot->n;
+				rounding_error -= lot->n * t.price;
+			}
+			if (nshares != 0) OutputMessage(L"Shares did not equal dividend payout\n");
+			if (abs(rounding_error) >= 0.009) header->sumReal += rounding_error; // give extra to header
+			break;
+		}
+		case TransactionType::Fee: // Incorporated into t.value on a sale already
+		default:
+			OutputMessage(L"Unrecognized transaction:\n%s", t.to_wstring().c_str());
+			break;
+		}
+	}
+	////////////////////////////////////////////////
+	// Close position
+	else
+	{
+		if (isOption(t.type))
+		{
+			if (t.tax_lot > header->nOptions)
+				return OutputMessage(L"Bad lot:\n%s", t.to_wstring().c_str());
+
+			auto it = h.begin() + i_header + header->nLots + t.tax_lot + 1;
+			Option *opt = &(it->option);
+			if (opt->type != t.type || opt->expiration != t.expiration || opt->strike != t.strike) 
+				return OutputMessage(L"Bad lot:\n%s", t.to_wstring().c_str());
+
+			time_t time_held = DateToTime(t.date) - DateToTime(opt->date);
+			double realized;
+
+			if (opt->n <= -t.n * 100) // delete this lot
+			{
+				if (isShort(t.type))
+				{
+					realized = opt->realized + t.value;
+					header->sumWeights += opt->n * opt->strike; // use collateral as effective cost
+				}
+				else
+				{
+					realized = -(opt->n * opt->price) + t.value;
+					header->sumWeights += opt->n * opt->price;
+				}
+				header->sumReal += realized;
+				header->sumReal1Y += realized * 365 / time_held;
+				header->nOptions--;
+				h.erase(it);
+			}
+			else // partial close
+			{
+				if (isShort(t.type))
+				{
+					// t.n < 0 and t.value < 0
+					opt->realized += t.n * 100 * opt->price; // swap realized from opt to header
+					realized = -t.n * 100 * opt->price + t.value; 
+					header->sumWeights += -t.n * 100 * opt->strike; // use collateral as effective cost
+				}
+				else
+				{
+					realized = t.n * 100 * opt->price + t.value; // t.n < 0 and t.value > 0
+					header->sumWeights += -t.n * 100 * opt->price;
+				}
+				opt->n += t.n;
+				header->sumReal += realized;
+				header->sumReal1Y += realized * 365 / time_held;
+			}
+		}
+		else // stock
+		// Don't delete stock lots in case between ex-dividend and payout.
+		// Add a negative lot to the chain and delete on dividend receipt instead.
+		{
+			if (t.type != TransactionType::Stock)
+				return OutputMessage(L"Unrecognized transaction:\n%s", t.to_wstring().c_str());
+
+			header->nLots++;
+
+			Holdings temp;
+			temp.lot.active = -1;
+			temp.lot.n = t.n;
+			temp.lot.date = t.date;
+			temp.lot.PAD = 0;
+			temp.lot.price = t.price;
+			temp.lot.realized = t.value;
+
+			h.insert(h.begin() + i_header + header->nLots, temp);
+		}
+	}
+}
+
+// Reduces sales against purchases for stock lots with date prior to end
+void ReduceSalesLots(std::vector<Holdings>& h, size_t i_header, date_t end)
+{
+	HoldingHeader *header = &(h.at(i_header).head);
+	size_t istart = i_header + 1;
+	size_t iend = i_header + 1; // exclusive
+
+	while (iend <= i_header + header->nLots)
+	{
+		if (h.at(iend).lot.date >= end) break;
+		iend++;
+	}
+
+	// Work backwards from sales
+	for (size_t i = iend - 1; i > i_header; i--)
+	{
+		TaxLot *sell = &(h.at(i).lot);
+		if (sell->active != -1) continue;
+		
+		bool done = false; // finished with this sale entry
+		while (!done && istart != i)
+		{
+			TaxLot *buy = &(h.at(istart).lot);
+			time_t time_held = DateToTime(sell->date) - DateToTime(buy->date);
+			double realized = 0;
+			int n;
+			if (buy->n <= -sell->n)
+			{
+				n = -sell->n;
+
+				realized = buy->realized * n / static_cast<double>(buy->n);
+				buy->realized -= realized;
+				realized += sell->realized - buy->price * n;
+
+				sell->active = 0;
+				header->nLots--; // need to subtract here before deletion invalidates the header pointer
+				if (n == buy->n)
+				{
+					buy->active = 0;
+					header->nLots--;
+					istart++;
+				}
+				buy->n -= n;
+				done = true;
+			}
+			else
+			{
+				n = buy->n;
+				realized = buy->realized;
+				realized += (sell->price - buy->price) * n;
+				buy->active = 0;
+				header->nLots--;
+				sell->n += n;
+				sell->realized -= sell->price * n;
+				done = false;
+				istart++;
+			}
+			header->sumWeights += buy->price * n;
+			header->sumReal += realized;
+			header->sumReal1Y += realized * 365.0 * 86400.0 / time_held;
+		}
+		if (!done) OutputMessage(L"ReduceSalesLots entries didn't line up\n");
+	}
+
+	// Delete inactive lots
+	for (size_t i = iend - 1; i > i_header; i--)
+	{
+		if (h.at(i).lot.active == 0)
+		{
+			h.erase(h.begin() + i);
+		}
+	}
 }

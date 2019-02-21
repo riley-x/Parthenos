@@ -16,6 +16,7 @@ BOOL SystemTimeToEasternTime(SYSTEMTIME const * sysTime, SYSTEMTIME * eastTime);
 
 time_t TruncateToDay(time_t time);
 std::wstring TimeToWString(time_t time);
+time_t DateToTime(date_t date);
 date_t GetDate(time_t time);
 inline date_t MkDate(int year, int month, int day) { return 10000 * year + 100 * month + day; }
 inline int GetYear(date_t date) { return (date / 10000); }

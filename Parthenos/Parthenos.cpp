@@ -221,45 +221,27 @@ void Parthenos::PreShow()
 	if (bErr == 0) OutputError(L"GetClientRect failed");
 	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
 
-	//std::vector<Transaction> test = CSVtoTransactions(L"C:/Users/Riley/Desktop/history_all.csv");
-	//for (Transaction & item : test)
+	//std::vector<Transaction> trans = CSVtoTransactions(L"C:/Users/Riley/Documents/Finances/history_all.csv");
+	//for (Transaction const & item : trans)
 	//{
 	//	OutputDebugString(item.to_wstring().c_str());
 	//}
+	//FileIO transFile;
+	//transFile.Init(ROOTDIR + L"hist.trans");
+	//transFile.Open();
+	//transFile.Write(trans.data(), sizeof(Transaction) * trans.size());
+	//transFile.Close();
 
-	/*FileIO hist;
-	hist.Init(ROOTDIR + L"hist.trans");
-	hist.Open(GENERIC_READ);
-	std::vector<Transaction> trans = hist.Read<Transaction>();
-	hist.Close();
+	FileIO transFile;
+	transFile.Init(ROOTDIR + L"hist.trans");
+	transFile.Open(GENERIC_READ);
+	std::vector<Transaction> trans = transFile.Read<Transaction>();
+	transFile.Close();
 
-	std::vector<Holdings> hold;
-	Holdings temp;
-	wcscpy_s(temp.ticker, PortfolioObjects::maxTickerLen + 1, L"TEST");
-	hold.push_back(temp);
+	std::vector<std::vector<Holdings>> out = FullTransactionsToHoldings(trans);
 
-	temp.apy.nLots = 5;
-	temp.apy.sumReal = 100.0;
-	temp.apy.sumReal1Y = 133.7;
-	temp.apy.sumWeights = 6969;
-	hold.push_back(temp);
 
-	FileIO port;
-	port.Init(ROOTDIR + L"test.test");
-	port.Open();
-	port.Write(hold.data(), sizeof(Holdings) * 2);
-	port.Close();
-
-	port.Open();
-	std::vector<Holdings> out = port.Read<Holdings>();
-	port.Close();
-
-	OutputMessage(L"%s\n", out[0].ticker);
-	OutputMessage(L"%lf\n", out[1].apy.sumWeights);
-	OutputMessage(L"%lf\n", out[1].lot.realized);
-	OutputMessage(L"%hu", sizeof(Holdings));*/
-	//
-	//return;
+	return;
 
 	for (auto item : m_allItems)
 	{

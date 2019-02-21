@@ -101,19 +101,46 @@ bool OHLC_Compare(const OHLC & a, const OHLC & b);
 enum class Account : char { Robinhood, Arista };
 enum class TransactionType : char { Transfer, Stock, Dividend, Interest, Fee, PutShort, PutLong, CallShort, CallLong };
 
+inline bool isOption(TransactionType type)
+{
+	switch (type)
+	{
+	case TransactionType::PutShort:
+	case TransactionType::PutLong:
+	case TransactionType::CallShort:
+	case TransactionType::CallLong:
+		return true;
+	default:
+		return false;
+	}
+}
+
+inline bool isShort(TransactionType type)
+{
+	switch (type)
+	{
+	case TransactionType::PutShort:
+	case TransactionType::CallShort:
+		return true;
+	default:
+		return false;
+	}
+}
+
 namespace PortfolioObjects
 {
-	const size_t maxTickerLen = 12;
+	const size_t maxTickerLen = 11;
 }
 
 typedef struct Transaction_struct 
 {
 	Account account;			// 1
 	TransactionType type;		// 2
-	wchar_t ticker[13] = {};	// 28
+	short tax_lot;				// 4	for sales - index into lots - 0 if FIFO (for stock) - Options must be fully qualified index
+	wchar_t ticker[12] = {};	// 28
 	int n;						// 32
 	date_t date;				// 36
-	date_t expiration;			// 40
+	date_t expiration;			// 40	for stock dividends, this is the ex date
 	double value;				// 48
 	double price;				// 56
 	double strike;				// 64
@@ -124,7 +151,7 @@ typedef struct Transaction_struct
 			+ L", Type: "		+ std::to_wstring(static_cast<int>(type))
 			+ L", Ticker: "		+ std::wstring(ticker)
 			+ L", n: "			+ std::to_wstring(n)
-			+ L", Date: "		+ std::to_wstring(date)
+			+ L", Date: "		+ DateToWString(date)
 			+ L", Expiration: " + DateToWString(expiration)
 			+ L", Value: "		+ std::to_wstring(value)
 			+ L", Price: "		+ std::to_wstring(price)
@@ -136,37 +163,68 @@ typedef struct Transaction_struct
 
 typedef struct TaxLot_struct 
 {
-	int PAD;
+	int active; // 1 = buy, -1 = sale
 	int n;
-	time_t date;
+	date_t date;
+	int PAD;
 	double price; 
 	double realized; // i.e. dividends
 	// 32 bytes
 } TaxLot;
 
-typedef struct APY_struct
+typedef struct Option_struct
 {
-	int PAD;
-	int nLots;
+	TransactionType type;
+	char PAD[3];
+	int n; // shares underlying, not contracts
+	date_t date;
+	date_t expiration;
+	float price;
+	float strike;
+	float realized;
+	float RESERVED;
+	// 32 bytes
+} Option;
+
+typedef struct HoldingHeader_struct
+{
+	Account account;
+	char PAD[3];
+	short nLots;
+	short nOptions;
 	// Running sums from sold lots to calculate APY. DOESN'T include stored lots
 	double sumWeights; // cost
 	double sumReal1Y; // realized * 365 / days_held
 	double sumReal; // realized
 	// 32 bytes
-} APY;
+} HoldingHeader;
 
 typedef union Holdings_union
 {
 	wchar_t ticker[16];
 	TaxLot lot;
-	APY apy;
+	HoldingHeader head;
+	Option option;
 } Holdings;
+
+
+typedef struct Position_struct
+{
+	int n;
+	double avgCost;
+	double marketPrice;
+	double realized_held;	// == sum_lots ( lot.realized )
+	double realized_unheld; // == head.sumReal
+	double APY;
+	std::wstring ticker;
+} Position;
 
 class Portfolio
 {
 public:
 	Account m_account;
+	std::vector<Position> m_positions;
 };
 
 std::vector<Transaction> CSVtoTransactions(std::wstring filepath);
-std::vector<Holdings> FullTransactionsToHoldings(std::vector<Transaction> transactions);
+std::vector<std::vector<Holdings>> FullTransactionsToHoldings(std::vector<Transaction> const & transactions);
