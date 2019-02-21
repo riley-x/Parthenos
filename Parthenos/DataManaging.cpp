@@ -21,6 +21,9 @@ bool OHLC_Compare(const OHLC & a, const OHLC & b);
 bool Holdings_Compare(const std::vector<Holdings>& a, std::wstring const & ticker);
 void AddTransactionToHoldings(std::vector<Holdings> & h, Transaction const & t);
 void ReduceSalesLots(std::vector<Holdings> & h, size_t i_header, date_t end);
+size_t GetPurchaseLot(std::vector<Holdings> const & h, size_t i_header, size_t n);
+
+
 
 ///////////////////////////////////////////////////////////
 // --- Interface Functions ---
@@ -166,6 +169,15 @@ std::vector<Transaction> CSVtoTransactions(std::wstring filepath)
 	return out;
 }
 
+// Returns a vector sorted by tickers. Each ticker has a std::vector<Holdings> with the following elements:
+//		[0]: A TickerInfo struct with the ticker and the number of accounts
+// For each account:
+//		[1]: A HoldingsHeader struct with the number of stock lots and option lots
+//		[2]: The tax lots
+//		[3]: The option lots
+//
+// Note that the tax lots contain sell information, denoted by lot.active == -1, to account for sales between
+// the ex-dividend and payout dates. Call ReduceSalesLots to collapse these.
 std::vector<std::vector<Holdings>> FullTransactionsToHoldings(std::vector<Transaction> const & transactions)
 {
 	// TODO make a list and then turn into vector
@@ -594,10 +606,13 @@ bool Holdings_Compare(const std::vector<Holdings>& a, std::wstring const & ticke
 	return std::wstring(a.front().tickerInfo.ticker) < ticker;
 }
 
+// Updates the holdings for a single ticker with the transaction.
 // Assumes h has the ticker struct
 void AddTransactionToHoldings(std::vector<Holdings> & h, Transaction const & t)
 {
 	if (h.size() < 1) throw std::invalid_argument("AddTransactionToHoldings no ticker!");
+	if (std::wstring(t.ticker) != std::wstring(h.front().tickerInfo.ticker))
+		throw std::invalid_argument("AddTransactionToHoldings wrong ticker");
 
 	////////////////////////////////////////////////
 	// Get the header for the proper account. 
@@ -678,7 +693,7 @@ void AddTransactionToHoldings(std::vector<Holdings> & h, Transaction const & t)
 			temp.lot.active = 1;
 			temp.lot.n = t.n;
 			temp.lot.date = t.date;
-			temp.lot.PAD = 0;
+			temp.lot.tax_lot = 0;
 			temp.lot.price = t.price;
 			temp.lot.realized = 0.0;
 
@@ -781,7 +796,7 @@ void AddTransactionToHoldings(std::vector<Holdings> & h, Transaction const & t)
 			temp.lot.active = -1;
 			temp.lot.n = t.n;
 			temp.lot.date = t.date;
-			temp.lot.PAD = 0;
+			temp.lot.tax_lot = t.tax_lot;
 			temp.lot.price = t.price;
 			temp.lot.realized = t.value;
 
@@ -803,20 +818,32 @@ void ReduceSalesLots(std::vector<Holdings>& h, size_t i_header, date_t end)
 		iend++;
 	}
 
-	// Work backwards from sales
-	for (size_t i = iend - 1; i > i_header; i--)
+	// Loop over sales
+	for (size_t i = istart; i < iend; i++)
 	{
 		TaxLot *sell = &(h.at(i).lot);
 		if (sell->active != -1) continue;
-		
+
+		size_t ibuy = istart;
+		if (sell->tax_lot > 0)
+			ibuy = GetPurchaseLot(h, i_header, sell->tax_lot);
+
 		bool done = false; // finished with this sale entry
-		while (!done && istart != i)
+		
+		// Loop over buys
+		while (!done && ibuy != i)
 		{
-			TaxLot *buy = &(h.at(istart).lot);
+			TaxLot *buy = &(h.at(ibuy).lot);
+			if (buy->active != 1)
+			{
+				ibuy++;
+				continue;
+			}
+
 			time_t time_held = DateToTime(sell->date) - DateToTime(buy->date);
 			double realized = 0;
 			int n;
-			if (buy->n <= -sell->n)
+			if (buy->n >= -sell->n)
 			{
 				n = -sell->n;
 
@@ -830,22 +857,26 @@ void ReduceSalesLots(std::vector<Holdings>& h, size_t i_header, date_t end)
 				{
 					buy->active = 0;
 					header->nLots--;
-					istart++;
 				}
 				buy->n -= n;
 				done = true;
 			}
 			else
 			{
+				if (sell->tax_lot > 0) throw std::invalid_argument("Specified tax lot for sale doesn't match");
+
 				n = buy->n;
+				
 				realized = buy->realized;
 				realized += (sell->price - buy->price) * n;
-				buy->active = 0;
-				header->nLots--;
 				sell->n += n;
 				sell->realized -= sell->price * n;
+
+				buy->active = 0;
+				header->nLots--;
+								
 				done = false;
-				istart++;
+				ibuy++;
 			}
 			header->sumWeights += buy->price * n;
 			header->sumReal += realized;
@@ -862,4 +893,23 @@ void ReduceSalesLots(std::vector<Holdings>& h, size_t i_header, date_t end)
 			h.erase(h.begin() + i);
 		}
 	}
+}
+
+// Returns an index into h to the 'n'th active stock purchase lot
+size_t GetPurchaseLot(std::vector<Holdings> const & h, size_t i_header, size_t n)
+{
+	HoldingHeader const *header = &(h.at(i_header).head);
+	size_t istart = i_header + 1;
+	size_t iend = i_header + header->nLots + 1; // exclusive
+
+	size_t i;
+	for (i = istart; i < iend; i++)
+	{
+		if (h.at(i).lot.active == 1)
+		{
+			if (n == 0) return i;
+			n--;
+		}
+	}
+	return 0;
 }

@@ -1,0 +1,40 @@
+// Load and parse a transaction file
+
+// CSV -> Transaction
+	std::vector<Transaction> trans = CSVtoTransactions(L"C:/Users/Riley/Documents/Finances/history_all.csv");
+	FileIO transFile;
+	transFile.Init(ROOTDIR + L"hist.trans");
+	transFile.Open();
+	transFile.Write(trans.data(), sizeof(Transaction) * trans.size());
+	transFile.Close();
+
+// Read Transaction
+	FileIO transFile;
+	transFile.Init(ROOTDIR + L"hist.trans");
+	transFile.Open(GENERIC_READ);
+	std::vector<Transaction> trans = transFile.Read<Transaction>();
+	transFile.Close();
+	
+	for (Transaction const & item : trans)
+		OutputDebugString(item.to_wstring().c_str());
+
+// Transaction -> Holdings
+	std::vector<std::vector<Holdings>> holdings = FullTransactionsToHoldings(trans);
+	std::vector<Holdings> out;
+	for (auto const & x : holdings)
+		out.insert(out.end(), x.begin(), x.end());
+
+	FileIO holdingsFile;
+	holdingsFile.Init(ROOTDIR + L"port.hold");
+	holdingsFile.Open();
+	holdingsFile.Write(out.data(), sizeof(Holdings) * out.size());
+	holdingsFile.Close();
+
+// Read Holdings
+	FileIO holdingsFile;
+	holdingsFile.Init(ROOTDIR + L"port.hold");
+	holdingsFile.Open(GENERIC_READ);
+	std::vector<Holdings> out = holdingsFile.Read<Holdings>();
+	holdingsFile.Close();
+
+	PrintFlattenedHoldings(out);

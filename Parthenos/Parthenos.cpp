@@ -221,50 +221,6 @@ void Parthenos::PreShow()
 	if (bErr == 0) OutputError(L"GetClientRect failed");
 	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
 
-	//std::vector<Transaction> trans = CSVtoTransactions(L"C:/Users/Riley/Documents/Finances/history_all.csv");
-	//for (Transaction const & item : trans)
-	//{
-	//	OutputDebugString(item.to_wstring().c_str());
-	//}
-	//FileIO transFile;
-	//transFile.Init(ROOTDIR + L"hist.trans");
-	//transFile.Open();
-	//transFile.Write(trans.data(), sizeof(Transaction) * trans.size());
-	//transFile.Close();
-
-	//FileIO transFile;
-	//transFile.Init(ROOTDIR + L"hist.trans");
-	//transFile.Open(GENERIC_READ);
-	//std::vector<Transaction> trans = transFile.Read<Transaction>();
-	//transFile.Close();
-
-	//std::vector<std::vector<Holdings>> holdings = FullTransactionsToHoldings(trans);
-	//std::vector<Holdings> out;
-	//for (auto const & x : holdings)
-	//{
-	//	out.insert(out.end(), x.begin(), x.end());
-	//}
-
-	//FileIO holdingsFile;
-	//holdingsFile.Init(ROOTDIR + L"port.hold");
-	//holdingsFile.Open();
-	//holdingsFile.Write(out.data(), sizeof(Holdings) * out.size());
-	//holdingsFile.Close();
-
-	//OutputMessage(L"%u %u %u %u %u\n", sizeof(TaxLot), sizeof(Option), sizeof(HoldingHeader), sizeof(TickerInfo), sizeof(Holdings));
-
-	FileIO holdingsFile;
-	holdingsFile.Init(ROOTDIR + L"port.hold");
-	holdingsFile.Open(GENERIC_READ);
-	std::vector<Holdings> out = holdingsFile.Read<Holdings>();
-	holdingsFile.Close();
-
-	PrintFlattenedHoldings(out);
-
-
-
-
-	return;
 
 	for (auto item : m_allItems)
 	{

@@ -22,8 +22,13 @@ Watchlist:
 	Sends:
 		On WatchlistItem: WATCHLIST_SELECTED
 
+Titlebar:
+	Sends:
+		On LButtonDown: TITLEBAR_*
+
 Parthenos:
 	Receives:
 		Watchlist
+		Titlebar
 
 

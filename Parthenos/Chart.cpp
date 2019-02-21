@@ -244,19 +244,19 @@ void Chart::Load(std::wstring ticker, int range)
 	m_OHLC = GetOHLC(ticker, apiSource::alpha, range);
 	DrawMainChart(ticker, m_currentMChart, m_currentTimeframe);
 
-	if (m_OHLC.size() >= 5)
-	{
-		for (int i = 0; i < 5; i++)
-		{
-			OutputDebugString(m_OHLC[i].to_wstring().c_str());
-		}
-		OutputMessage(L"Size: %u\n", m_OHLC.size());
-		for (size_t i = m_OHLC.size() - 5; i < m_OHLC.size(); i++)
-		{
-			OutputDebugString(m_OHLC[i].to_wstring().c_str());
-		}
-		OutputMessage(L"\n");
-	}
+	//if (m_OHLC.size() >= 5)
+	//{
+	//	for (int i = 0; i < 5; i++)
+	//	{
+	//		OutputDebugString(m_OHLC[i].to_wstring().c_str());
+	//	}
+	//	OutputMessage(L"Size: %u\n", m_OHLC.size());
+	//	for (size_t i = m_OHLC.size() - 5; i < m_OHLC.size(); i++)
+	//	{
+	//		OutputDebugString(m_OHLC[i].to_wstring().c_str());
+	//	}
+	//	OutputMessage(L"\n");
+	//}
 }
 
 void Chart::ProcessMessages()

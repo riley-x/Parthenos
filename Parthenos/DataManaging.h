@@ -138,11 +138,11 @@ typedef struct Transaction_struct
 	TransactionType type;		// 2
 	short tax_lot;				// 4	for sales - index into lots - 0 if FIFO (for stock) - Options must be fully qualified index
 	wchar_t ticker[12] = {};	// 28
-	int n;						// 32
+	int n;						// 32	positive for open, negative for close. Number of contracts for options
 	date_t date;				// 36
 	date_t expiration;			// 40	for stock dividends, this is the ex date
-	double value;				// 48
-	double price;				// 56
+	double value;				// 48	include fees here
+	double price;				// 56	don't include fees here
 	double strike;				// 64
 
 	inline std::wstring to_wstring() const
@@ -160,21 +160,22 @@ typedef struct Transaction_struct
 	}
 } Transaction;
 
-
+// Store sell lots in addition to buy lots to properly wait for dividends
 typedef struct TaxLot_struct 
 {
 	int active; // 1 = buy, -1 = sale
 	int n;
+	int tax_lot; // for sales, index of active lot to sell (MUST PROCESS SALES IN ORDER)
 	date_t date;
-	int PAD;
 	double price; 
-	double realized; // i.e. dividends
+	double realized; // i.e. dividends, sales, fees
 	// 32 bytes
 
 	inline std::wstring to_wstring() const
 	{
 		return L"n: "			+ std::to_wstring(n)
 			+ L", active: "		+ std::to_wstring(active)
+			+ L", tax_lot: "	+ std::to_wstring(tax_lot)
 			+ L", date: "		+ DateToWString(date)
 			+ L", price: "		+ std::to_wstring(price)
 			+ L", realized: "	+ std::to_wstring(realized)
@@ -191,7 +192,7 @@ typedef struct Option_struct
 	date_t expiration;
 	float price;
 	float strike;
-	float realized;
+	float realized; // from sell-to-open or partial sell-to-close
 	float RESERVED;
 	// 32 bytes
 
@@ -215,8 +216,8 @@ typedef struct HoldingHeader_struct
 	short nLots;
 	short nOptions;
 	// Running sums from sold lots to calculate APY. DOESN'T include stored lots
-	double sumWeights; // cost
-	double sumReal1Y; // realized * 365 / days_held
+	double sumWeights; // sum_transactions (cost) ; divide sumReal1Y by this to get weighted APY
+	double sumReal1Y; // realized * 365 / days_held    ==    cost * (realized/cost) / (days_held/365)
 	double sumReal; // realized
 	// 32 bytes
 
