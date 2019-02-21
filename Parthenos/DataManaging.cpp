@@ -178,11 +178,12 @@ std::vector<std::vector<Holdings>> FullTransactionsToHoldings(std::vector<Transa
 		std::wstring ticker(t.ticker);
 		auto it = std::lower_bound(TickerHoldings.begin(), TickerHoldings.end(), ticker, Holdings_Compare);
 		if (it == TickerHoldings.end() ||
-			std::wstring(it->front().ticker) != ticker) 
+			std::wstring(it->front().tickerInfo.ticker) != ticker) 
 		{
 			// insert (rare, so using vectors is better than a list)
 			Holdings h_ticker;
-			wcscpy_s(h_ticker.ticker, PortfolioObjects::maxTickerLen + 1, t.ticker);
+			wcscpy_s(h_ticker.tickerInfo.ticker, PortfolioObjects::maxTickerLen + 1, t.ticker);
+			h_ticker.tickerInfo.nAccounts = 0;
 
 			std::vector<Holdings> temp = { h_ticker };
 			it = TickerHoldings.insert(it, temp);
@@ -192,6 +193,60 @@ std::vector<std::vector<Holdings>> FullTransactionsToHoldings(std::vector<Transa
 	}
 
 	return TickerHoldings;
+}
+
+std::vector<std::vector<Holdings>> FlattenedHoldingsToTickers(std::vector<Holdings> const & holdings)
+{
+	size_t i = 0;
+	std::vector<std::vector<Holdings>> out;
+	while (i < holdings.size())
+	{
+		std::wstring ticker(holdings[i].tickerInfo.ticker);
+		int nAccounts = holdings[i].tickerInfo.nAccounts;
+		size_t i_header = i + 1;
+		for (int j = 0; j < nAccounts; j++)
+		{
+			HoldingHeader const *header = &(holdings[i_header].head);
+			i_header += 1 + header->nLots + header->nOptions;
+		}
+		std::vector<Holdings> temp(holdings.begin() + i, holdings.begin() + i_header);
+		out.push_back(temp);
+		i = i_header;
+	}
+	if (i != holdings.size()) throw std::invalid_argument("FlattenedHoldings misformed");
+	return out;
+}
+
+void PrintTickerHoldings(std::vector<Holdings> const & h)
+{
+	if (h.empty()) return;
+	OutputMessage(L"-------------------------------------------\n");
+	OutputMessage(L"%s, Accounts: %d\n", h[0].tickerInfo.ticker, h[0].tickerInfo.nAccounts);
+
+	std::vector<size_t> headers;
+	size_t i_header = 1; // 0 is the ticker 
+	while (i_header < h.size())
+	{
+		headers.push_back(i_header);
+		HoldingHeader const *header = &(h[i_header].head);
+		i_header += header->nLots + header->nOptions + 1;
+	}
+
+	for (size_t i_header : headers)
+	{
+		HoldingHeader const *header = &(h[i_header].head);
+		OutputDebugString(header->to_wstring().c_str());
+		OutputMessage(L"\tLots:\n");
+		for (int i = 1; i <= header->nLots; i++)
+		{
+			OutputMessage(L"\t\t%s", h[i_header + i].lot.to_wstring().c_str());
+		}
+		OutputMessage(L"\tOptions:\n");
+		for (int i = header->nLots + 1; i <= header->nLots + header->nOptions; i++)
+		{
+			OutputMessage(L"\t\t%s\n", h[i_header + i].option.to_wstring().c_str());
+		}
+	}
 }
 
 
@@ -536,7 +591,7 @@ bool OHLC_Compare(const OHLC & a, const OHLC & b)
 bool Holdings_Compare(const std::vector<Holdings>& a, std::wstring const & ticker)
 {
 	if (a.empty()) throw std::invalid_argument("Holdings_Compare empty vector");
-	return std::wstring(a.front().ticker) < ticker;
+	return std::wstring(a.front().tickerInfo.ticker) < ticker;
 }
 
 // Assumes h has the ticker struct
@@ -558,6 +613,8 @@ void AddTransactionToHoldings(std::vector<Holdings> & h, Transaction const & t)
 
 	if (i_header == h.size()) // new account == new header
 	{
+		h[0].tickerInfo.nAccounts++;
+
 		Holdings h_header; // zero except for account; re-use code below
 		h_header.head.account = t.account;
 		h_header.head.nLots = 0;
@@ -589,7 +646,7 @@ void AddTransactionToHoldings(std::vector<Holdings> & h, Transaction const & t)
 	}
 
 	////////////////////////////////////////////////
-	// open position -> push back new lot
+	// Open position -> push back new lot
 	if (t.n > 0) 
 	{
 		if (isOption(t.type))
@@ -675,7 +732,6 @@ void AddTransactionToHoldings(std::vector<Holdings> & h, Transaction const & t)
 
 			time_t time_held = DateToTime(t.date) - DateToTime(opt->date);
 			double realized;
-
 			if (opt->n <= -t.n * 100) // delete this lot
 			{
 				if (isShort(t.type))
@@ -689,9 +745,9 @@ void AddTransactionToHoldings(std::vector<Holdings> & h, Transaction const & t)
 					header->sumWeights += opt->n * opt->price;
 				}
 				header->sumReal += realized;
-				header->sumReal1Y += realized * 365 / time_held;
+				header->sumReal1Y += realized * 365.0 * 86400.0 / time_held;
 				header->nOptions--;
-				h.erase(it);
+				h.erase(it); // must call after any pointer dereference
 			}
 			else // partial close
 			{
@@ -709,7 +765,7 @@ void AddTransactionToHoldings(std::vector<Holdings> & h, Transaction const & t)
 				}
 				opt->n += t.n;
 				header->sumReal += realized;
-				header->sumReal1Y += realized * 365 / time_held;
+				header->sumReal1Y += realized * 365.0 * 86400.0 / time_held;
 			}
 		}
 		else // stock

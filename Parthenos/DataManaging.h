@@ -170,6 +170,16 @@ typedef struct TaxLot_struct
 	double price; 
 	double realized; // i.e. dividends
 	// 32 bytes
+
+	inline std::wstring to_wstring() const
+	{
+		return L"n: "			+ std::to_wstring(n)
+			+ L", active: "		+ std::to_wstring(active)
+			+ L", date: "		+ DateToWString(date)
+			+ L", price: "		+ std::to_wstring(price)
+			+ L", realized: "	+ std::to_wstring(realized)
+			+ L"\n";
+	}
 } TaxLot;
 
 typedef struct Option_struct
@@ -184,6 +194,18 @@ typedef struct Option_struct
 	float realized;
 	float RESERVED;
 	// 32 bytes
+
+	inline std::wstring to_wstring() const
+	{
+		return L"type: "		+ std::to_wstring(static_cast<int>(type))
+			+ L", n: "			+ std::to_wstring(n)
+			+ L", date: "		+ DateToWString(date)
+			+ L", expiration: " + DateToWString(expiration)
+			+ L", price: "		+ std::to_wstring(price)
+			+ L", strike: "		+ std::to_wstring(strike)
+			+ L", realized: "	+ std::to_wstring(realized)
+			+ L"\n";
+	}
 } Option;
 
 typedef struct HoldingHeader_struct
@@ -197,16 +219,32 @@ typedef struct HoldingHeader_struct
 	double sumReal1Y; // realized * 365 / days_held
 	double sumReal; // realized
 	// 32 bytes
+
+	inline std::wstring to_wstring() const
+	{
+		return L"Account: "		+ std::to_wstring(static_cast<int>(account))
+			+ L", nLots: "		+ std::to_wstring(nLots)
+			+ L", nOptions: "	+ std::to_wstring(nOptions)
+			+ L", sumWeights: " + std::to_wstring(sumWeights)
+			+ L", sumReal1Y: "	+ std::to_wstring(sumReal1Y)
+			+ L", sumReal: "	+ std::to_wstring(sumReal)
+			+ L"\n";
+	}
 } HoldingHeader;
+
+typedef struct TickerInfo_struct
+{
+	int nAccounts;
+	wchar_t ticker[14];
+} TickerInfo;
 
 typedef union Holdings_union
 {
-	wchar_t ticker[16];
+	TickerInfo tickerInfo;
 	TaxLot lot;
 	HoldingHeader head;
 	Option option;
 } Holdings;
-
 
 typedef struct Position_struct
 {
@@ -228,3 +266,13 @@ public:
 
 std::vector<Transaction> CSVtoTransactions(std::wstring filepath);
 std::vector<std::vector<Holdings>> FullTransactionsToHoldings(std::vector<Transaction> const & transactions);
+std::vector<std::vector<Holdings>> FlattenedHoldingsToTickers(std::vector<Holdings> const & holdings);
+void PrintTickerHoldings(std::vector<Holdings> const & h);
+inline void PrintFlattenedHoldings(std::vector<Holdings> const & h)
+{
+	auto holdings = FlattenedHoldingsToTickers(h);
+	for (auto const & i : holdings)
+	{
+		PrintTickerHoldings(i);
+	}
+}
