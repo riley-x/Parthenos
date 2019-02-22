@@ -89,16 +89,16 @@ typedef struct Stats_struct
 	}
 } Stats;
 
-
-std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source = apiSource::iex, size_t last_n = 0);
+double GetPrice(std::wstring ticker);
 Quote GetQuote(std::wstring ticker);
 Stats GetStats(std::wstring ticker);
+std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source = apiSource::iex, size_t last_n = 0);
 bool OHLC_Compare(const OHLC & a, const OHLC & b);
 
 ///////////////////////////////////////////////////////////
 // --- Portfolio ---
 
-enum class Account : char { Robinhood, Arista };
+enum class Account : char { Robinhood, Arista, All };
 enum class TransactionType : char { Transfer, Stock, Dividend, Interest, Fee, PutShort, PutLong, CallShort, CallLong };
 
 inline bool isOption(TransactionType type)
@@ -220,6 +220,8 @@ typedef struct HoldingHeader_struct
 	double sumReal1Y; // realized * 365 / days_held    ==    cost * (realized/cost) / (days_held/365)
 	double sumReal; // realized
 	// 32 bytes
+	
+	// For cash, sumWeights = cash from transfers, sumReal is interest, else 0
 
 	inline std::wstring to_wstring() const
 	{
@@ -249,25 +251,39 @@ typedef union Holdings_union
 
 typedef struct Position_struct
 {
-	int n;
-	double avgCost;
-	double marketPrice;
-	double realized_held;	// == sum_lots ( lot.realized )
-	double realized_unheld; // == head.sumReal
+	int n;					
+	int shares_collateral;
+	double cash_collateral;
+	double avgCost;			// of shares
+	double marketPrice;		// for CASH, cash from transfers
+	double realized_held;	// == sum_lots ( lot.realized ), shares only. For CASH, cash from interest
+	double realized_unheld; // == head.sumReal + proceeds of any open option positions
+	double unrealized;
 	double APY;
 	std::wstring ticker;
+
+	inline std::wstring to_wstring() const
+	{
+		return L"Ticker: "		+ ticker
+			+ L", n: "			+ std::to_wstring(n)
+			+ L", avgCost: "	+ std::to_wstring(avgCost)
+			+ L", price: "		+ std::to_wstring(marketPrice)
+			+ L", realized (held): "	+ std::to_wstring(realized_held)
+			+ L", realized (unheld): "	+ std::to_wstring(realized_unheld)
+			+ L", unrealized: "	+ std::to_wstring(unrealized)
+			+ L", APY: "		+ std::to_wstring(APY)
+			+ L", collat (shares): "	+ std::to_wstring(shares_collateral)
+			+ L", collat (cash): "		+ std::to_wstring(cash_collateral)
+			+ L"\n";
+	}
 } Position;
 
-class Portfolio
-{
-public:
-	Account m_account;
-	std::vector<Position> m_positions;
-};
 
 std::vector<Transaction> CSVtoTransactions(std::wstring filepath);
 std::vector<std::vector<Holdings>> FullTransactionsToHoldings(std::vector<Transaction> const & transactions);
 std::vector<std::vector<Holdings>> FlattenedHoldingsToTickers(std::vector<Holdings> const & holdings);
+std::vector<Position> HoldingsToPositions(std::vector<std::vector<Holdings>> const & holdings, Account account, date_t date);
+
 void PrintTickerHoldings(std::vector<Holdings> const & h);
 inline void PrintFlattenedHoldings(std::vector<Holdings> const & h)
 {
@@ -276,4 +292,17 @@ inline void PrintFlattenedHoldings(std::vector<Holdings> const & h)
 	{
 		PrintTickerHoldings(i);
 	}
+}
+
+inline double GetWeightedAPY(double gain, date_t start_date, date_t end_date)
+{
+	time_t time_held = DateToTime(end_date) - DateToTime(start_date);
+	if (time_held <= 0) return gain * 365.0; // assume 1 day
+	return gain * 365.0 * 86400.0 / time_held;
+}
+inline double GetAPY(double gain, double cost_in, date_t start_date, date_t end_date)
+{
+	time_t time_held = DateToTime(end_date) - DateToTime(start_date);
+	if (time_held <= 0) return (gain / cost_in) * 365.0; // assume 1 day
+	return (gain / cost_in) * 365.0 * 86400.0 / time_held;
 }

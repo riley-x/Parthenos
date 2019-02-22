@@ -222,6 +222,20 @@ void Parthenos::PreShow()
 	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
 
 
+	FileIO holdingsFile;
+	holdingsFile.Init(ROOTDIR + L"port.hold");
+	holdingsFile.Open(GENERIC_READ);
+	std::vector<Holdings> holdings = holdingsFile.Read<Holdings>();
+	holdingsFile.Close();
+
+	std::vector<Position> positions = HoldingsToPositions(
+		FlattenedHoldingsToTickers(holdings), Account::Arista, 20190221);
+
+	for (auto const & p : positions)
+		OutputDebugString(p.to_wstring().c_str());
+
+	return;
+
 	for (auto item : m_allItems)
 	{
 		if (item == m_chart)

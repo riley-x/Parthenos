@@ -29,6 +29,18 @@ size_t GetPurchaseLot(std::vector<Holdings> const & h, size_t i_header, size_t n
 // --- Interface Functions ---
 
 
+double GetPrice(std::wstring ticker)
+{
+	std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::tolower);
+	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/" + ticker + L"/price");
+
+	double price;
+	int n = sscanf_s(json.c_str(), "%lf", &price);
+	if (n != 1) throw std::invalid_argument("GetPrice failed");
+
+	return price;
+}
+
 // Queries IEX for a quote with fields
 //		open, close, latestPrice, latestSource, latestUpdate 
 //		latestVolume, avgTotalVolume, previousClose, change, changePercent, closeTime
@@ -140,6 +152,7 @@ std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source, size_t last_n)
 	return out;
 }
 
+
 // CSV with columns date,account,ticker,n,value,price,type,expiration,strike
 // separated by \r\n (generate from excel). Assumes tax_lot = 0.
 std::vector<Transaction> CSVtoTransactions(std::wstring filepath)
@@ -173,10 +186,10 @@ std::vector<Transaction> CSVtoTransactions(std::wstring filepath)
 //		[0]: A TickerInfo struct with the ticker and the number of accounts
 // For each account:
 //		[1]: A HoldingsHeader struct with the number of stock lots and option lots
-//		[2]: The tax lots
+//		[2]: The stock lots
 //		[3]: The option lots
 //
-// Note that the tax lots contain sell information, denoted by lot.active == -1, to account for sales between
+// Note that the stock lots contain sell information, denoted by lot.active == -1, to account for sales between
 // the ex-dividend and payout dates. Call ReduceSalesLots to collapse these.
 std::vector<std::vector<Holdings>> FullTransactionsToHoldings(std::vector<Transaction> const & transactions)
 {
@@ -226,6 +239,120 @@ std::vector<std::vector<Holdings>> FlattenedHoldingsToTickers(std::vector<Holdin
 		i = i_header;
 	}
 	if (i != holdings.size()) throw std::invalid_argument("FlattenedHoldings misformed");
+	return out;
+}
+
+std::vector<Position> HoldingsToPositions(std::vector<std::vector<Holdings>> const & holdings, Account account, date_t date)
+{
+	std::vector<Position> out;
+
+	// Loop over tickers
+	for (std::vector<Holdings> h : holdings)
+	{
+		if (h.empty()) throw std::invalid_argument("Holdings is empty");
+
+		Position temp = {};
+		temp.ticker = h[0].tickerInfo.ticker;
+		if (temp.ticker != L"CASH")	temp.marketPrice = GetPrice(temp.ticker);
+
+		// store running weighted numerator in temp.APY -- divide by sumWeights at end
+		double sumWeights = 0;
+
+		// Loop over accounts
+		int nAccounts = h[0].tickerInfo.nAccounts;
+		int iHeader = 1;
+		int iAccount;
+		for (iAccount = 0; iAccount < nAccounts; iAccount++)
+		{
+			if (iHeader > static_cast<int>(holdings.size()))
+				throw std::invalid_argument("Headers misformed");
+
+			if (account != Account::All && h[iHeader].head.account != account)
+			{
+				iHeader += h[iHeader].head.nLots + h[iHeader].head.nOptions + 1;
+				continue;
+			}
+
+			ReduceSalesLots(h, iHeader, date + 1); // h is a copy. date + 1 will always work to compare <
+			HoldingHeader const & header = h[iHeader].head;
+
+			if (temp.ticker == L"CASH")
+			{
+				temp.marketPrice = header.sumWeights;
+				temp.realized_held = header.sumReal;
+				iHeader += h[iHeader].head.nLots + h[iHeader].head.nOptions + 1;
+				continue;
+			}
+
+			sumWeights += header.sumWeights;
+			temp.realized_unheld += header.sumReal;
+			temp.APY += header.sumReal1Y; 
+
+			// Loop over stock lots
+			int iLot;
+			for (iLot = iHeader + 1; iLot < iHeader + header.nLots + 1; iLot++)
+			{
+				TaxLot const & lot = h.at(iLot).lot;
+				if (lot.active != 1) OutputMessage(L"Found inactive lot in HoldingsToPositions\n");
+
+				temp.n += lot.n;
+				temp.avgCost += lot.n * lot.price; // divide by temp.n at end
+				temp.realized_held += lot.realized;
+				double unrealized = (temp.marketPrice - lot.price) * lot.n;
+				temp.unrealized += unrealized;
+				temp.APY += GetWeightedAPY(unrealized + lot.realized, lot.date, date);
+			}
+
+			sumWeights += temp.avgCost; // this is total cost right now
+
+			// Loop over options lots;
+			for (iLot; iLot < iHeader + header.nLots + header.nOptions + 1; iLot++)
+			{
+				Option const & opt = h.at(iLot).option;
+				double unrealized = 0;
+				switch (opt.type)
+				{
+				case TransactionType::PutShort:
+					temp.realized_unheld += opt.realized;
+					temp.APY += GetWeightedAPY(opt.realized, opt.date, opt.expiration); // approximate hold to expiration
+					temp.cash_collateral += opt.strike * opt.n;
+					sumWeights += opt.strike * opt.n; // approximate weight as collateral of option
+					if (temp.marketPrice < opt.strike) unrealized = (temp.marketPrice - opt.strike) * opt.n;
+					break;
+				case TransactionType::PutLong:
+					temp.realized_unheld = -opt.price * opt.n;
+					temp.APY += GetWeightedAPY(-opt.price * opt.n, opt.date, date);
+					sumWeights += opt.price * opt.n;
+					if (temp.marketPrice < opt.strike) unrealized = (opt.strike - temp.marketPrice) * opt.n;
+					break;
+				case TransactionType::CallShort:
+					temp.realized_unheld += opt.realized;
+					temp.APY += GetWeightedAPY(opt.realized, opt.date, opt.expiration); // approximate hold to expiration
+					temp.shares_collateral += opt.n;
+					sumWeights += opt.strike * opt.n; // approximate weight as strike of option
+					if (temp.marketPrice > opt.strike) unrealized = (opt.strike - temp.marketPrice) * opt.n;
+					break;
+				case TransactionType::CallLong:
+					temp.realized_unheld = -opt.price * opt.n;
+					temp.APY += GetWeightedAPY(-opt.price * opt.n, opt.date, date);
+					sumWeights += opt.price * opt.n;
+					if (temp.marketPrice < opt.strike) unrealized = (opt.strike - temp.marketPrice) * opt.n;
+					break;
+				default:
+					OutputMessage(L"Bad option type in HoldingsToPositions\n");
+				}
+				temp.unrealized += unrealized;
+				temp.APY += GetWeightedAPY(unrealized, opt.date, date);
+			}
+
+			if (account != Account::All) break;
+			iHeader += h[iHeader].head.nLots + h[iHeader].head.nOptions + 1;
+		} // end loop over accounts
+		if (account != Account::All && iAccount == nAccounts) continue; // no info for this ticker for this account
+		if (temp.n > 0) temp.avgCost = temp.avgCost / temp.n;
+		if (sumWeights > 0) temp.APY = temp.APY / sumWeights;
+		out.push_back(temp);
+	} // end loop over tickers
 	return out;
 }
 
