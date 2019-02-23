@@ -203,6 +203,7 @@ void Parthenos::ProcessAppItemMessages()
 		}
 		case CTPMessage::WATCHLIST_SELECTED:
 		{
+			if (msg.sender != m_watchlist) break; // i.e. don't process messages from other lists
 			if (std::find(m_activeItems.begin(), m_activeItems.end(), m_chart) != m_activeItems.end())
 			{
 				m_chart->Draw(msg.msg);

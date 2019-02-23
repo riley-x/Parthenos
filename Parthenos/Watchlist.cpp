@@ -142,6 +142,7 @@ bool Watchlist::OnLButtonDown(D2D1_POINT_2F cursor)
 		int i = GetItem(cursor.y);
 		if (i >= 0 && i < static_cast<int>(m_items.size()))
 		{
+			if (i == m_items.size() - 1 && m_items.back()->Ticker().empty()) return false; // can't select empty item at end
 			m_LButtonDown = i;
 			// Reset flags for dragging -- not dragging yet
 			m_hover = -1;
