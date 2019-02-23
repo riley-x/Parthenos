@@ -184,6 +184,7 @@ void Parthenos::ProcessMessages()
 			case TitleBar::Buttons::PORTFOLIO:
 				m_activeItems.clear();
 				m_activeItems.push_back(m_titleBar);
+				m_activeItems.push_back(m_portfolioList);
 				::InvalidateRect(m_hwnd, NULL, false);
 				break;
 			case TitleBar::Buttons::CHART:
@@ -222,32 +223,21 @@ void Parthenos::PreShow()
 	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
 
 
-	FileIO holdingsFile;
-	holdingsFile.Init(ROOTDIR + L"port.hold");
-	holdingsFile.Open(GENERIC_READ);
-	std::vector<Holdings> holdings = holdingsFile.Read<Holdings>();
-	holdingsFile.Close();
-
-	std::vector<Position> positions = HoldingsToPositions(
-		FlattenedHoldingsToTickers(holdings), Account::Arista, 20190221);
-
-	for (auto const & p : positions)
-		OutputDebugString(p.to_wstring().c_str());
-
-	return;
-
 	for (auto item : m_allItems)
 	{
 		if (item == m_chart)
 			m_chart->Init(m_leftPanelWidth);
 		else if (item == m_watchlist)
 			m_watchlist->Init(m_leftPanelWidth);
+		else if (item == m_portfolioList)
+			m_portfolioList->Init(500.0f); // TODO
 		else
 			item->Init();
 		item->Resize(rc, dipRect);
 	}
 	m_titleBar->SetActiveTab(TitleBar::Buttons::CHART);
 	m_watchlist->Load({ L"AAPL", L"MSFT", L"NVDA" }, std::vector<Column>());
+	m_portfolioList->Load({ L"AAPL", L"MSFT", L"NVDA" }, std::vector<Column>());
 	m_chart->Load(L"AAPL");
 }
 
@@ -259,10 +249,12 @@ LRESULT Parthenos::OnCreate()
 	m_titleBar = new TitleBar(m_hwnd, m_d2, this);
 	m_chart = new Chart(m_hwnd, m_d2);
 	m_watchlist = new Watchlist(m_hwnd, m_d2, this);
+	m_portfolioList = new Watchlist(m_hwnd, m_d2, this, false);
 
 	m_allItems.push_back(m_titleBar);
 	m_allItems.push_back(m_chart);
 	m_allItems.push_back(m_watchlist);
+	m_allItems.push_back(m_portfolioList);
 	m_activeItems.push_back(m_titleBar);
 	m_activeItems.push_back(m_chart);
 	m_activeItems.push_back(m_watchlist);

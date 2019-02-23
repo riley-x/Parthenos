@@ -18,6 +18,7 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	TitleBar				*m_titleBar;
 	Chart					*m_chart;
 	Watchlist				*m_watchlist;
+	Watchlist				*m_portfolioList;
 
 	// Resource management
 	MouseTrackEvents		m_mouseTrack;

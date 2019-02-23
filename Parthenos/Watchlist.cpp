@@ -115,7 +115,10 @@ void Watchlist::Resize(RECT pRect, D2D1_RECT_F pDipRect)
 
 void Watchlist::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
 {
-	for (auto item : m_items) item->OnMouseMove(cursor, wParam);
+	if (m_editableTickers)
+	{
+		for (auto item : m_items) item->OnMouseMove(cursor, wParam);
+	}
 
 	int i = GetItem(cursor.y);
 	if (m_LButtonDown >= 0 && (wParam & MK_LBUTTON) && i != m_hover)
@@ -159,9 +162,12 @@ bool Watchlist::OnLButtonDown(D2D1_POINT_2F cursor)
 
 void Watchlist::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)
 {
-	int i = GetItem(cursor.y);
-	if (i >= 0 && i < static_cast<int>(m_items.size())) 
-		m_items[i]->OnLButtonDblclk(cursor, wParam);
+	if (m_editableTickers)
+	{
+		int i = GetItem(cursor.y);
+		if (i >= 0 && i < static_cast<int>(m_items.size()))
+			m_items[i]->OnLButtonDblclk(cursor, wParam);
+	}
 	//ProcessMessages();
 }
 
@@ -191,10 +197,13 @@ void Watchlist::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 
 bool Watchlist::OnChar(wchar_t c, LPARAM lParam)
 {
-	c = towupper(c);
-	for (auto item : m_items)
+	if (m_editableTickers)
 	{
-		if (item->OnChar(c, lParam)) return true;
+		c = towupper(c);
+		for (auto item : m_items)
+		{
+			if (item->OnChar(c, lParam)) return true;
+		}
 	}
 	//ProcessMessages();
 	return false;
@@ -203,17 +212,23 @@ bool Watchlist::OnChar(wchar_t c, LPARAM lParam)
 bool Watchlist::OnKeyDown(WPARAM wParam, LPARAM lParam)
 {
 	bool out = false;
-	for (auto item : m_items)
+	if (m_editableTickers)
 	{
-		if (item->OnKeyDown(wParam, lParam)) out = true;
+		for (auto item : m_items)
+		{
+			if (item->OnKeyDown(wParam, lParam)) out = true;
+		}
+		ProcessMessages();
 	}
-	ProcessMessages();
 	return out;
 }
 
 void Watchlist::OnTimer(WPARAM wParam, LPARAM lParam)
 {
-	for (auto item : m_items) item->OnTimer(wParam, lParam);
+	if (m_editableTickers)
+	{
+		for (auto item : m_items) item->OnTimer(wParam, lParam);
+	}
 	//ProcessMessages();
 }
 
@@ -335,7 +350,7 @@ void Watchlist::Load(std::vector<std::wstring> tickers, std::vector<Column> cons
 	{
 		if (top + m_rowHeight > m_dipRect.bottom) break;
 
-		WatchlistItem *temp = new WatchlistItem(m_hwnd, m_d2, this);
+		WatchlistItem *temp = new WatchlistItem(m_hwnd, m_d2, this, m_editableTickers);
 		temp->SetSize(D2D1::RectF(
 			m_dipRect.left,
 			top,
@@ -430,7 +445,7 @@ void WatchlistItem::Paint(D2D1_RECT_F updateRect)
 
 inline void WatchlistItem::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 {
-	m_ticker.OnLButtonUp(cursor, wParam);
+	if (m_editableTickers) m_ticker.OnLButtonUp(cursor, wParam);
 	if (m_LButtonDown)
 	{
 		m_LButtonDown = false;

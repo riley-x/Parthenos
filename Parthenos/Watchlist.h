@@ -37,7 +37,9 @@ class WatchlistItem : public AppItem
 {
 public:
 	WatchlistItem(HWND hwnd, D2Objects const & d2, AppItem *parent) :
-		AppItem(hwnd, d2), m_parent(parent), m_ticker(hwnd, d2, this), m_data(10) {}
+		AppItem(hwnd, d2), m_parent(parent), m_ticker(hwnd, d2, this) {}
+	WatchlistItem(HWND hwnd, D2Objects const & d2, AppItem *parent, bool editable) :
+		AppItem(hwnd, d2), m_parent(parent), m_ticker(hwnd, d2, this), m_editableTickers(editable) {}
 	~WatchlistItem() { for (auto item : m_pTextLayouts) SafeRelease(&item); }
 
 	// AppItem overrides
@@ -46,7 +48,8 @@ public:
 	inline void OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam) { m_ticker.OnMouseMove(cursor, wParam); }
 	inline bool OnLButtonDown(D2D1_POINT_2F cursor)
 	{
-		bool out = m_ticker.OnLButtonDown(cursor);
+		bool out = false;
+		if (m_editableTickers) out = out || m_ticker.OnLButtonDown(cursor);
 		if (!out && inRect(cursor, m_dipRect)) m_LButtonDown = true;
 		ProcessMessages();
 		return out;
@@ -85,6 +88,7 @@ private:
 	std::vector<float> m_origins; // left DIP for the text layouts
 
 	bool m_LButtonDown = false;
+	bool m_editableTickers = true;
 
 	// Do the actual HTTP query and format the string
 	void LoadData(std::wstring const & ticker);
@@ -97,6 +101,8 @@ class Watchlist : public AppItem
 public:
 	Watchlist(HWND hwnd, D2Objects const & d2, Parthenos * parent)
 		: AppItem(hwnd, d2), m_parent(parent) {}
+	Watchlist(HWND hwnd, D2Objects const & d2, Parthenos * parent, bool editable)
+		: AppItem(hwnd, d2), m_parent(parent), m_editableTickers(editable) {}
 	~Watchlist();
 
 	// AppItem overrides
@@ -141,6 +147,7 @@ private:
 	// Paramters
 	float const m_headerHeight = 18.0f;
 	float const m_rowHeight = 18.0f;
+	bool m_editableTickers = true;
 
 	// Drawing
 	std::vector<float> m_vLines;

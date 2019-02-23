@@ -280,6 +280,7 @@ typedef struct Position_struct
 
 
 std::vector<Transaction> CSVtoTransactions(std::wstring filepath);
+void AddTransactionToHoldings(std::vector<std::vector<Holdings>> & holdings, Transaction const & transaction);
 std::vector<std::vector<Holdings>> FullTransactionsToHoldings(std::vector<Transaction> const & transactions);
 std::vector<std::vector<Holdings>> FlattenedHoldingsToTickers(std::vector<Holdings> const & holdings);
 std::vector<Position> HoldingsToPositions(std::vector<std::vector<Holdings>> const & holdings, Account account, date_t date);

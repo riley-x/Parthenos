@@ -1,4 +1,4 @@
-// Load and parse a transaction file
+
 
 // CSV -> Transaction
 	std::vector<Transaction> trans = CSVtoTransactions(L"C:/Users/Riley/Documents/Finances/history_all.csv");
@@ -38,3 +38,44 @@
 	holdingsFile.Close();
 
 	PrintFlattenedHoldings(out);
+	auto holdings = FlattenedHoldingsToTickers(out);
+
+// Holdings -> Positions
+	std::vector<Position> positions = HoldingsToPositions(
+		holdings, Account::Robinhood, 20190221);
+	for (auto const & p : positions)
+		OutputDebugString(p.to_wstring().c_str());
+
+
+// Manually insert transaction
+	Transaction t;
+	t.account = Account::Robinhood;
+	t.date = MkDate(2019, 2, 22);
+	t.expiration = MkDate(2019, 2, 7);
+	t.n = 0;
+	t.price = 0.57;
+	t.strike = 0;
+	t.tax_lot = 0;
+	wcscpy_s(t.ticker, PortfolioObjects::maxTickerLen + 1, L"COST");
+	t.type = TransactionType::Dividend;
+	t.value = 1.71;
+
+	FileIO transFile;
+	transFile.Init(ROOTDIR + L"hist.trans");
+	transFile.Open();
+	transFile.Append(&t, sizeof(Transaction));
+	transFile.Close();
+
+	FileIO holdingsFile;
+	holdingsFile.Init(ROOTDIR + L"port.hold");
+	holdingsFile.Open();
+	std::vector<Holdings> flattenedHoldings = holdingsFile.Read<Holdings>();
+	
+	std::vector<std::vector<Holdings>> holdings = FlattenedHoldingsToTickers(flattenedHoldings);
+	AddTransactionToHoldings(holdings, t);
+	std::vector<Holdings> out;
+	for (auto const & x : holdings)
+		out.insert(out.end(), x.begin(), x.end());
+
+	holdingsFile.Write(out.data(), sizeof(Holdings) * out.size());
+	holdingsFile.Close();

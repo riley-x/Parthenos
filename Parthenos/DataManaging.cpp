@@ -19,7 +19,7 @@ OHLC parseAlphaChartItem(std::string json);
 Transaction parseTransactionItem(std::string str);
 bool OHLC_Compare(const OHLC & a, const OHLC & b);
 bool Holdings_Compare(const std::vector<Holdings>& a, std::wstring const & ticker);
-void AddTransactionToHoldings(std::vector<Holdings> & h, Transaction const & t);
+void AddTransactionToTickerHoldings(std::vector<Holdings> & h, Transaction const & t);
 void ReduceSalesLots(std::vector<Holdings> & h, size_t i_header, date_t end);
 size_t GetPurchaseLot(std::vector<Holdings> const & h, size_t i_header, size_t n);
 
@@ -182,6 +182,26 @@ std::vector<Transaction> CSVtoTransactions(std::wstring filepath)
 	return out;
 }
 
+void AddTransactionToHoldings(std::vector<std::vector<Holdings>> & holdings, Transaction const & t)
+{
+	// See if ticker is present already
+	std::wstring ticker(t.ticker);
+	auto it = std::lower_bound(holdings.begin(), holdings.end(), ticker, Holdings_Compare);
+	if (it == holdings.end() ||
+		std::wstring(it->front().tickerInfo.ticker) != ticker)
+	{
+		// insert (rare, so using vectors is better than a list)
+		Holdings h_ticker;
+		wcscpy_s(h_ticker.tickerInfo.ticker, PortfolioObjects::maxTickerLen + 1, t.ticker);
+		h_ticker.tickerInfo.nAccounts = 0;
+
+		std::vector<Holdings> temp = { h_ticker };
+		it = holdings.insert(it, temp);
+	}
+
+	AddTransactionToTickerHoldings(*it, t);
+}
+
 // Returns a vector sorted by tickers. Each ticker has a std::vector<Holdings> with the following elements:
 //		[0]: A TickerInfo struct with the ticker and the number of accounts
 // For each account:
@@ -193,31 +213,14 @@ std::vector<Transaction> CSVtoTransactions(std::wstring filepath)
 // the ex-dividend and payout dates. Call ReduceSalesLots to collapse these.
 std::vector<std::vector<Holdings>> FullTransactionsToHoldings(std::vector<Transaction> const & transactions)
 {
-	// TODO make a list and then turn into vector
-	std::vector<std::vector<Holdings>> TickerHoldings;
-	// Holdings for each ticker, sorted by ticker
+	std::vector<std::vector<Holdings>> holdings; // Holdings for each ticker, sorted by ticker
 
 	for (Transaction const & t : transactions)
 	{
-		// See if ticker is present already
-		std::wstring ticker(t.ticker);
-		auto it = std::lower_bound(TickerHoldings.begin(), TickerHoldings.end(), ticker, Holdings_Compare);
-		if (it == TickerHoldings.end() ||
-			std::wstring(it->front().tickerInfo.ticker) != ticker) 
-		{
-			// insert (rare, so using vectors is better than a list)
-			Holdings h_ticker;
-			wcscpy_s(h_ticker.tickerInfo.ticker, PortfolioObjects::maxTickerLen + 1, t.ticker);
-			h_ticker.tickerInfo.nAccounts = 0;
-
-			std::vector<Holdings> temp = { h_ticker };
-			it = TickerHoldings.insert(it, temp);
-		}
-
-		AddTransactionToHoldings(*it, t);
+		AddTransactionToHoldings(holdings, t);
 	}
 
-	return TickerHoldings;
+	return holdings;
 }
 
 std::vector<std::vector<Holdings>> FlattenedHoldingsToTickers(std::vector<Holdings> const & holdings)
@@ -735,7 +738,7 @@ bool Holdings_Compare(const std::vector<Holdings>& a, std::wstring const & ticke
 
 // Updates the holdings for a single ticker with the transaction.
 // Assumes h has the ticker struct
-void AddTransactionToHoldings(std::vector<Holdings> & h, Transaction const & t)
+void AddTransactionToTickerHoldings(std::vector<Holdings> & h, Transaction const & t)
 {
 	if (h.size() < 1) throw std::invalid_argument("AddTransactionToHoldings no ticker!");
 	if (std::wstring(t.ticker) != std::wstring(h.front().tickerInfo.ticker))
