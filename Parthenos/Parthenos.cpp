@@ -204,7 +204,7 @@ void Parthenos::ProcessMessages()
 		{
 			if (std::find(m_activeItems.begin(), m_activeItems.end(), m_chart) != m_activeItems.end())
 			{
-				m_chart->Load(msg.msg);
+				m_chart->Draw(msg.msg);
 			}
 			break;
 		}
@@ -218,7 +218,25 @@ void Parthenos::ProcessMessages()
 
 D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dipRect)
 {
-	if (item == m_watchlist)
+	if (item == m_titleBar)
+	{
+		return D2D1::RectF(
+			0.0f,
+			0.0f,
+			dipRect.right,
+			DPIScale::SnapToPixelY(m_titleBarHeight)
+		);
+	}
+	else if (item == m_chart)
+	{
+		return D2D1::RectF(
+			DPIScale::SnapToPixelX(m_watchlistWidth),
+			DPIScale::SnapToPixelY(m_titleBarHeight),
+			dipRect.right,
+			dipRect.bottom
+		);
+	}
+	else if (item == m_watchlist)
 	{
 		return D2D1::RectF(
 			0.0f,
@@ -250,29 +268,33 @@ void Parthenos::PreShow()
 	if (bErr == 0) OutputError(L"GetClientRect failed");
 	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
 
-	m_watchlist->Load({ L"AAPL", L"MSFT", L"NVDA" }, std::vector<Column>());
-	m_portfolioList->Load({ L"AAPL", L"MSFT", L"NVDA" }, std::vector<Column>());
 	for (auto item : m_allItems)
 	{
-		if (item == m_chart)
-			m_chart->Init(m_watchlistWidth);
-		else if (item == m_watchlist || item == m_portfolioList)
-			item->SetSize(CalculateItemRect(item, dipRect));
-		else
-			item->Init();
-		item->Resize(rc, dipRect);
+		item->Init();
+		item->SetSize(CalculateItemRect(item, dipRect));
 	}
-	m_titleBar->SetActiveTab(TitleBar::Buttons::CHART);
 
-	m_chart->Load(L"AAPL");
+	m_chart->Draw(L"AAPL");
 }
 
 ///////////////////////////////////////////////////////////////////
 
 LRESULT Parthenos::OnCreate()
 {
+	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+
+	if (SUCCEEDED(hr))
+	{
+		hr = m_d2.CreateDeviceIndependentResources();
+	}
+	if (FAILED(hr))
+	{
+		throw Error(L"OnCreate failed!");
+		return -1;  // Fail CreateWindowEx.
+	}
+
 	m_d2.hwndParent = m_hwnd;
-	m_titleBar = new TitleBar(m_hwnd, m_d2, this);
+	m_titleBar = new TitleBar(m_hwnd, m_d2, this, TitleBar::Buttons::CHART);
 	m_chart = new Chart(m_hwnd, m_d2);
 	m_watchlist = new Watchlist(m_hwnd, m_d2, this);
 	m_portfolioList = new Watchlist(m_hwnd, m_d2, this, false);
@@ -285,23 +307,15 @@ LRESULT Parthenos::OnCreate()
 	m_activeItems.push_back(m_chart);
 	m_activeItems.push_back(m_watchlist);
 
-	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-
-	if (SUCCEEDED(hr))
-	{
-		hr = m_d2.CreateDeviceIndependentResources();
-	}
-	if (FAILED(hr))
-	{
-		throw Error(L"OnCreate failed!");
-		return -1;  // Fail CreateWindowEx.
-	}
+	m_watchlist->Load({ L"AAPL", L"MSFT", L"NVDA" }, std::vector<Column>());
+	m_portfolioList->Load({ L"AAPL", L"MSFT", L"NVDA" }, std::vector<Column>());
+	
 	return 0;
 }
 
 LRESULT Parthenos::OnNCHitTest(POINT cursor) 
 {
-	if (!::ScreenToClient(m_hwnd, &cursor)) Error(L"ScreenToClient failed");
+	if (!::ScreenToClient(m_hwnd, &cursor)) throw Error(L"ScreenToClient failed");
 
 	TitleBar::Buttons but = m_titleBar->HitTest(cursor);
 	if (but == TitleBar::Buttons::CAPTION)
@@ -363,10 +377,7 @@ LRESULT Parthenos::OnSize(WPARAM wParam)
 
 		for (auto item : m_activeItems)
 		{
-			if (item == m_watchlist || item == m_portfolioList)
-				item->SetSize(CalculateItemRect(item, dipRect));
-			else
-				item->Resize(rc, dipRect);
+			item->SetSize(CalculateItemRect(item, dipRect));
 		}
 
 		InvalidateRect(m_hwnd, NULL, FALSE);

@@ -27,7 +27,6 @@ class AppItem
 public:
 	AppItem(HWND hwnd, D2Objects const & d2) : m_hwnd(hwnd), m_d2(d2) {}
 	virtual void Init() { return; }
-	virtual void Resize(RECT pRect, D2D1_RECT_F pDipRect) { return; } // provide parent rect
 	virtual void SetSize(D2D1_RECT_F dipRect) // provide item's rect
 	{ 
 		m_dipRect = dipRect; 
@@ -53,11 +52,11 @@ public:
 	D2D1_RECT_F GetDIPRect() const { return m_dipRect; }
 
 protected:
-	HWND const m_hwnd;
+	HWND const		m_hwnd;
 	D2Objects const &m_d2;
 
-	RECT		m_pixRect; // pixels in main window client coordinates
-	D2D1_RECT_F m_dipRect;
+	RECT			m_pixRect; // pixels in main window client coordinates
+	D2D1_RECT_F		m_dipRect = D2D1::RectF(-1, -1, -1, -1);
 
 	std::deque<ClientMessage> m_messages;
 };

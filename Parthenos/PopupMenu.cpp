@@ -116,7 +116,7 @@ void PopupMenu::SetItems(std::vector<std::wstring> const & items)
 			m_fontSize,					// The height of the layout box.
 			&m_pTextLayouts[i]		// The IDWriteTextLayout interface pointer.
 		);
-		if (FAILED(hr)) Error(L"CreateTextLayout failed");
+		if (FAILED(hr)) throw Error(L"CreateTextLayout failed");
 	}
 }
 

@@ -46,6 +46,7 @@ public:
 
 	inline void Add(Button * button) { m_buttons.push_back(button); }
 	inline size_t Size() const { return m_buttons.size(); } 
+	inline std::vector<Button*> Buttons() const { return m_buttons; };
 
 	inline void Paint(D2D1_RECT_F updateRect) { for (auto button : m_buttons) button->Paint(updateRect); }
 
@@ -147,7 +148,7 @@ private:
 	ButtonGroup(const ButtonGroup&) = delete; // non construction-copyable
 	ButtonGroup& operator=(const ButtonGroup&) = delete; // non copyable
 
-	int m_active;
+	int m_active = -1;
 	std::vector<Button*> m_buttons;
 };
 

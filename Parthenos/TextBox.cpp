@@ -299,10 +299,10 @@ void TextBox::OnTimer(WPARAM wParam, LPARAM lParam)
 	}
 }
 
-
+// This acts as the initalizer for the text box too
 void TextBox::SetText(std::wstring text)
 {
-	if (text != m_text || m_pTextLayout == NULL) // can be null if initialized with empty string
+	if (text != m_text || m_pTextLayout == NULL) // first check will fail if initialized with empty string
 	{
 		if (text.length() > m_maxChars)
 		{
@@ -355,7 +355,7 @@ void TextBox::CreateTextLayout()
 		m_dipRect.bottom - m_dipRect.top, // The height of the layout box.
 		&m_pTextLayout					// The IDWriteTextLayout interface pointer.
 	);
-	if (FAILED(hr)) Error(L"CreateTextLayout failed");
+	if (FAILED(hr)) throw Error(L"CreateTextLayout failed");
 }
 
 // Moves the caret, with error checking, and invalidates

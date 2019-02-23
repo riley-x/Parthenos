@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "Chart.h"
 #include "utilities.h"
-#include "TitleBar.h"
 #include "Resource.h"
 
 #include <algorithm>
@@ -32,72 +31,6 @@ Chart::Chart(HWND hwnd, D2Objects const & d2)
 	m_chartTypeButtons.SetActive(0);
 }
 
-Chart::~Chart()
-{
-}
-
-// Chart is flush right, with fixed-width offset in DIPs on left,
-// and fixed menu height
-void Chart::Init(float leftOffset)
-{
-	m_dipRect.left = DPIScale::SnapToPixelX(leftOffset); 
-	m_dipRect.top  = DPIScale::SnapToPixelY(TitleBar::height);
-
-	m_pixRect.left = DPIScale::DipsToPixelsX(m_dipRect.left);
-	m_pixRect.top = DPIScale::DipsToPixelsY(m_dipRect.top);
-
-	m_menuRect.left = m_dipRect.left;
-	m_menuRect.top = m_dipRect.top;
-	m_menuRect.bottom = DPIScale::SnapToPixelY(m_menuRect.top + m_menuHeight);
-
-	// Ticker box
-	float top = m_dipRect.top + (m_menuHeight - m_commandSize) / 2.0f;
-	float left = m_dipRect.left + m_commandHPad;
-	m_tickerBox.SetSize(D2D1::RectF(
-		left,
-		top,
-		left + m_tickerBoxWidth,
-		top + m_commandSize
-	));
-	left += m_tickerBoxWidth + m_commandHPad;
-
-	// Timeframe drop menu
-	m_timeframeButton.SetItems({ L"1M", L"3M", L"6M", L"1Y", L"2Y", L"5Y" });
-	m_timeframeButton.SetActive(3); // default 1 year
-	m_timeframeButton.SetSize(D2D1::RectF(
-		left,
-		top,
-		left + m_timeframeWidth,
-		top + m_commandSize
-	));
-	left += m_timeframeWidth + m_commandHPad;
-
-	// Division
-	m_divisions.push_back(DPIScale::SnapToPixelX(left + m_commandHPad) + DPIScale::hpx());
-	left += 3 * m_commandHPad;
-
-	// Main chart type buttons
-	for (size_t i = 0; i < m_chartTypeButtons.Size(); i++)
-	{
-		m_chartTypeButtons.SetSize(i, D2D1::RectF(
-			left,
-			top,
-			left + m_commandSize,
-			top + m_commandSize
-		));
-		m_chartTypeButtons.SetClickRect(i, D2D1::RectF(
-			left - m_commandHPad / 2.0f,
-			m_menuRect.top,
-			left + m_commandSize + m_commandHPad / 2.0f,
-			m_menuRect.bottom
-		));
-		left += m_commandSize + m_commandHPad;
-	}
-
-	// Divison
-	m_divisions.push_back(DPIScale::SnapToPixelX(left + m_commandHPad) + DPIScale::hpx());
-	left += 3 * m_commandHPad;
-}
 
 void Chart::Paint(D2D1_RECT_F updateRect)
 {
@@ -152,16 +85,21 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 
 	// Popups -- need to be last
 	m_timeframeButton.GetMenu().Paint(updateRect);
-
 }
 
-void Chart::Resize(RECT pRect, D2D1_RECT_F pDipRect)
+void Chart::SetSize(D2D1_RECT_F dipRect)
 {
-	m_dipRect.right  = pDipRect.right;
-	m_dipRect.bottom = pDipRect.bottom;
-	m_pixRect.right  = pRect.right;
-	m_pixRect.bottom = pRect.bottom;
-	m_menuRect.right = m_dipRect.right;
+	bool same_left = false;
+	bool same_top = false;
+	if (equalRect(m_dipRect, dipRect)) return;
+	if (m_dipRect.left == dipRect.left) same_left = true;
+	if (m_dipRect.top == dipRect.top) same_top = true;
+	
+	m_dipRect = dipRect;
+	m_pixRect = DPIScale::DipsToPixels(dipRect);
+
+	m_menuRect = m_dipRect;
+	m_menuRect.bottom = DPIScale::SnapToPixelY(m_menuRect.top + m_menuHeight);
 
 	m_axes.SetSize(D2D1::RectF(
 		m_dipRect.left, 
@@ -169,6 +107,60 @@ void Chart::Resize(RECT pRect, D2D1_RECT_F pDipRect)
 		m_dipRect.right, 
 		m_dipRect.bottom
 	));
+
+	// Menu items
+	if (!same_left || !same_top)
+	{
+		float top = m_dipRect.top + (m_menuHeight - m_commandSize) / 2.0f;
+		float left = m_dipRect.left + m_commandHPad;
+		m_divisions.clear();
+
+		// Ticker box
+		m_tickerBox.SetSize(D2D1::RectF(
+			left,
+			top,
+			left + m_tickerBoxWidth,
+			top + m_commandSize
+		));
+		left += m_tickerBoxWidth + m_commandHPad;
+
+		// Timeframe drop menu
+		m_timeframeButton.SetItems({ L"1M", L"3M", L"6M", L"1Y", L"2Y", L"5Y" });
+		m_timeframeButton.SetActive(3); // default 1 year
+		m_timeframeButton.SetSize(D2D1::RectF(
+			left,
+			top,
+			left + m_timeframeWidth,
+			top + m_commandSize
+		));
+		left += m_timeframeWidth + m_commandHPad;
+
+		// Division
+		m_divisions.push_back(DPIScale::SnapToPixelX(left + m_commandHPad) + DPIScale::hpx());
+		left += 3 * m_commandHPad;
+
+		// Main chart type buttons
+		for (size_t i = 0; i < m_chartTypeButtons.Size(); i++)
+		{
+			m_chartTypeButtons.SetSize(i, D2D1::RectF(
+				left,
+				top,
+				left + m_commandSize,
+				top + m_commandSize
+			));
+			m_chartTypeButtons.SetClickRect(i, D2D1::RectF(
+				left - m_commandHPad / 2.0f,
+				m_menuRect.top,
+				left + m_commandSize + m_commandHPad / 2.0f,
+				m_menuRect.bottom
+			));
+			left += m_commandSize + m_commandHPad;
+		}
+
+		// Divison
+		m_divisions.push_back(DPIScale::SnapToPixelX(left + m_commandHPad) + DPIScale::hpx());
+		left += 3 * m_commandHPad;
+	}
 }
 
 void Chart::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
@@ -188,12 +180,20 @@ bool Chart::OnLButtonDown(D2D1_POINT_2F cursor)
 		std::wstring name;
 		if (m_chartTypeButtons.OnLButtonDown(cursor, name))
 		{
+			MainChartType newType = MainChartType::none;
 			if (name == L"Candlestick")
-				DrawMainChart(m_ticker, MainChartType::candlestick, m_currentTimeframe);
+				newType = MainChartType::candlestick;
 			else if (name == L"Line")
-				DrawMainChart(m_ticker, MainChartType::line, m_currentTimeframe);
+				newType = MainChartType::line;
 			else if (name == L"Envelope")
-				DrawMainChart(m_ticker, MainChartType::envelope, m_currentTimeframe);
+				newType = MainChartType::envelope;
+			else
+				OutputMessage(L"Chart %s button not recognized", name);
+			if (m_currentMChart != newType)
+			{
+				m_currentMChart = newType;
+				DrawCurrentState();
+			}
 		}
 	}
 
@@ -234,6 +234,62 @@ void Chart::OnTimer(WPARAM wParam, LPARAM lParam)
 	//ProcessMessages(); // not needed
 }
 
+
+void Chart::ProcessMessages()
+{
+	for (ClientMessage msg : m_messages)
+	{
+		switch (msg.imsg)
+		{
+		case CTPMessage::TEXTBOX_ENTER:
+			if (msg.msg != m_ticker)
+			{
+				Load(msg.msg);
+				DrawCurrentState();
+			}
+			break;
+		case CTPMessage::TEXTBOX_DEACTIVATED:
+			break; // Do nothing
+		case CTPMessage::DROPMENU_SELECTED:
+		{
+			Timeframe tf = Timeframe::none;;
+			if (msg.msg == L"1M") tf = Timeframe::month1;
+			else if (msg.msg == L"3M") tf = Timeframe::month3;
+			else if (msg.msg == L"6M") tf = Timeframe::month6;
+			else if (msg.msg == L"1Y") tf = Timeframe::year1;
+			else if (msg.msg == L"2Y") tf = Timeframe::year2;
+			else if (msg.msg == L"5Y") tf = Timeframe::year5;
+			if (tf == m_currentTimeframe) return;
+			m_currentTimeframe = tf;
+			DrawCurrentState();
+			break;
+		}
+		}
+	}
+	if (!m_messages.empty()) m_messages.clear();
+}
+
+void Chart::Draw(std::wstring ticker)
+{
+	if (ticker != m_ticker)
+	{
+		Load(ticker);
+		DrawCurrentState();
+	}
+}
+
+// Force draw
+void Chart::Draw(std::wstring ticker, MainChartType type, Timeframe tf)
+{
+	Load(ticker);
+	DrawMainChart(type, tf);
+}
+
+///////////////////////////////////////////////////////////
+// --- Helpers ---
+
+
+// Clears current data and loads the data for 'ticker'. Sets the text box and 'm_ticker'.
 void Chart::Load(std::wstring ticker, int range)
 {
 	if (ticker == m_ticker && range < static_cast<int>(m_OHLC.size())) return;
@@ -242,7 +298,8 @@ void Chart::Load(std::wstring ticker, int range)
 	m_highs.clear();
 	m_lows.clear();
 	m_OHLC = GetOHLC(ticker, apiSource::alpha, range);
-	DrawMainChart(ticker, m_currentMChart, m_currentTimeframe);
+	m_tickerBox.SetText(ticker);
+	m_ticker = ticker;
 
 	//if (m_OHLC.size() >= 5)
 	//{
@@ -259,50 +316,15 @@ void Chart::Load(std::wstring ticker, int range)
 	//}
 }
 
-void Chart::ProcessMessages()
-{
-	for (ClientMessage msg : m_messages)
-	{
-		switch (msg.imsg)
-		{
-		case CTPMessage::TEXTBOX_ENTER:
-			Load(msg.msg);
-			break;
-		case CTPMessage::TEXTBOX_DEACTIVATED:
-			break; // Do nothing
-		case CTPMessage::DROPMENU_SELECTED:
-		{
-			Timeframe tf = Timeframe::none;;
-			if (msg.msg == L"1M") tf = Timeframe::month1;
-			else if (msg.msg == L"3M") tf = Timeframe::month3;
-			else if (msg.msg == L"6M") tf = Timeframe::month6;
-			else if (msg.msg == L"1Y") tf = Timeframe::year1;
-			else if (msg.msg == L"2Y") tf = Timeframe::year2;
-			else if (msg.msg == L"5Y") tf = Timeframe::year5;
-			if (tf == m_currentTimeframe) return;
-			DrawMainChart(m_ticker, m_currentMChart, tf);
-			break;
-		}
-		}
-	}
-	if (!m_messages.empty()) m_messages.clear();
-}
-
-///////////////////////////////////////////////////////////
-// --- Helpers ---
 
 // Sets the current state members.
-void Chart::DrawMainChart(std::wstring ticker, MainChartType type, Timeframe timeframe)
+void Chart::DrawMainChart(MainChartType type, Timeframe timeframe)
 {
-
 	if (timeframe == Timeframe::none) timeframe = Timeframe::year1;
 	if (type == MainChartType::none) type = MainChartType::candlestick;
-	if (ticker == m_ticker && m_currentMChart == type && m_currentTimeframe == timeframe) return;
 	
-	m_ticker = ticker;
 	m_currentTimeframe = timeframe;
 	m_currentMChart = type;
-	m_tickerBox.SetText(m_ticker);
 
 	OHLC *data;
 	int n = FindStart(timeframe, data);
@@ -330,11 +352,14 @@ void Chart::DrawMainChart(std::wstring ticker, MainChartType type, Timeframe tim
 	InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 }
 
-// Call this when the chart needs to be completely redrawn but nothing's changed,
-// i.e. on resize
-void Chart::DrawSavedState()
+// Call this when the main chart needs to be completely redrawn but nothing else has changed
+// i.e. changing chart type, ticker, or timeframe should preserve technicals and drawings
+// TODO delete drawings when ticker changes
+void Chart::DrawCurrentState()
 {
-	DrawMainChart(m_ticker, m_currentMChart, m_currentTimeframe);
+	DrawMainChart(m_currentMChart, m_currentTimeframe);
+
+	// DrawTechnicals(m_currentTechnicals), etc...
 }
 
 // Finds the starting date in OHLC data given 'timeframe', returning the pointer in 'data'.
@@ -356,64 +381,44 @@ int Chart::FindStart(Timeframe timeframe, OHLC* & data)
 	switch (timeframe)
 	{
 	case Timeframe::month1:
-	{
 		if (GetMonth(end) == 1)
 		{
 			temp.date = end - DATE_T_1YR;
 			SetMonth(temp.date, 12);
 		}
 		else
-		{
 			temp.date = end - DATE_T_1M;
-		}
 		break;
-	}
 	case Timeframe::month3:
-	{
 		if (GetMonth(end) <= 3)
 		{
 			temp.date = end - DATE_T_1YR;
 			SetMonth(temp.date, 9 + GetMonth(end));
 		}
 		else
-		{
 			temp.date = end - 3 * DATE_T_1M;
-		}
 		break;
-	}
 	case Timeframe::month6:
-	{
 		if (GetMonth(end) <= 6)
 		{
 			temp.date = end - DATE_T_1YR;
 			SetMonth(temp.date, 6 + GetMonth(end));
 		}
 		else
-		{
 			temp.date = end - 6 * DATE_T_1M;
-		}
 		break;
-	}
 	case Timeframe::year1:
-	{
 		temp.date = end - DATE_T_1YR;
 		break;
-	}
 	case Timeframe::year2:
-	{
 		temp.date = end - 2 * DATE_T_1YR;
 		break;
-	}
 	case Timeframe::year5:
-	{
 		temp.date = end - 5 * DATE_T_1YR;
 		break;
-	}
 	default:
-	{
 		OutputMessage(L"Timeframe %s not implemented\n", timeframe);
 		return -1;
-	}
 	}
 
 	it = std::lower_bound(m_OHLC.begin(), m_OHLC.end(), temp, OHLC_Compare);

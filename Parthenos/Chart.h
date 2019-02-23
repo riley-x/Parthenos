@@ -12,11 +12,17 @@
 class Chart : public AppItem
 {
 public:
+	// Statics
+	enum class MainChartType { none, line, candlestick, envelope };
+	enum class Timeframe { none, month1, month3, month6, year1, year2, year5 };
+	static const float	m_commandSize;
+	static const float	m_tickerBoxWidth;
+	static const float	m_timeframeWidth;
+
+	// AppItem overrides
 	Chart(HWND hwnd, D2Objects const & d2);
-	~Chart();
-	void Init(float leftOffset);
 	void Paint(D2D1_RECT_F updateRect);
-	void Resize(RECT pRect, D2D1_RECT_F pDipRect);
+	void SetSize(D2D1_RECT_F dipRect);
 	void OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam);
 	bool OnLButtonDown(D2D1_POINT_2F cursor);
 	void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam);
@@ -25,12 +31,13 @@ public:
 	bool OnKeyDown(WPARAM wParam, LPARAM lParam);
 	void OnTimer(WPARAM wParam, LPARAM lParam);
 
-	void Load(std::wstring ticker, int range = 1260); // # datapoints in days. default to 5 years 
 	void ProcessMessages();
 
-	static const float	m_commandSize;
-	static const float	m_tickerBoxWidth;
-	static const float	m_timeframeWidth;
+	// Interface
+	void Draw(std::wstring ticker); // uses the chart's saved state
+	void Draw(std::wstring ticker, MainChartType type, Timeframe tf); // TODO pass a state struct or something
+
+
 private:
 
 	// extra parameters
@@ -39,8 +46,6 @@ private:
 
 	// state
 	std::wstring		m_ticker;
-	enum class MainChartType { none, line, candlestick, envelope };
-	enum class Timeframe { none, month1, month3, month6, year1, year2, year5 };
 	MainChartType		m_currentMChart = MainChartType::none;
 	Timeframe			m_currentTimeframe = Timeframe::none;
 
@@ -62,8 +67,9 @@ private:
 	std::vector<float>	m_divisions;
 
 	// helper functions
-	void DrawMainChart(std::wstring ticker, MainChartType type, Timeframe timeframe);
-	void DrawSavedState();
+	void Load(std::wstring ticker, int range = 1260); // # datapoints in days. default to 5 years 
+	void DrawMainChart(MainChartType type, Timeframe timeframe);
+	void DrawCurrentState();
 	int FindStart(Timeframe timeframe, OHLC* & data);
 	void Candlestick(OHLC const *data, int n);
 	void Line(OHLC const *data, int n);

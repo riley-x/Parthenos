@@ -331,7 +331,7 @@ void Watchlist::CalculateLayouts()
 			m_headerHeight,					// The height of the layout box.
 			&m_pTextLayouts[i]				// The IDWriteTextLayout interface pointer.
 		);
-		if (FAILED(hr)) Error(L"CreateTextLayout failed");
+		if (FAILED(hr)) throw Error(L"CreateTextLayout failed");
 
 		left += m_columns[i].width;
 	}
@@ -526,7 +526,7 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const 
 			m_dipRect.bottom - m_dipRect.top,		// The height of the layout box.
 			&m_pTextLayouts[i]						// The IDWriteTextLayout interface pointer.
 		);
-		if (FAILED(hr)) Error(L"CreateTextLayout failed");
+		if (FAILED(hr)) throw Error(L"CreateTextLayout failed");
 
 		left += columns[i+1].width;
 	}

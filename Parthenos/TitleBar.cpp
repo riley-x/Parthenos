@@ -5,64 +5,75 @@
 #include "Button.h"
 
 float const TitleBar::iconHPad = 6.0f;
-float const TitleBar::height = 30.0f;
 
-// This must be called AFTER DPIScale is initialized
+
 void TitleBar::Init()
 {
-	m_dipRect.left = 0;
-	m_dipRect.top = 0;
-	m_dipRect.bottom = DPIScale::SnapToPixelY(height);
-
-	m_pixRect.left = 0;
-	m_pixRect.top = 0;
-	m_pixRect.bottom = DPIScale::DipsToPixelsY(height);
-
-	// Icons
-	for (int i = 0; i < nIcons; i++)
-	{
-		float icon_height = 24; // pixels
-		float pad = ceil((m_pixRect.bottom - icon_height) / 2.0f); 
-		// round or else D2D interpolates pixels
-		m_CommandIconRects[i] = D2D1::RectF(0, pad, 0, pad + icon_height);
-	}
-	m_TitleIconRect = D2D1::RectF(3.0f, 3.0f, 27.0f, 27.0f);
-
 	// Add tab buttons
-	std::wstring tabNames[4] = { L"Portfolio", L"Chart", L"ASDF", L"ASDFASDF" };
-	float left = m_tabLeftStart;
-	for (int i = 0; i < 4; i++)
+	std::wstring tabNames[m_nButtons] = { L"Portfolio", L"Chart", L"ASDF", L"ASDFASDF" };
+	for (int i = 0; i < m_nButtons; i++)
 	{
 		TextButton *temp = new TextButton(m_hwnd, m_d2);
 		temp->SetName(tabNames[i]);
-		temp->SetSize(D2D1::RectF(
-			left,
-			m_dipRect.top,
-			left + m_tabWidth,
-			m_dipRect.bottom
-		));
+		
 		temp->SetBorderColor(false);
 		temp->SetFormat(D2Objects::Segoe18);
 		m_tabButtons.Add(temp);
-		left += m_tabWidth;
+	}
+	m_tabButtons.SetActive(ButtonToWString(m_initButton));
+}
+
+void TitleBar::SetSize(D2D1_RECT_F dipRect)
+{
+	bool same_left = false;
+	bool same_height = false;
+	if (equalRect(m_dipRect, dipRect)) return;
+	if (m_dipRect.left == dipRect.left) same_left = true;
+	if (m_dipRect.bottom - m_dipRect.top == dipRect.bottom - dipRect.top) same_height = true;
+	m_dipRect = dipRect;
+	m_pixRect = DPIScale::DipsToPixels(dipRect);
+
+	// Command Icons
+	float width = 32; // width of icon box, pixels
+	for (int i = 0; i < nIcons; i++)
+	{
+		float icon_height = 24; // pixels
+		float pad = ceil((m_pixRect.bottom - icon_height) / 2.0f);
+		// round or else D2D interpolates pixels
+		float right = m_pixRect.right - (width + 2 * iconHPad)*i - iconHPad;
+		m_CommandIconRects[i] = D2D1::RectF(right - width, pad, right, pad + icon_height);
+	}
+
+	if (!same_left || !same_height)
+	{
+		// Parthenos Icon
+		float pad = 3.0f;
+		m_TitleIconRect = D2D1::RectF(
+			m_dipRect.left + pad,
+			m_dipRect.top + pad,
+			m_dipRect.bottom - pad, // so it's square
+			m_dipRect.bottom - pad
+		);
+
+		// Buttons
+		float left = m_tabLeftStart;
+		for (Button* button : m_tabButtons.Buttons())
+		{
+			button->SetSize(D2D1::RectF(
+				left,
+				m_dipRect.top,
+				left + m_tabWidth,
+				m_dipRect.bottom
+			));
+			left += m_tabWidth;
+		}
 	}
 
 	// Create brackets
-	CreateBracketGeometry(0);
-	CreateBracketGeometry(1);
-}
-
-// 'pRect': client RECT of parent
-void TitleBar::Resize(RECT pRect, D2D1_RECT_F pDipRect)
-{
-	m_pixRect.right = pRect.right;
-	m_dipRect.right = pDipRect.right;
-
-	float width = 32;
-	for (int i = 0; i < nIcons; i++)
+	if (!same_height)
 	{
-		m_CommandIconRects[i].right = pRect.right - (width + 2 * iconHPad)*i - iconHPad;
-		m_CommandIconRects[i].left = m_CommandIconRects[i].right - width;
+		CreateBracketGeometry(0);
+		CreateBracketGeometry(1);
 	}
 }
 
@@ -105,14 +116,14 @@ void TitleBar::Paint(D2D1_RECT_F updateRect)
 	{
 		m_d2.pBrush->SetColor(Colors::ALMOST_WHITE);
 		m_d2.pRenderTarget->SetTransform(
-			D2D1::Matrix3x2F::Translation(D2D1::SizeF(active.left - m_bracketWidth / 2.0f, 0))
+			D2D1::Matrix3x2F::Translation(D2D1::SizeF(active.left - m_bracketWidth / 2.0f, active.top))
 		);
 		m_d2.pRenderTarget->FillGeometry(
 			m_bracketGeometries[0],
 			m_d2.pBrush
 		);
 		m_d2.pRenderTarget->SetTransform(
-			D2D1::Matrix3x2F::Translation(D2D1::SizeF(active.right + m_bracketWidth / 2.0f, 0))
+			D2D1::Matrix3x2F::Translation(D2D1::SizeF(active.right + m_bracketWidth / 2.0f, active.top))
 		);
 		m_d2.pRenderTarget->FillGeometry(
 			m_bracketGeometries[1],
@@ -257,6 +268,7 @@ void TitleBar::CreateBracketGeometry(int i)
 	float reflect = 1.0f;
 	if (i == 1) reflect = -1.0f;
 
+	SafeRelease(&m_bracketGeometries[i]);
 	HRESULT hr = m_d2.pFactory->CreatePathGeometry(&m_bracketGeometries[i]);
 	if (SUCCEEDED(hr))
 	{
@@ -264,13 +276,13 @@ void TitleBar::CreateBracketGeometry(int i)
 		hr = m_bracketGeometries[i]->Open(&pSink);
 		if (SUCCEEDED(hr))
 		{
-			float y0 = m_dipRect.top;
-			float y1 = m_dipRect.top + 1.5f * m_bracketWidth;
-			float y2 = m_dipRect.bottom - 1.5f * m_bracketWidth;
-			float y3 = m_dipRect.bottom;
-			float x0 = 0.0f;
-			float x1 = reflect * m_bracketWidth;
-			float x2 = reflect * m_bracketWidth * 2.5f;
+			float y0 = 0;
+			float y1 = 0 + 1.5f * m_bracketWidth;
+			float y2 = m_dipRect.bottom - m_dipRect.top - 1.5f * m_bracketWidth;
+			float y3 = m_dipRect.bottom - m_dipRect.top;
+			float x0 = m_dipRect.left;
+			float x1 = x0 + reflect * m_bracketWidth;
+			float x2 = x0 + reflect * m_bracketWidth * 2.5f;
 
 			pSink->BeginFigure(
 				D2D1::Point2F(x0, y0),
