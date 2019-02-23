@@ -1,21 +1,21 @@
 #include "stdafx.h"
 #include "MenuBar.h"
 
-MenuBar::MenuBar(HWND hwnd, D2Objects const & d2, Parthenos * parent)
+MenuBar::MenuBar(HWND hwnd, D2Objects const & d2, Parthenos * parent, float height)
 	: AppItem(hwnd, d2), m_parent(parent)
 {
 	DropMenuButton *temp = new DropMenuButton(hwnd, d2, this, false);
-	temp->SetText(m_texts[0], m_widths[0]);
+	temp->SetText(m_texts[0], m_widths[0], height);
 	temp->SetItems({ L"TODO", L"Hello" });
 	m_buttons.push_back(temp);
 
 	temp = new DropMenuButton(hwnd, d2, this, false);
-	temp->SetText(m_texts[1], m_widths[1]);
+	temp->SetText(m_texts[1], m_widths[1], height);
 	temp->SetItems({ L"TODO", L"Hello" });
 	m_buttons.push_back(temp);
 
 	temp = new DropMenuButton(hwnd, d2, this, false);
-	temp->SetText(m_texts[2], m_widths[2]);
+	temp->SetText(m_texts[2], m_widths[2], height);
 	temp->SetItems({ L"Add" });
 	m_buttons.push_back(temp);
 }
@@ -44,6 +44,15 @@ void MenuBar::Paint(D2D1_RECT_F updateRect)
 			}
 			m_buttons[i]->Paint(updateRect);
 		}
+
+		// Right dividing lines
+		m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
+		m_d2.pRenderTarget->DrawLine(
+			D2D1::Point2F(m_rBorder, m_dipRect.top),
+			D2D1::Point2F(m_rBorder, m_dipRect.bottom),
+			m_d2.pBrush,
+			DPIScale::px()
+		);
 	}
 	for (int i = 0; i < m_nButtons; i++)
 	{
@@ -61,6 +70,7 @@ void MenuBar::SetSize(D2D1_RECT_F dipRect)
 
 	m_dipRect = dipRect;
 	m_pixRect = DPIScale::DipsToPixels(dipRect);
+	m_rBorder = m_dipRect.right - DPIScale::hpx();
 
 	if (!same_left || !same_top)
 	{

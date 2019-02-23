@@ -29,7 +29,7 @@ class Parthenos : public BorderlessWindow<Parthenos>
 
 	// Layout
 	float const				m_titleBarHeight = 30.0f;
-	float const				m_menuBarHeight = 15.0f;
+	float const				m_menuBarHeight = 17.0f;
 	float const				m_watchlistWidth = 350.0f;
 	float const				m_portfolioListWidth = 600.0f;
 

@@ -168,7 +168,7 @@ public:
 	bool OnLButtonDown(D2D1_POINT_2F cursor);
 
 	// Interface
-	void SetText(std::wstring text, float width); // For non-dynamic, the text of the button
+	void SetText(std::wstring text, float width, float height); // For non-dynamic, the text of the button
 	inline void SetItems(std::vector<std::wstring> const & items) { m_menu.SetItems(items); }
 	void SetActive(size_t i);
 	inline PopupMenu & GetMenu() { return m_menu; }

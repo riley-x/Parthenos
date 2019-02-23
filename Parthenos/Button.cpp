@@ -133,7 +133,7 @@ bool DropMenuButton::OnLButtonDown(D2D1_POINT_2F cursor)
 	return false;
 }
 
-void DropMenuButton::SetText(std::wstring text, float width)
+void DropMenuButton::SetText(std::wstring text, float width, float height)
 {
 	if (m_dynamic) return; // Use SetActive instead
 
@@ -144,7 +144,7 @@ void DropMenuButton::SetText(std::wstring text, float width)
 		text.size(),		// The length of the string.
 		m_d2.pTextFormats[m_menu.m_format],   // The text format
 		width,				// The width of the layout box.
-		m_menu.m_fontSize,	// The height of the layout box.
+		height,				// The height of the layout box.
 		&m_activeLayout		// The IDWriteTextLayout interface pointer.
 	);
 	m_d2.pTextFormats[m_menu.m_format]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);

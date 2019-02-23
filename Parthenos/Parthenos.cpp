@@ -296,7 +296,7 @@ LRESULT Parthenos::OnCreate()
 	m_chart = new Chart(m_hwnd, m_d2);
 	m_watchlist = new Watchlist(m_hwnd, m_d2, this);
 	m_portfolioList = new Watchlist(m_hwnd, m_d2, this, false);
-	m_menuBar = new MenuBar(m_hwnd, m_d2, this);
+	m_menuBar = new MenuBar(m_hwnd, m_d2, this, m_menuBarHeight);
 
 	m_allItems.push_back(m_titleBar);
 	m_allItems.push_back(m_chart);
