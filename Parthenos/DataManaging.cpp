@@ -7,6 +7,10 @@ const std::wstring IEXHOST(L"api.iextrading.com"); // api.iextrading.com
 const std::wstring ALPHAHOST(L"www.alphavantage.co");
 const std::wstring ALPHAKEY(L"FJHB2XGE0A43171J"); // FJHB2XGE0A43171J
 
+const std::wstring QUOTEFILTERS(L"open, close, latestPrice, latestSource, latestUpdate, latestVolume, avgTotalVolume,"
+	L"previousClose,change,changePercent,closeTime");
+const std::wstring STATSFILTERS(L"beta,week52high,week52low,dividendRate,dividendYield,year1ChangePercent,exDividendDate");
+
 ///////////////////////////////////////////////////////////
 // --- Forward declarations ---
 
@@ -14,6 +18,9 @@ std::vector<OHLC> GetOHLC_IEX(std::wstring ticker, size_t last_n);
 std::vector<OHLC> GetOHLC_Alpha(std::wstring ticker, size_t last_n);
 std::vector<OHLC> parseIEXChart(std::string json, date_t latest_date = 0);
 std::vector<OHLC> parseAlphaChart(std::string json, date_t latestDate = 0);
+Quote parseFilteredQuote(std::string const & json);
+Stats parseFilteredStats(std::string const & json);
+std::pair<Quote, Stats> parseQuoteStats(std::string const & json);
 OHLC parseIEXChartItem(std::string json);
 OHLC parseAlphaChartItem(std::string json);
 Transaction parseTransactionItem(std::string str);
@@ -50,41 +57,9 @@ Quote GetQuote(std::wstring ticker)
 {
 	std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::tolower);
 	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/" + ticker + L"/quote",
-		L"filter=open,close,latestPrice,latestSource,latestUpdate,latestVolume,avgTotalVolume,"
-		L"previousClose,change,changePercent,closeTime");
-	Quote quote;
-	char buffer[50] = { 0 };
-
-	const char format[] = R"({"open":%lf,"close":%lf,"latestPrice":%lf,"latestSource":"%49[^"]","latestUpdate":%I64d,)"
-		R"("latestVolume":%d,"avgTotalVolume":%d,"previousClose":%lf,"change":%lf,"changePercent":%lf,"closeTime":%I64d})";
-
-	int n = sscanf_s(json.c_str(), format, &quote.open, &quote.close, &quote.latestPrice, buffer,
-		static_cast<unsigned>(_countof(buffer)), &quote.latestUpdate, &quote.latestVolume, &quote.avgTotalVolume,
-		&quote.previousClose, &quote.change, &quote.changePercent, &quote.closeTime
-	);
-	if (n != 11)
-	{
-		OutputMessage(L"sscanf_s failed! Only read %d/%d\n", n, 11);
-		throw std::invalid_argument("GetQuote failed");
-	}
-
-	if (strcmp(buffer, "IEX real time price") == 0)
-		quote.latestSource = iexLSource::real;
-	else if (strcmp(buffer, "15 minute delayed price") == 0)
-		quote.latestSource = iexLSource::delayed;
-	else if (strcmp(buffer, "Close") == 0)
-		quote.latestSource = iexLSource::close;
-	else if (strcmp(buffer, "Previous close") == 0)
-		quote.latestSource = iexLSource::prevclose;
-	else
-	{
-		OutputMessage(L"Couldn't decipher latestSource %hs\n", buffer);
-		throw std::invalid_argument("GetQuote failed");
-	}
-
-	quote.latestUpdate /= 1000; // remove milliseconds
-	quote.closeTime /= 1000;
-	return quote;
+		L"filter=" + QUOTEFILTERS);
+	
+	return parseFilteredQuote(json);
 }
 
 // Queries IEX for key stats.
@@ -93,38 +68,45 @@ Stats GetStats(std::wstring ticker)
 {
 	std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::tolower);
 	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/" + ticker + L"/stats",
-		L"filter=beta,week52high,week52low,dividendRate,dividendYield,year1ChangePercent,exDividendDate");
+		L"filter=" + STATSFILTERS);
 
-	Stats stats;
-	char buffer[50] = { 0 };
+	return parseFilteredStats(json);
+}
 
-	const char format[] = R"({"beta":%lf,"week52high":%lf,"week52low":%lf,"dividendRate":%lf,"dividendYield":%lf,)"
-		R"("year1ChangePercent":%lf,"exDividendDate":"%49[^"]"})";
+std::pair<Quote, Stats> GetQuoteStats(std::wstring ticker)
+{
+	std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::tolower);
+	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/" + ticker + L"/batch",
+		L"types=quote,stats&filter=" + QUOTEFILTERS + L"," + STATSFILTERS);
 
-	int n = sscanf_s(json.c_str(), format, &stats.beta, &stats.week52high, &stats.week52low, &stats.dividendRate,
-		&stats.dividendYield, &stats.year1ChangePercent, buffer, static_cast<unsigned>(_countof(buffer))
-	);
-	if (n == 6) // exDividendDate failed
+	return parseQuoteStats(json);
+}
+
+std::vector<std::pair<Quote, Stats>> GetBatchQuoteStats(std::vector<std::wstring> tickers)
+{
+	std::wstring ticks;
+	for (auto & x : tickers)
 	{
-		stats.exDividendDate = 0;
-		return stats;
+		std::transform(x.begin(), x.end(), x.begin(), ::tolower);
+		ticks.append(x + L",");
 	}
-	else if (n != 7)
+	
+	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/market/batch",
+		L"symbols=" + ticks + L"&types=quote,stats&filter=" + QUOTEFILTERS + L"," + STATSFILTERS);
+
+	std::vector<std::pair<Quote, Stats>> out;
+	out.reserve(tickers.size());
+
+	size_t start = 0;
+	size_t end = 1; // skip first opening {
+	for (size_t i = 0; i < tickers.size(); i++)
 	{
-		OutputMessage(L"GetStats sscanf_s failed! Only read %d/%d\n", n, 7);
-		throw std::invalid_argument("GetQuote failed");
+		start = json.find("{", end);
+		end = json.find("}}", start) + 2;
+		out.push_back(parseQuoteStats(json.substr(start, end - start)));
 	}
 
-	int year, month, date;
-	n = sscanf_s(buffer, "%d-%d-%d", &year, &month, &date);
-	if (n != 3)
-	{
-		OutputMessage(L"GetStats sscanf_s 2 failed! Only read %d/%d\n", n, 3);
-		throw std::invalid_argument("praseIEXChartItem failed");
-	}
-	stats.exDividendDate = MkDate(year, month, date);
-
-	return stats;
+	return out;
 }
 
 // Reads, writes, and fetches data as necessary.
@@ -245,6 +227,7 @@ std::vector<std::vector<Holdings>> FlattenedHoldingsToTickers(std::vector<Holdin
 	return out;
 }
 
+// Calculates returns and APY using 'date' as end date.
 std::vector<Position> HoldingsToPositions(std::vector<std::vector<Holdings>> const & holdings, Account account, date_t date)
 {
 	std::vector<Position> out;
@@ -276,7 +259,7 @@ std::vector<Position> HoldingsToPositions(std::vector<std::vector<Holdings>> con
 				continue;
 			}
 
-			ReduceSalesLots(h, iHeader, date + 1); // h is a copy. date + 1 will always work to compare <
+			ReduceSalesLots(h, iHeader, MkDate(9999, 0, 0)); // h is a copy, so ok the reduce everything
 			HoldingHeader const & header = h[iHeader].head;
 
 			if (temp.ticker == L"CASH")
@@ -309,7 +292,8 @@ std::vector<Position> HoldingsToPositions(std::vector<std::vector<Holdings>> con
 			sumWeights += temp.avgCost; // this is total cost right now
 
 			// Loop over options lots;
-			for (iLot; iLot < iHeader + header.nLots + header.nOptions + 1; iLot++)
+			for (iLot = iHeader + header.nLots + header.nOptions + 1; 
+				iLot < iHeader + header.nLots + header.nOptions + 1; iLot++)
 			{
 				Option const & opt = h.at(iLot).option;
 				double unrealized = 0;
@@ -595,6 +579,89 @@ std::vector<OHLC> parseAlphaChart(std::string json, date_t latestDate)
 	return out;
 }
 
+Quote parseFilteredQuote(std::string const & json)
+{
+	Quote quote;
+	char buffer[50] = { 0 };
+
+	const char format[] = R"({"open":%lf,"close":%lf,"latestPrice":%lf,"latestSource":"%49[^"]","latestUpdate":%I64d,)"
+		R"("latestVolume":%d,"avgTotalVolume":%d,"previousClose":%lf,"change":%lf,"changePercent":%lf,"closeTime":%I64d})";
+
+	int n = sscanf_s(json.c_str(), format, &quote.open, &quote.close, &quote.latestPrice, buffer,
+		static_cast<unsigned>(_countof(buffer)), &quote.latestUpdate, &quote.latestVolume, &quote.avgTotalVolume,
+		&quote.previousClose, &quote.change, &quote.changePercent, &quote.closeTime
+	);
+	if (n != 11)
+	{
+		OutputMessage(L"sscanf_s failed! Only read %d/%d\n", n, 11);
+		throw std::invalid_argument("GetQuote failed");
+	}
+
+	if (strcmp(buffer, "IEX real time price") == 0)
+		quote.latestSource = iexLSource::real;
+	else if (strcmp(buffer, "15 minute delayed price") == 0)
+		quote.latestSource = iexLSource::delayed;
+	else if (strcmp(buffer, "Close") == 0)
+		quote.latestSource = iexLSource::close;
+	else if (strcmp(buffer, "Previous close") == 0)
+		quote.latestSource = iexLSource::prevclose;
+	else
+	{
+		OutputMessage(L"Couldn't decipher latestSource %hs\n", buffer);
+		throw std::invalid_argument("GetQuote failed");
+	}
+
+	quote.latestUpdate /= 1000; // remove milliseconds
+	quote.closeTime /= 1000;
+	return quote;
+}
+
+Stats parseFilteredStats(std::string const & json)
+{
+	Stats stats;
+	char buffer[50] = { 0 };
+
+	const char format[] = R"({"beta":%lf,"week52high":%lf,"week52low":%lf,"dividendRate":%lf,"dividendYield":%lf,)"
+		R"("year1ChangePercent":%lf,"exDividendDate":"%49[^"]"})";
+
+	int n = sscanf_s(json.c_str(), format, &stats.beta, &stats.week52high, &stats.week52low, &stats.dividendRate,
+		&stats.dividendYield, &stats.year1ChangePercent, buffer, static_cast<unsigned>(_countof(buffer))
+	);
+	if (n == 6) // exDividendDate failed
+	{
+		stats.exDividendDate = 0;
+		return stats;
+	}
+	else if (n != 7)
+	{
+		OutputMessage(L"GetStats sscanf_s failed! Only read %d/%d\n", n, 7);
+		throw std::invalid_argument("GetQuote failed");
+	}
+
+	int year, month, date;
+	n = sscanf_s(buffer, "%d-%d-%d", &year, &month, &date);
+	if (n != 3)
+	{
+		OutputMessage(L"GetStats sscanf_s 2 failed! Only read %d/%d\n", n, 3);
+		throw std::invalid_argument("praseIEXChartItem failed");
+	}
+	stats.exDividendDate = MkDate(year, month, date);
+
+	return stats;
+}
+
+std::pair<Quote, Stats> parseQuoteStats(std::string const & json)
+{
+	size_t start = json.find("{", 1); // skip first opening {
+	size_t end = json.find("}", start) + 1; // include closing }
+	Quote quote = parseFilteredQuote(json.substr(start, end - start));
+
+	start = json.find("{", end);
+	end = json.find("}", start) + 1;
+	Stats stats = parseFilteredStats(json.substr(start, end - start));
+
+	return { quote, stats };
+}
 
 // With curly braces removed:
 // "date":"2018-12-31","open":157.8529,"high":158.6794,"low":155.8117,"close":157.0663,"volume":35003466
@@ -624,7 +691,6 @@ OHLC parseIEXChartItem(std::string json)
 
 	return out;
 }
-
 
 /*
 		"2018-09-18": {
@@ -694,7 +760,6 @@ OHLC parseAlphaChartItem(std::string json)
 	}
 	return out;
 }
-
 
 // Columns date,account,ticker,n,value,price,type,expiration,strike
 // Assumes tax_lot = 0

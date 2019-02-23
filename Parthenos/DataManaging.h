@@ -92,6 +92,8 @@ typedef struct Stats_struct
 double GetPrice(std::wstring ticker);
 Quote GetQuote(std::wstring ticker);
 Stats GetStats(std::wstring ticker);
+std::pair<Quote, Stats> GetQuoteStats(std::wstring ticker);
+std::vector<std::pair<Quote, Stats>> GetBatchQuoteStats(std::vector<std::wstring> tickers);
 std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source = apiSource::iex, size_t last_n = 0);
 bool OHLC_Compare(const OHLC & a, const OHLC & b);
 
@@ -279,6 +281,20 @@ typedef struct Position_struct
 } Position;
 
 
+
+inline double GetWeightedAPY(double gain, date_t start_date, date_t end_date)
+{
+	time_t time_held = DateToTime(end_date) - DateToTime(start_date);
+	if (time_held <= 0) return gain * 365.0; // assume 1 day
+	return gain * 365.0 * 86400.0 / time_held;
+}
+inline double GetAPY(double gain, double cost_in, date_t start_date, date_t end_date)
+{
+	time_t time_held = DateToTime(end_date) - DateToTime(start_date);
+	if (time_held <= 0) return (gain / cost_in) * 365.0; // assume 1 day
+	return (gain / cost_in) * 365.0 * 86400.0 / time_held;
+}
+
 std::vector<Transaction> CSVtoTransactions(std::wstring filepath);
 void AddTransactionToHoldings(std::vector<std::vector<Holdings>> & holdings, Transaction const & transaction);
 std::vector<std::vector<Holdings>> FullTransactionsToHoldings(std::vector<Transaction> const & transactions);
@@ -295,15 +311,14 @@ inline void PrintFlattenedHoldings(std::vector<Holdings> const & h)
 	}
 }
 
-inline double GetWeightedAPY(double gain, date_t start_date, date_t end_date)
+inline std::vector<std::wstring> GetTickers(std::vector<Position> const & positions)
 {
-	time_t time_held = DateToTime(end_date) - DateToTime(start_date);
-	if (time_held <= 0) return gain * 365.0; // assume 1 day
-	return gain * 365.0 * 86400.0 / time_held;
-}
-inline double GetAPY(double gain, double cost_in, date_t start_date, date_t end_date)
-{
-	time_t time_held = DateToTime(end_date) - DateToTime(start_date);
-	if (time_held <= 0) return (gain / cost_in) * 365.0; // assume 1 day
-	return (gain / cost_in) * 365.0 * 86400.0 / time_held;
+	std::vector<std::wstring> out;
+	out.reserve(positions.size());
+	for (auto const & x : positions)
+	{
+		if (x.ticker == L"CASH") continue;
+		out.push_back(x.ticker);
+	}
+	return out;
 }

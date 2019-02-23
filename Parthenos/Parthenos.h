@@ -28,8 +28,9 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	// Layout
 	float const				m_titleBarHeight = 30.0f;
 	float const				m_watchlistWidth = 350.0f;
-	float const				m_portfolioListWidth = 500.0f;
+	float const				m_portfolioListWidth = 700.0f;
 
+	// Message responses
 	LRESULT	OnCreate();
 	LRESULT OnNCHitTest(POINT cursor);
 	LRESULT OnPaint();
@@ -42,7 +43,7 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	bool	OnKeyDown(WPARAM wParam, LPARAM lParam);
 	LRESULT OnTimer(WPARAM wParam, LPARAM lParam);
 
-	void ProcessMessages();
+	void ProcessAppItemMessages();
 	D2D1_RECT_F CalculateItemRect(AppItem* item, D2D1_RECT_F const & dipRect);
 
 	Parthenos(const Parthenos&) = delete; // non construction-copyable

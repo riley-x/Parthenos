@@ -97,6 +97,13 @@ date_t GetDate(time_t time)
 	return MkDate(out.tm_year + 1900, out.tm_mon + 1, out.tm_mday);
 }
 
+date_t GetCurrentDate()
+{
+	SYSTEMTIME t;
+	GetLocalTime(&t);
+	return MkDate(t.wYear, t.wMonth, t.wDay);
+}
+
 
 std::wstring TimeToWString(time_t time)
 {

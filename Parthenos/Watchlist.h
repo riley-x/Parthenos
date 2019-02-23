@@ -3,7 +3,7 @@
 #include "stdafx.h"
 #include "AppItem.h"
 #include "TextBox.h"
-
+#include "DataManaging.h"
 
 class Parthenos;
 
@@ -55,7 +55,7 @@ public:
 		return out;
 	}
 	inline void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam) { return m_ticker.OnLButtonDblclk(cursor, wParam); }
-	inline void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam);
+	void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam);
 	inline bool OnChar(wchar_t c, LPARAM lParam) { return m_ticker.OnChar(c, lParam); }
 	inline bool OnKeyDown(WPARAM wParam, LPARAM lParam) 
 	{
@@ -69,7 +69,8 @@ public:
 
 	// Interface
 	inline std::wstring Ticker() const { return m_currTicker; }
-	void Load(std::wstring const & ticker, std::vector<Column> const & columns, bool reload = false); // Queries
+	void Load(std::wstring const & ticker, std::vector<Column> const & columns, 
+		bool reload = false, std::pair<Quote, Stats>* data = nullptr); // Queries
 	// Load should be called after SetSize
 	void Add(Column const & col); // Queries 
 	void Move(size_t iColumn, size_t iPos);
@@ -91,7 +92,7 @@ private:
 	bool m_editableTickers = true;
 
 	// Do the actual HTTP query and format the string
-	void LoadData(std::wstring const & ticker);
+	void LoadData(std::wstring const & ticker, std::pair<Quote, Stats>* data);
 
 };
 
@@ -115,7 +116,6 @@ public:
 	bool OnChar(wchar_t c, LPARAM lParam);
 	bool OnKeyDown(WPARAM wParam, LPARAM lParam);
 	void OnTimer(WPARAM wParam, LPARAM lParam);
-
 	void ProcessMessages();
 
 	// Interface
@@ -126,34 +126,32 @@ public:
 	static D2Objects::Formats const m_format = D2Objects::Segoe12;
 
 private:
-	Watchlist(const Watchlist&) = delete; // non construction-copyable
-	Watchlist& operator=(const Watchlist&) = delete; // non copyable
+	Watchlist(const Watchlist&) = delete;				// non construction-copyable
+	Watchlist& operator=(const Watchlist&) = delete;	// non copyable
 
 	Parthenos *m_parent;
 
 	// Data
-	std::vector<WatchlistItem*> m_items;
-	std::vector<WatchlistItem*> m_adds;
-	std::vector<WatchlistItem*> m_deletes;
-	std::vector<std::wstring> m_tickers;
-	std::vector<Column> m_columns;
+	std::vector<WatchlistItem*>		m_items;
+	std::vector<std::wstring>		m_tickers;
+	std::vector<Column>				m_columns;
 	std::vector<IDWriteTextLayout*> m_pTextLayouts; // For column headers
 	
 	// Flags
-	int m_LButtonDown = -1; // Left button pressed on an item
-	int m_hover = -1; // Currently hovering over
-	bool m_ignoreSelection = false; // Flag to check if drag + drop on same location
+	int		m_LButtonDown		= -1;	 // Left button pressed on an item
+	int		m_hover				= -1;	 // Currently hovering over
+	bool	m_ignoreSelection	= false; // Flag to check if drag + drop on same location
 
 	// Paramters
-	float const m_headerHeight = 18.0f;
-	float const m_rowHeight = 18.0f;
-	bool m_editableTickers = true;
+	float const m_headerHeight		= 18.0f;
+	float const m_rowHeight			= 18.0f;
+	bool		m_editableTickers	= true;
 
 	// Drawing
-	std::vector<float> m_vLines;
-	std::vector<float> m_hLines;
-	float m_rightBorder;
-	float m_headerBorder;
+	std::vector<float>	m_vLines;
+	std::vector<float>	m_hLines;
+	float				m_rightBorder;
+	float				m_headerBorder;
 
 	// Helpers
 

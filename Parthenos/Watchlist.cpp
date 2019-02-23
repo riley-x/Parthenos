@@ -297,7 +297,7 @@ void Watchlist::Load(std::vector<std::wstring> const & tickers, std::vector<Colu
 
 void Watchlist::CalculateLayouts()
 {
-	// Create column headers, divider lines
+	// Create column headers, vertical divider lines
 	float left = m_dipRect.left;
 	m_vLines.resize(m_columns.size() - 1);
 	for (auto x : m_pTextLayouts) SafeRelease(&x);
@@ -336,6 +336,11 @@ void Watchlist::CalculateLayouts()
 		left += m_columns[i].width;
 	}
 
+	// Get data via batch request
+	std::vector<std::wstring> tickers(m_tickers.begin(), m_tickers.end() - 1); // empty string at end
+	std::vector<std::pair<Quote, Stats>> data = GetBatchQuoteStats(tickers);
+
+	// Create WatchlistItems, horizontal divider lines
 	m_hLines.resize(m_tickers.size());
 	for (auto x : m_items) if (x) delete x;
 	m_items.clear();
@@ -353,7 +358,8 @@ void Watchlist::CalculateLayouts()
 			m_dipRect.right,
 			top + m_rowHeight
 		));
-		temp->Load(m_tickers[i], m_columns);
+		if (i < data.size()) temp->Load(m_tickers[i], m_columns, false, &data[i]);
+		else temp->Load(m_tickers[i], m_columns, false, nullptr);
 		m_items.push_back(temp);
 
 		top += m_rowHeight;
@@ -475,8 +481,9 @@ void WatchlistItem::ProcessMessages()
 	if (!m_messages.empty()) m_messages.clear();
 }
 
+
 // If reload, don't initialize text box again
-void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const & columns, bool reload)
+void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const & columns, bool reload, std::pair<Quote, Stats>* data)
 {
 	if (columns.empty() || columns.front().field != Column::Ticker)
 	{
@@ -487,7 +494,7 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const 
 	if (!reload)
 		m_columns = columns;
 	m_currTicker = ticker;
-	LoadData(ticker);
+	LoadData(ticker, data);
 
 	float left = m_dipRect.left;
 	if (!reload)
@@ -532,7 +539,7 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const 
 	}
 }
 
-void WatchlistItem::LoadData(std::wstring const & ticker)
+void WatchlistItem::LoadData(std::wstring const & ticker, std::pair<Quote, Stats>* data)
 {
 	if (ticker.empty())
 	{
@@ -544,8 +551,11 @@ void WatchlistItem::LoadData(std::wstring const & ticker)
 	m_data.resize(m_columns.size() - 1);
 	try
 	{
-		Quote quote = GetQuote(ticker);
-		Stats stats = GetStats(ticker);
+		std::pair<Quote, Stats> qs;
+		if (!data) qs = GetQuoteStats(ticker);
+		else qs = *data;
+		Quote & quote = qs.first;
+		Stats & stats = qs.second;
 
 		wchar_t buffer[50] = {};
 		for (size_t i = 1; i < m_columns.size(); i++)

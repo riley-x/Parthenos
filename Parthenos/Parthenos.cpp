@@ -10,29 +10,11 @@
 #include <windowsx.h>
 
 
+// Forward declarations
+INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 
-
-namespace {
-	// Message handler for about box.
-	INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-	{
-		UNREFERENCED_PARAMETER(lParam);
-		switch (message)
-		{
-		case WM_INITDIALOG:
-			return (INT_PTR)TRUE;
-
-		case WM_COMMAND:
-			if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
-			{
-				EndDialog(hDlg, LOWORD(wParam));
-				return (INT_PTR)TRUE;
-			}
-			break;
-		}
-		return (INT_PTR)FALSE;
-	}
-}
+///////////////////////////////////////////////////////////
+// --- Interface functions ---
 
 Parthenos::~Parthenos()
 {
@@ -162,7 +144,26 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return DefWindowProc(m_hwnd, uMsg, wParam, lParam);
 }
 
-void Parthenos::ProcessMessages()
+void Parthenos::PreShow()
+{
+	RECT rc;
+	BOOL bErr = GetClientRect(m_hwnd, &rc);
+	if (bErr == 0) OutputError(L"GetClientRect failed");
+	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
+
+	for (auto item : m_allItems)
+	{
+		item->Init();
+		item->SetSize(CalculateItemRect(item, dipRect));
+	}
+
+	m_chart->Draw(L"AAPL");
+}
+
+///////////////////////////////////////////////////////////
+// --- Helper functions ---
+
+void Parthenos::ProcessAppItemMessages()
 {
 	for (ClientMessage msg : m_messages)
 	{
@@ -261,23 +262,9 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 	}
 }
 
-void Parthenos::PreShow()
-{
-	RECT rc;
-	BOOL bErr = GetClientRect(m_hwnd, &rc);
-	if (bErr == 0) OutputError(L"GetClientRect failed");
-	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
 
-	for (auto item : m_allItems)
-	{
-		item->Init();
-		item->SetSize(CalculateItemRect(item, dipRect));
-	}
-
-	m_chart->Draw(L"AAPL");
-}
-
-///////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////
+// --- Message handling functions ---
 
 LRESULT Parthenos::OnCreate()
 {
@@ -286,6 +273,7 @@ LRESULT Parthenos::OnCreate()
 	if (SUCCEEDED(hr))
 	{
 		hr = m_d2.CreateDeviceIndependentResources();
+		m_d2.hwndParent = m_hwnd;
 	}
 	if (FAILED(hr))
 	{
@@ -293,7 +281,6 @@ LRESULT Parthenos::OnCreate()
 		return -1;  // Fail CreateWindowEx.
 	}
 
-	m_d2.hwndParent = m_hwnd;
 	m_titleBar = new TitleBar(m_hwnd, m_d2, this, TitleBar::Buttons::CHART);
 	m_chart = new Chart(m_hwnd, m_d2);
 	m_watchlist = new Watchlist(m_hwnd, m_d2, this);
@@ -307,9 +294,24 @@ LRESULT Parthenos::OnCreate()
 	m_activeItems.push_back(m_chart);
 	m_activeItems.push_back(m_watchlist);
 
-	m_watchlist->Load({ L"AAPL", L"MSFT", L"NVDA" }, std::vector<Column>());
-	m_portfolioList->Load({ L"AAPL", L"MSFT", L"NVDA" }, std::vector<Column>());
-	
+	// Read Holdings
+	FileIO holdingsFile;
+	holdingsFile.Init(ROOTDIR + L"port.hold");
+	holdingsFile.Open(GENERIC_READ);
+	std::vector<Holdings> out = holdingsFile.Read<Holdings>();
+	holdingsFile.Close();
+
+	// Holdings -> Positions
+	std::vector<Position> positions = HoldingsToPositions(
+		FlattenedHoldingsToTickers(out), Account::Robinhood, GetCurrentDate());
+
+	std::vector<std::wstring> tickers = GetTickers(positions);
+	m_watchlist->Load(tickers, std::vector<Column>());
+	m_portfolioList->Load(tickers, std::vector<Column>());
+
+	//m_watchlist->Load({ L"AAPL", L"MSFT", L"NVDA" }, std::vector<Column>());
+	//m_portfolioList->Load({ L"AAPL", L"MSFT", L"NVDA" }, std::vector<Column>());
+
 	return 0;
 }
 
@@ -414,7 +416,7 @@ LRESULT Parthenos::OnLButtonDown(POINT cursor, WPARAM wParam)
 		else item->OnLButtonDown(dipCursor);
 	}
 	
-	ProcessMessages();
+	ProcessAppItemMessages();
 	return 0;
 }
 
@@ -436,7 +438,9 @@ LRESULT Parthenos::OnLButtonUp(POINT cursor, WPARAM wParam)
 	{
 		item->OnLButtonUp(dipCursor, wParam);
 	}
-	ProcessMessages();
+	ProcessAppItemMessages();
+	
+	// ReleaseCapture();
 	return 0;
 }
 
@@ -481,19 +485,22 @@ LRESULT Parthenos::OnTimer(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-
-/*
-void MainWindow::OnLButtonUp()
+// Message handler for about box.
+INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	if ((mode == DrawMode) && Selection())
+	UNREFERENCED_PARAMETER(lParam);
+	switch (message)
 	{
-		ClearSelection();
-		InvalidateRect(m_hwnd, NULL, FALSE);
+	case WM_INITDIALOG:
+		return (INT_PTR)TRUE;
+
+	case WM_COMMAND:
+		if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
+		{
+			EndDialog(hDlg, LOWORD(wParam));
+			return (INT_PTR)TRUE;
+		}
+		break;
 	}
-	else if (mode == DragMode)
-	{
-		SetMode(SelectMode);
-	}
-	ReleaseCapture();
+	return (INT_PTR)FALSE;
 }
-*/
