@@ -94,6 +94,21 @@ template <class T> void SafeRelease(T **ppT)
 	}
 }
 
+// Returns the indices of v sorted based on the the values of v. Does not sort v itself
+template <typename T, class Compare=std::less<>>
+inline std::vector<size_t> sort_indexes(const std::vector<T> &v, Compare comp = {}) {
+
+	// initialize original index locations
+	std::vector<size_t> idx(v.size());
+	std::iota(idx.begin(), idx.end(), 0);
+
+	// sort indexes based on comparing values in v
+	std::sort(idx.begin(), idx.end(),
+		[&v](size_t i1, size_t i2) {return comp(v[i1], v[i2]); });
+
+	return idx;
+}
+
 namespace Colors
 {
 	const D2D1_COLOR_F HIGHLIGHT		= D2D1::ColorF(0.3f, 0.3f, 0.3f, 1.0f);

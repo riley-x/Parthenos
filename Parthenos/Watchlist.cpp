@@ -155,11 +155,20 @@ bool Watchlist::OnLButtonDown(D2D1_POINT_2F cursor)
 
 void Watchlist::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)
 {
-	if (m_editableTickers)
+	if (!inRect(cursor, m_dipRect)) return;
+	
+	int i = GetItem(cursor.y);
+	if (i >= 0 && i < static_cast<int>(m_items.size()) && m_editableTickers)
 	{
-		int i = GetItem(cursor.y);
-		if (i >= 0 && i < static_cast<int>(m_items.size()))
-			m_items[i]->OnLButtonDblclk(cursor, wParam);
+		m_items[i]->OnLButtonDblclk(cursor, wParam);
+	}
+	else if (i < 0) // double click on header
+	{
+		auto it = lower_bound(m_vLines.begin(), m_vLines.end(), cursor.x);
+		if (it == m_vLines.end()) return;
+		size_t column = it - m_vLines.begin();
+		SortByColumn(column);
+		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 	}
 	//ProcessMessages();
 }
@@ -302,7 +311,7 @@ void Watchlist::CalculateLayouts()
 {
 	// Create column headers, vertical divider lines
 	float left = m_dipRect.left;
-	m_vLines.resize(m_columns.size() - 1);
+	m_vLines.resize(m_columns.size());
 	for (auto x : m_pTextLayouts) SafeRelease(&x);
 	m_pTextLayouts.resize(m_columns.size());
 
@@ -313,18 +322,19 @@ void Watchlist::CalculateLayouts()
 			OutputMessage(L"Warning: Columns exceed watchlist width\n");
 			if (i > 0)
 			{
+				m_vLines.resize(i - 1);
 				m_pTextLayouts.resize(i - 1);
 				m_columns.resize(i - 1);
 			}
 			else
 			{
+				m_vLines.clear();
 				m_pTextLayouts.clear();
 				m_columns.clear();
 			}
 			break;
 		}
 
-		if (i != 0) m_vLines[i - 1] = left;
 
 		HRESULT hr = m_d2.pDWriteFactory->CreateTextLayout(
 			m_columns[i].Name().c_str(),	// The string to be laid out and formatted.
@@ -337,6 +347,7 @@ void Watchlist::CalculateLayouts()
 		if (FAILED(hr)) throw Error(L"CreateTextLayout failed");
 
 		left += m_columns[i].width;
+		m_vLines[i] = left; // i.e. right sisde of column i
 	}
 
 	// Get data via batch request
@@ -420,6 +431,50 @@ void Watchlist::MoveItem(int iOld, int iNew)
 		m_dipRect.right,
 		GetHeight(iNew + 1)
 	));
+}
+
+void Watchlist::SortByColumn(size_t iColumn)
+{
+	if (iColumn >= m_columns.size()) throw std::invalid_argument("SortByColumn invalid column");
+	
+	auto end = m_items.end();
+	if (m_items.back()->Ticker().empty()) end--; // don't sort empty item
+
+	if (iColumn == m_sortColumn) // sort descending
+	{
+		std::sort(m_items.begin(), end, [iColumn](WatchlistItem const * i1, WatchlistItem const * i2)
+		{
+			if (iColumn == 0)
+				return i1->Ticker() > i2->Ticker();
+			else
+				return i1->GetData(iColumn) > i2->GetData(iColumn);
+		});
+		m_sortColumn = -1;
+	}
+	else // sort ascending
+	{
+		std::sort(m_items.begin(), end, [iColumn](WatchlistItem const * i1, WatchlistItem const * i2)
+		{ 
+			if (iColumn == 0)
+				return i1->Ticker() < i2->Ticker();
+			else
+				return i1->GetData(iColumn) < i2->GetData(iColumn); 
+		});
+		m_sortColumn = iColumn;
+	}
+
+	// Reset position of everything
+	float top = m_dipRect.top + m_headerHeight;
+	for (size_t i = 0; i < m_items.size(); i++)
+	{
+		m_items[i]->SetSize(D2D1::RectF(
+			m_dipRect.left,
+			top,
+			m_dipRect.right,
+			top + m_rowHeight
+		));
+		top += m_rowHeight;
+	}
 }
 
 ///////////////////////////////////////////////////////////
@@ -611,7 +666,7 @@ void WatchlistItem::LoadData(std::wstring const & ticker, std::pair<Quote, Stats
 					data = (position->realized_held + position->unrealized) / (position->avgCost * position->n) * 100.0f;
 				break;
 			case Column::APY:
-				if (position) data = position->APY;
+				if (position) data = position->APY * 100.0f;
 				break;
 			case Column::None:
 			default:

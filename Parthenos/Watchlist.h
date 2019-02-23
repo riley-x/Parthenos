@@ -30,7 +30,7 @@ struct Column
 		case Realized:	return L"Realized";
 		case Unrealized: return L"Unrealized";
 		case ReturnsP:	return L"Return %";
-		case APY:		return L"APY";
+		case APY:		return L"APY %";
 		case None:
 		default:
 			return L"";
@@ -79,9 +79,17 @@ public:
 	void Load(std::wstring const & ticker, std::vector<Column> const & columns, 
 		bool reload = false, std::pair<Quote, Stats>* data = nullptr, Position const * position = nullptr);
 	// Load should be called after SetSize
-	void Add(Column const & col); // Queries 
-	void Move(size_t iColumn, size_t iPos);
-	void Delete(size_t iColumn);
+	inline double GetData(size_t iColumn) const 
+	{ 
+		if (iColumn - 1 < m_data.size())
+			return m_data[iColumn - 1].first;
+		else // i.e. empty ticker -> no data. return -inf for sorting
+			return -std::numeric_limits<double>::infinity();
+	}
+
+	//void Add(Column const & col); // Queries 
+	//void Move(size_t iColumn, size_t iPos);
+	//void Delete(size_t iColumn);
 
 private:
 	WatchlistItem(const WatchlistItem&) = delete; // non construction-copyable
@@ -151,6 +159,7 @@ private:
 	int		m_LButtonDown		= -1;	 // Left button pressed on an item
 	int		m_hover				= -1;	 // Currently hovering over
 	bool	m_ignoreSelection	= false; // Flag to check if drag + drop on same location
+	int		m_sortColumn		= -1;	 // So that double clicking on the same column sorts in reverse
 
 	// Paramters
 	float const m_headerHeight		= 18.0f;
@@ -175,4 +184,5 @@ private:
 	// If iNew > iOld, moves iOld to below the current item at iNew.
 	// No bounds check. Make sure iOld and iNew are valid indices.
 	void MoveItem(int iOld, int iNew);
+	void SortByColumn(size_t iColumn);
 };
