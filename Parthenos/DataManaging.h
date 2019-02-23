@@ -100,7 +100,6 @@ bool OHLC_Compare(const OHLC & a, const OHLC & b);
 ///////////////////////////////////////////////////////////
 // --- Portfolio ---
 
-enum class Account : char { Robinhood, Arista, All };
 enum class TransactionType : char { Transfer, Stock, Dividend, Interest, Fee, PutShort, PutLong, CallShort, CallLong };
 
 inline bool isOption(TransactionType type)
@@ -136,7 +135,7 @@ namespace PortfolioObjects
 
 typedef struct Transaction_struct 
 {
-	Account account;			// 1
+	char account;				// 1
 	TransactionType type;		// 2
 	short tax_lot;				// 4	for sales - index into lots - 0 if FIFO (for stock) - Options must be fully qualified index
 	wchar_t ticker[12] = {};	// 28
@@ -213,7 +212,7 @@ typedef struct Option_struct
 
 typedef struct HoldingHeader_struct
 {
-	Account account;
+	char account;
 	char PAD[3];
 	short nLots;
 	short nOptions;
@@ -299,7 +298,7 @@ std::vector<Transaction> CSVtoTransactions(std::wstring filepath);
 void AddTransactionToHoldings(std::vector<std::vector<Holdings>> & holdings, Transaction const & transaction);
 std::vector<std::vector<Holdings>> FullTransactionsToHoldings(std::vector<Transaction> const & transactions);
 std::vector<std::vector<Holdings>> FlattenedHoldingsToTickers(std::vector<Holdings> const & holdings);
-std::vector<Position> HoldingsToPositions(std::vector<std::vector<Holdings>> const & holdings, Account account, date_t date);
+std::vector<Position> HoldingsToPositions(std::vector<std::vector<Holdings>> const & holdings, char account, date_t date);
 bool Positions_Compare(const Position a, std::wstring const & ticker);
 
 void PrintTickerHoldings(std::vector<Holdings> const & h);

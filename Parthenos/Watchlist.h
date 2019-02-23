@@ -9,7 +9,7 @@ class Parthenos;
 
 struct Column
 {
-	enum Field { None, Ticker, Last, ChangeP, Change1YP, DivP, exDiv, Shares, AvgCost, Realized, Unrealized, ReturnsP, APY };
+	enum Field { None, Ticker, Last, ChangeP, Change1YP, DivP, ExDiv, Shares, AvgCost, Realized, Unrealized, ReturnsT, ReturnsP, APY };
 
 	float width;
 	Field field = None;
@@ -24,11 +24,12 @@ struct Column
 		case ChangeP:	return L"\u0394 %"; // \u0394 == \Delta
 		case Change1YP: return L"\u03941Y %";
 		case DivP:		return L"Div %";
-		case exDiv:		return L"Ex Div";
+		case ExDiv:		return L"Ex Div";
 		case Shares:	return L"Shares";
 		case AvgCost:	return L"Avg Cost";
 		case Realized:	return L"Realized";
 		case Unrealized: return L"Unrealized";
+		case ReturnsT:	return L"Returns";
 		case ReturnsP:	return L"Return %";
 		case APY:		return L"APY %";
 		case None:

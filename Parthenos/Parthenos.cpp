@@ -187,6 +187,7 @@ void Parthenos::ProcessAppItemMessages()
 				m_activeItems.clear();
 				m_activeItems.push_back(m_titleBar);
 				m_activeItems.push_back(m_portfolioList);
+				m_activeItems.push_back(m_menuBar);
 				::InvalidateRect(m_hwnd, NULL, false);
 				break;
 			case TitleBar::Buttons::CHART:
@@ -251,9 +252,18 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 	{
 		return D2D1::RectF(
 			0.0f,
+			DPIScale::SnapToPixelY(m_titleBarHeight + m_menuBarHeight),
+			m_portfolioListWidth,
+			DPIScale::SnapToPixelY((dipRect.bottom + m_titleBarHeight + m_menuBarHeight) / 2.0f)
+		);
+	}
+	else if (item == m_menuBar)
+	{
+		return D2D1::RectF(
+			0.0f,
 			DPIScale::SnapToPixelY(m_titleBarHeight),
 			m_portfolioListWidth,
-			DPIScale::SnapToPixelY((dipRect.bottom + m_titleBarHeight) / 2.0f)
+			DPIScale::SnapToPixelY(m_titleBarHeight + m_menuBarHeight)
 		);
 	}
 	else
@@ -286,11 +296,13 @@ LRESULT Parthenos::OnCreate()
 	m_chart = new Chart(m_hwnd, m_d2);
 	m_watchlist = new Watchlist(m_hwnd, m_d2, this);
 	m_portfolioList = new Watchlist(m_hwnd, m_d2, this, false);
+	m_menuBar = new MenuBar(m_hwnd, m_d2, this);
 
 	m_allItems.push_back(m_titleBar);
 	m_allItems.push_back(m_chart);
 	m_allItems.push_back(m_watchlist);
 	m_allItems.push_back(m_portfolioList);
+	m_allItems.push_back(m_menuBar);
 	m_activeItems.push_back(m_titleBar);
 	m_activeItems.push_back(m_chart);
 	m_activeItems.push_back(m_watchlist);
@@ -304,20 +316,19 @@ LRESULT Parthenos::OnCreate()
 
 	// Holdings -> Positions
 	std::vector<Position> positions = HoldingsToPositions(
-		FlattenedHoldingsToTickers(out), Account::Robinhood, GetCurrentDate());
+		FlattenedHoldingsToTickers(out), 1, GetCurrentDate());
 
 	std::vector<std::wstring> tickers = GetTickers(positions);
 	std::vector<Column> portColumns = {
-		{90.0f, Column::Ticker, L""},
+		{70.0f, Column::Ticker, L""},
 		{60.0f, Column::Last, L"%.2lf"},
 		{60.0f, Column::ChangeP, L"%.2lf"},
 		{60.0f, Column::Shares, L"%d"},
 		{60.0f, Column::AvgCost, L"%.2lf"},
-		{60.0f, Column::Realized, L"%.2lf"},
-		{70.0f, Column::Unrealized, L"%.2lf"},
+		{60.0f, Column::ReturnsT, L"%.2lf"},
 		{60.0f, Column::ReturnsP, L"%.2lf"},
 		{60.0f, Column::APY, L"%.2lf"},
-		{60.0f, Column::exDiv, L""}
+		{60.0f, Column::ExDiv, L""},
 	};
 
 	m_watchlist->Load(tickers, std::vector<Column>(), positions);

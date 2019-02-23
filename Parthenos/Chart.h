@@ -30,7 +30,6 @@ public:
 	bool OnChar(wchar_t c, LPARAM lParam);
 	bool OnKeyDown(WPARAM wParam, LPARAM lParam);
 	void OnTimer(WPARAM wParam, LPARAM lParam);
-
 	void ProcessMessages();
 
 	// Interface

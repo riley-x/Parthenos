@@ -73,6 +73,15 @@ inline bool inRect(D2D1_POINT_2F cursor, D2D1_RECT_F rect)
 		cursor.y <= rect.bottom;
 }
 
+// When invalidating, converts to pixels then back to DIPs -> updateRect has smaller values
+// than when invalidated.
+inline bool overlapRect(D2D1_RECT_F targetRect, D2D1_RECT_F updateRect)
+{
+	return (updateRect.right - 1 > targetRect.left && updateRect.left + 1 < targetRect.right)
+		&& (updateRect.bottom - 1 > targetRect.top && updateRect.top + 1 < targetRect.bottom);
+
+}
+
 // Sees if x overlaps m horizontally, erring on returning false. 
 // Assumes x is a rect created from InvalidateRect, in which case its values err on the small side. 
 inline bool overlapHRect(D2D1_RECT_F x, D2D1_RECT_F m)
@@ -238,6 +247,14 @@ public:
 	static inline float SnapToPixelY(float y)
 	{
 		return round(y * scaleY) / scaleY;
+	}
+
+	static inline void SnapToPixel(D2D1_RECT_F & rect, bool inwards = true)
+	{
+		rect.left = SnapToPixelX(rect.left) + (-1.0f * inwards) * halfPX;
+		rect.top = SnapToPixelY(rect.top) + (-1.0f * inwards) * halfPY;
+		rect.right = SnapToPixelX(rect.right) + (-1.0f * inwards) * halfPX;
+		rect.bottom = SnapToPixelY(rect.bottom) + (-1.0f * inwards) * halfPY;
 	}
 
 	static inline float hpx() { return halfPX; }

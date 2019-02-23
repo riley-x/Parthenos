@@ -16,17 +16,19 @@ void PopupMenu::SetSize(D2D1_RECT_F dipRect)
 	m_dipRect.bottom = m_dipRect.top + m_height;
 
 	m_pixRect = DPIScale::DipsToPixels(m_dipRect);
+	m_borderRect = m_dipRect;
+	DPIScale::SnapToPixel(m_borderRect, true);
 }
 
 void PopupMenu::Paint(D2D1_RECT_F updateRect)
 {
-	if (!m_active) return;
+	if (!m_active || !overlapRect(m_dipRect, updateRect)) return;
 	
-	m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
-	m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 0.5f);
+	// Fill
 	m_d2.pBrush->SetColor(Colors::MENU_BACKGROUND);
 	m_d2.pRenderTarget->FillRectangle(m_dipRect, m_d2.pBrush);
 	
+	// Highlight
 	if (m_highlight >= 0)
 	{
 		m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
@@ -38,6 +40,7 @@ void PopupMenu::Paint(D2D1_RECT_F updateRect)
 		), m_d2.pBrush);
 	}
 
+	// Text
 	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
 	for (size_t i = 0; i < m_pTextLayouts.size(); i++)
 	{
@@ -47,6 +50,10 @@ void PopupMenu::Paint(D2D1_RECT_F updateRect)
 			m_d2.pBrush
 		);
 	}
+
+	// Border
+	m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
+	m_d2.pRenderTarget->DrawRectangle(m_borderRect, m_d2.pBrush, DPIScale::hpx());
 }
 
 void PopupMenu::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
@@ -86,6 +93,7 @@ bool PopupMenu::OnLButtonDown(D2D1_POINT_2F cursor, int & selection, std::wstrin
 void PopupMenu::Show(bool show)
 {
 	m_active = show;
+	m_highlight = -1;
 	::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 }
 

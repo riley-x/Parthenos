@@ -8,6 +8,7 @@
 #include "FileIO.h"
 #include "Chart.h"
 #include "Watchlist.h"
+#include "MenuBar.h"
 
 
 class Parthenos : public BorderlessWindow<Parthenos>
@@ -19,6 +20,7 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	Chart					*m_chart;
 	Watchlist				*m_watchlist;
 	Watchlist				*m_portfolioList;
+	MenuBar					*m_menuBar;
 
 	// Resource management
 	MouseTrackEvents		m_mouseTrack;
@@ -27,8 +29,9 @@ class Parthenos : public BorderlessWindow<Parthenos>
 
 	// Layout
 	float const				m_titleBarHeight = 30.0f;
+	float const				m_menuBarHeight = 15.0f;
 	float const				m_watchlistWidth = 350.0f;
-	float const				m_portfolioListWidth = 700.0f;
+	float const				m_portfolioListWidth = 600.0f;
 
 	// Message responses
 	LRESULT	OnCreate();

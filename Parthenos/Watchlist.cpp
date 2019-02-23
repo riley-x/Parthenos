@@ -639,7 +639,7 @@ void WatchlistItem::LoadData(std::wstring const & ticker, std::pair<Quote, Stats
 			case Column::DivP:
 				data = stats.dividendYield;
 				break;
-			case Column::exDiv:
+			case Column::ExDiv:
 				wcscpy_s(buffer, _countof(buffer), DateToWString(stats.exDividendDate).c_str());
 				m_data[i - 1] = { stats.exDividendDate, buffer };
 				continue;
@@ -660,6 +660,10 @@ void WatchlistItem::LoadData(std::wstring const & ticker, std::pair<Quote, Stats
 				break;
 			case Column::Unrealized:
 				if (position) data = position->unrealized;
+				break;
+			case Column::ReturnsT:
+				if (position)
+					data = position->realized_held + position->realized_unheld + position->unrealized;
 				break;
 			case Column::ReturnsP:
 				if (position && position->n != 0) 

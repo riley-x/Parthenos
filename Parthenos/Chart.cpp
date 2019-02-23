@@ -29,6 +29,9 @@ Chart::Chart(HWND hwnd, D2Objects const & d2)
 	m_chartTypeButtons.Add(temp);
 
 	m_chartTypeButtons.SetActive(0);
+
+	m_timeframeButton.SetItems({ L"1M", L"3M", L"6M", L"1Y", L"2Y", L"5Y" });
+	m_timeframeButton.SetActive(3); // default 1 year
 }
 
 
@@ -125,8 +128,6 @@ void Chart::SetSize(D2D1_RECT_F dipRect)
 		left += m_tickerBoxWidth + m_commandHPad;
 
 		// Timeframe drop menu
-		m_timeframeButton.SetItems({ L"1M", L"3M", L"6M", L"1Y", L"2Y", L"5Y" });
-		m_timeframeButton.SetActive(3); // default 1 year
 		m_timeframeButton.SetSize(D2D1::RectF(
 			left,
 			top,

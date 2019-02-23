@@ -68,4 +68,9 @@ private:
 	// Helpers
 	CTPMessage ButtonToCTPMessage(Buttons button);
 	void CreateBracketGeometry(int i);
+
+	// Deleted
+	TitleBar(const TitleBar&) = delete; // non construction-copyable
+	TitleBar& operator=(const TitleBar&) = delete; // non copyable
+
 };

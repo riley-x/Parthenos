@@ -228,7 +228,7 @@ std::vector<std::vector<Holdings>> FlattenedHoldingsToTickers(std::vector<Holdin
 }
 
 // Calculates returns and APY using 'date' as end date.
-std::vector<Position> HoldingsToPositions(std::vector<std::vector<Holdings>> const & holdings, Account account, date_t date)
+std::vector<Position> HoldingsToPositions(std::vector<std::vector<Holdings>> const & holdings, char account, date_t date)
 {
 	std::vector<Position> out;
 
@@ -253,7 +253,7 @@ std::vector<Position> HoldingsToPositions(std::vector<std::vector<Holdings>> con
 			if (iHeader > static_cast<int>(holdings.size()))
 				throw std::invalid_argument("Headers misformed");
 
-			if (account != Account::All && h[iHeader].head.account != account)
+			if (account >= 0 && h[iHeader].head.account != account)
 			{
 				iHeader += h[iHeader].head.nLots + h[iHeader].head.nOptions + 1;
 				continue;
@@ -332,10 +332,10 @@ std::vector<Position> HoldingsToPositions(std::vector<std::vector<Holdings>> con
 				temp.APY += GetWeightedAPY(unrealized, opt.date, date);
 			}
 
-			if (account != Account::All) break;
+			if (account >= 0) break;
 			iHeader += h[iHeader].head.nLots + h[iHeader].head.nOptions + 1;
 		} // end loop over accounts
-		if (account != Account::All && iAccount == nAccounts) continue; // no info for this ticker for this account
+		if (account >= 0 && iAccount == nAccounts) continue; // no info for this ticker for this account
 		if (temp.n > 0) temp.avgCost = temp.avgCost / temp.n;
 		if (sumWeights > 0) temp.APY = temp.APY / sumWeights;
 		out.push_back(temp);
@@ -779,7 +779,7 @@ Transaction parseTransactionItem(std::string str)
 	}
 
 	out.tax_lot = 0;
-	out.account = static_cast<Account>(account);
+	out.account = account;
 	out.type = static_cast<TransactionType>(type);
 
 	size_t convertedChars = 0;

@@ -23,18 +23,22 @@ public:
 	float const m_fontSize = 12.0f;
 	D2Objects::Formats const m_format = D2Objects::Segoe12;
 private:
-	PopupMenu(const PopupMenu&) = delete; // non construction-copyable
-	PopupMenu& operator=(const PopupMenu&) = delete; // non copyable
 
 	// Data
 	std::vector<std::wstring> m_items;
-	std::vector<IDWriteTextLayout*> m_pTextLayouts;
+
+	// Flags
+	bool	m_active;
+	int		m_highlight = -1;
 
 	// Paramters
-	bool m_active;
-	int m_highlight = -1;
-	float m_width;
-	float m_height;
+	float	m_width;
+	float	m_height;
+
+	// Drawing
+	D2D1_RECT_F m_borderRect;
+	std::vector<IDWriteTextLayout*> m_pTextLayouts;
+
 
 	// Helpers
 
@@ -51,4 +55,7 @@ private:
 		return static_cast<int>(y / (m_fontSize + 2 * m_vPad));
 	}
 
+	// Deleted
+	PopupMenu(const PopupMenu&) = delete; // non construction-copyable
+	PopupMenu& operator=(const PopupMenu&) = delete; // non copyable
 };

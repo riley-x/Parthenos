@@ -156,26 +156,36 @@ private:
 class DropMenuButton : public Button
 {
 public:
-	DropMenuButton(HWND hwnd, D2Objects const & d2, AppItem *parent) :
-		Button(hwnd, d2), m_menu(hwnd, d2), m_parent(parent) {};
+	// Constructors
+	DropMenuButton(HWND hwnd, D2Objects const & d2, AppItem *parent, bool dynamic = true) :
+		Button(hwnd, d2), m_menu(hwnd, d2), m_parent(parent), m_dynamic(dynamic) {};
+	~DropMenuButton() { if (!m_dynamic) SafeRelease(&m_activeLayout); }
+	
+	// AppItem overrides
 	void SetSize(D2D1_RECT_F dipRect);
-	void Paint(D2D1_RECT_F updateRect);
+	void Paint(D2D1_RECT_F updateRect); // owner of button should call paint on popup
 	inline void OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam) { m_menu.OnMouseMove(cursor, wParam); }
 	bool OnLButtonDown(D2D1_POINT_2F cursor);
 
-	inline PopupMenu & GetMenu() { return m_menu; }
-	inline void SetText(std::wstring text) { m_text = text; }
+	// Interface
+	void SetText(std::wstring text, float width); // For non-dynamic, the text of the button
 	inline void SetItems(std::vector<std::wstring> const & items) { m_menu.SetItems(items); }
 	void SetActive(size_t i);
+	inline PopupMenu & GetMenu() { return m_menu; }
+	inline bool IsActive() const { return m_active; }
+
 private:
+	// Objects
 	PopupMenu m_menu;
 	AppItem *m_parent;
-	std::wstring m_text;
 
+	// Flags
 	bool m_active = false;
+	bool m_dynamic; // Does the text change with selection?
 
+	// Layout
 	D2D1_RECT_F m_textRect;
-	D2D1_RECT_F m_iconRect;
+	D2D1_RECT_F m_iconRect; // down arrow
 	IDWriteTextLayout* m_activeLayout;
 };
 
