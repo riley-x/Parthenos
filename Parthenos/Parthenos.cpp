@@ -11,6 +11,7 @@
 
 
 
+
 namespace {
 	// Message handler for about box.
 	INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
@@ -215,6 +216,33 @@ void Parthenos::ProcessMessages()
 	if (!m_messages.empty()) m_messages.clear();
 }
 
+D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dipRect)
+{
+	if (item == m_watchlist)
+	{
+		return D2D1::RectF(
+			0.0f,
+			DPIScale::SnapToPixelY(m_titleBarHeight),
+			DPIScale::SnapToPixelX(m_watchlistWidth),
+			dipRect.bottom
+		);
+	}
+	else if (item == m_portfolioList)
+	{
+		return D2D1::RectF(
+			0.0f,
+			DPIScale::SnapToPixelY(m_titleBarHeight),
+			m_portfolioListWidth,
+			DPIScale::SnapToPixelY((dipRect.bottom + m_titleBarHeight) / 2.0f)
+		);
+	}
+	else
+	{
+		OutputMessage(L"CalculateItemRect: unkown item\n");
+		return D2D1::RectF(0.0f, 0.0f, 0.0f, 0.0f);
+	}
+}
+
 void Parthenos::PreShow()
 {
 	RECT rc;
@@ -222,22 +250,20 @@ void Parthenos::PreShow()
 	if (bErr == 0) OutputError(L"GetClientRect failed");
 	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
 
-
+	m_watchlist->Load({ L"AAPL", L"MSFT", L"NVDA" }, std::vector<Column>());
+	m_portfolioList->Load({ L"AAPL", L"MSFT", L"NVDA" }, std::vector<Column>());
 	for (auto item : m_allItems)
 	{
 		if (item == m_chart)
-			m_chart->Init(m_leftPanelWidth);
-		else if (item == m_watchlist)
-			m_watchlist->Init(m_leftPanelWidth);
-		else if (item == m_portfolioList)
-			m_portfolioList->Init(500.0f); // TODO
+			m_chart->Init(m_watchlistWidth);
+		else if (item == m_watchlist || item == m_portfolioList)
+			item->SetSize(CalculateItemRect(item, dipRect));
 		else
 			item->Init();
 		item->Resize(rc, dipRect);
 	}
 	m_titleBar->SetActiveTab(TitleBar::Buttons::CHART);
-	m_watchlist->Load({ L"AAPL", L"MSFT", L"NVDA" }, std::vector<Column>());
-	m_portfolioList->Load({ L"AAPL", L"MSFT", L"NVDA" }, std::vector<Column>());
+
 	m_chart->Load(L"AAPL");
 }
 
@@ -333,9 +359,14 @@ LRESULT Parthenos::OnSize(WPARAM wParam)
 		m_d2.pRenderTarget->Resize(size);
 
 		D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
+
+
 		for (auto item : m_activeItems)
 		{
-			item->Resize(rc, dipRect);
+			if (item == m_watchlist || item == m_portfolioList)
+				item->SetSize(CalculateItemRect(item, dipRect));
+			else
+				item->Resize(rc, dipRect);
 		}
 
 		InvalidateRect(m_hwnd, NULL, FALSE);

@@ -106,9 +106,8 @@ public:
 	~Watchlist();
 
 	// AppItem overrides
-	void Init(float width);
 	void Paint(D2D1_RECT_F updateRect);
-	void Resize(RECT pRect, D2D1_RECT_F pDipRect);
+	void SetSize(D2D1_RECT_F dipRect);
 	void OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam);
 	bool OnLButtonDown(D2D1_POINT_2F cursor);
 	void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam);
@@ -120,7 +119,7 @@ public:
 	void ProcessMessages();
 
 	// Interface
-	void Load(std::vector<std::wstring> tickers, std::vector<Column> const & columns);
+	void Load(std::vector<std::wstring> const & tickers, std::vector<Column> const & columns);
 
 	// Parameters
 	static float const m_hTextPad; // 4.0f
@@ -136,6 +135,7 @@ private:
 	std::vector<WatchlistItem*> m_items;
 	std::vector<WatchlistItem*> m_adds;
 	std::vector<WatchlistItem*> m_deletes;
+	std::vector<std::wstring> m_tickers;
 	std::vector<Column> m_columns;
 	std::vector<IDWriteTextLayout*> m_pTextLayouts; // For column headers
 	
@@ -157,6 +157,7 @@ private:
 
 	// Helpers
 
+	void CalculateLayouts();
 	// Get top of item i
 	inline float GetHeight(int i) { return m_dipRect.top + m_headerHeight + i * m_rowHeight; }
 	// Get index given y coord

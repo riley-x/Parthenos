@@ -25,8 +25,10 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	D2Objects				m_d2;
 	std::deque<ClientMessage> m_messages;
 
-	// Data memebers
-	float m_leftPanelWidth = 350.0f; // in DIPs
+	// Layout
+	float const				m_titleBarHeight = 30.0f;
+	float const				m_watchlistWidth = 350.0f;
+	float const				m_portfolioListWidth = 500.0f;
 
 	LRESULT	OnCreate();
 	LRESULT OnNCHitTest(POINT cursor);
@@ -41,6 +43,7 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	LRESULT OnTimer(WPARAM wParam, LPARAM lParam);
 
 	void ProcessMessages();
+	D2D1_RECT_F CalculateItemRect(AppItem* item, D2D1_RECT_F const & dipRect);
 
 	Parthenos(const Parthenos&) = delete; // non construction-copyable
 	Parthenos& operator=(const Parthenos&) = delete; // non copyable

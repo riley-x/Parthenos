@@ -79,6 +79,11 @@ inline bool overlapHRect(D2D1_RECT_F x, D2D1_RECT_F m)
 	return x.right > m.left && x.left <= m.right;
 }
 
+inline bool equalRect(D2D1_RECT_F r1, D2D1_RECT_F r2)
+{
+	return r1.left == r2.left && r1.top == r2.top && r1.right == r2.right && r1.bottom == r2.bottom;
+}
+
 template <class T> void SafeRelease(T **ppT)
 {
 	if (*ppT)

@@ -13,20 +13,6 @@ Watchlist::~Watchlist()
 	for (auto layout : m_pTextLayouts) SafeRelease(&layout);
 }
 
-// Flush left with fixed width
-void Watchlist::Init(float width)
-{
-	m_dipRect.left = 0.0f;
-	m_dipRect.top = DPIScale::SnapToPixelY(TitleBar::height);
-	m_dipRect.right = DPIScale::SnapToPixelX(width);
-
-	m_pixRect.left = 0;
-	m_pixRect.top = DPIScale::DipsToPixelsY(m_dipRect.top);
-	m_pixRect.right = DPIScale::DipsToPixelsX(width);
-
-	m_rightBorder = m_dipRect.right - DPIScale::hpx();
-	m_headerBorder = DPIScale::SnapToPixelY(m_dipRect.top + m_headerHeight) - DPIScale::hpy();
-}
 
 void Watchlist::Paint(D2D1_RECT_F updateRect)
 {
@@ -107,10 +93,16 @@ void Watchlist::Paint(D2D1_RECT_F updateRect)
 
 }
 
-void Watchlist::Resize(RECT pRect, D2D1_RECT_F pDipRect)
+void Watchlist::SetSize(D2D1_RECT_F dipRect)
 {
-	m_dipRect.bottom = pDipRect.bottom;
-	m_pixRect.bottom = pRect.bottom;
+	if (equalRect(m_dipRect, dipRect)) return;
+	m_dipRect = dipRect;
+	m_pixRect = DPIScale::DipsToPixels(m_dipRect);
+
+	m_rightBorder = m_dipRect.right - DPIScale::hpx();
+	m_headerBorder = DPIScale::SnapToPixelY(m_dipRect.top + m_headerHeight) - DPIScale::hpy();
+
+	CalculateLayouts();
 }
 
 void Watchlist::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
@@ -281,7 +273,7 @@ void Watchlist::ProcessMessages()
 	if (!m_messages.empty()) m_messages.clear();
 }
 
-void Watchlist::Load(std::vector<std::wstring> tickers, std::vector<Column> const & columns)
+void Watchlist::Load(std::vector<std::wstring> const & tickers, std::vector<Column> const & columns)
 {
 	if (columns.empty())
 	{
@@ -299,7 +291,12 @@ void Watchlist::Load(std::vector<std::wstring> tickers, std::vector<Column> cons
 		if (m_columns.front().field != Column::Ticker)
 			m_columns.insert(m_columns.begin(), { 60.0f, Column::Ticker, L"" });
 	}
+	m_tickers = tickers;
+	m_tickers.push_back(L""); // Empty WatchlistItem at end for input
+}
 
+void Watchlist::CalculateLayouts()
+{
 	// Create column headers, divider lines
 	float left = m_dipRect.left;
 	m_vLines.resize(m_columns.size() - 1);
@@ -339,14 +336,13 @@ void Watchlist::Load(std::vector<std::wstring> tickers, std::vector<Column> cons
 		left += m_columns[i].width;
 	}
 
-	tickers.push_back(L""); // Empty WatchlistItem at end for input
-	m_hLines.resize(tickers.size());
+	m_hLines.resize(m_tickers.size());
 	for (auto x : m_items) if (x) delete x;
 	m_items.clear();
-	m_items.reserve(tickers.size() + 1);
+	m_items.reserve(m_tickers.size());
 
 	float top = m_dipRect.top + m_headerHeight;
-	for (size_t i = 0; i < tickers.size(); i++)
+	for (size_t i = 0; i < m_tickers.size(); i++)
 	{
 		if (top + m_rowHeight > m_dipRect.bottom) break;
 
@@ -357,11 +353,11 @@ void Watchlist::Load(std::vector<std::wstring> tickers, std::vector<Column> cons
 			m_dipRect.right,
 			top + m_rowHeight
 		));
-		temp->Load(tickers[i], m_columns);
+		temp->Load(m_tickers[i], m_columns);
 		m_items.push_back(temp);
 
 		top += m_rowHeight;
-		m_hLines[i] = top;
+		m_hLines[i] = top; // i.e. bottom of item i
 	}
 }
 
