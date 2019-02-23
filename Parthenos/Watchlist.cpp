@@ -273,8 +273,11 @@ void Watchlist::ProcessMessages()
 	if (!m_messages.empty()) m_messages.clear();
 }
 
-void Watchlist::Load(std::vector<std::wstring> const & tickers, std::vector<Column> const & columns)
+void Watchlist::Load(std::vector<std::wstring> const & tickers, std::vector<Column> const & columns, 
+	std::vector<Position> const & positions)
 {
+	m_tickers = tickers;
+	m_tickers.push_back(L""); // Empty WatchlistItem at end for input
 	if (columns.empty())
 	{
 		m_columns = {
@@ -291,8 +294,7 @@ void Watchlist::Load(std::vector<std::wstring> const & tickers, std::vector<Colu
 		if (m_columns.front().field != Column::Ticker)
 			m_columns.insert(m_columns.begin(), { 60.0f, Column::Ticker, L"" });
 	}
-	m_tickers = tickers;
-	m_tickers.push_back(L""); // Empty WatchlistItem at end for input
+	m_positions = positions;
 }
 
 void Watchlist::CalculateLayouts()
@@ -351,6 +353,11 @@ void Watchlist::CalculateLayouts()
 	{
 		if (top + m_rowHeight > m_dipRect.bottom) break;
 
+		// Get position if available
+		Position const * pPosition = nullptr;
+		auto it = std::lower_bound(m_positions.begin(), m_positions.end(), m_tickers[i], Positions_Compare);
+		if (it != m_positions.end()) pPosition = &(*it);
+
 		WatchlistItem *temp = new WatchlistItem(m_hwnd, m_d2, this, m_editableTickers);
 		temp->SetSize(D2D1::RectF(
 			m_dipRect.left,
@@ -358,8 +365,8 @@ void Watchlist::CalculateLayouts()
 			m_dipRect.right,
 			top + m_rowHeight
 		));
-		if (i < data.size()) temp->Load(m_tickers[i], m_columns, false, &data[i]);
-		else temp->Load(m_tickers[i], m_columns, false, nullptr);
+		if (i < data.size()) temp->Load(m_tickers[i], m_columns, false, &data[i], pPosition);
+		else temp->Load(m_tickers[i], m_columns, false, nullptr, pPosition);
 		m_items.push_back(temp);
 
 		top += m_rowHeight;
@@ -483,7 +490,8 @@ void WatchlistItem::ProcessMessages()
 
 
 // If reload, don't initialize text box again
-void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const & columns, bool reload, std::pair<Quote, Stats>* data)
+void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const & columns, 
+	bool reload, std::pair<Quote, Stats>* data, Position const * position)
 {
 	if (columns.empty() || columns.front().field != Column::Ticker)
 	{
@@ -494,7 +502,7 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const 
 	if (!reload)
 		m_columns = columns;
 	m_currTicker = ticker;
-	LoadData(ticker, data);
+	LoadData(ticker, data, position);
 
 	float left = m_dipRect.left;
 	if (!reload)
@@ -539,7 +547,7 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const 
 	}
 }
 
-void WatchlistItem::LoadData(std::wstring const & ticker, std::pair<Quote, Stats>* data)
+void WatchlistItem::LoadData(std::wstring const & ticker, std::pair<Quote, Stats> const * data, Position const * position)
 {
 	if (ticker.empty())
 	{
@@ -560,37 +568,57 @@ void WatchlistItem::LoadData(std::wstring const & ticker, std::pair<Quote, Stats
 		wchar_t buffer[50] = {};
 		for (size_t i = 1; i < m_columns.size(); i++)
 		{
+			double data = 0; // handle non-double types separately
 			switch (m_columns[i].field)
 			{
 			case Column::Last:
-			{
-				swprintf_s(buffer, _countof(buffer), m_columns[i].format.c_str(), quote.latestPrice);
-				m_data[i - 1] = { quote.latestPrice, buffer };
+				data = quote.latestPrice;
 				break;
-			}
 			case Column::ChangeP:
-			{
-				swprintf_s(buffer, _countof(buffer), m_columns[i].format.c_str(), quote.changePercent * 100);
-				m_data[i - 1] = { quote.changePercent, buffer };
+				data = quote.changePercent * 100;
 				break;
-			}
 			case Column::Change1YP:
-			{
-				swprintf_s(buffer, _countof(buffer), m_columns[i].format.c_str(), stats.year1ChangePercent * 100);
-				m_data[i - 1] = { stats.year1ChangePercent, buffer };
+				data = stats.year1ChangePercent * 100;
 				break;
-			}
 			case Column::DivP:
-			{
-				swprintf_s(buffer, _countof(buffer), m_columns[i].format.c_str(), stats.dividendYield);
-				m_data[i - 1] = { stats.dividendYield, buffer };
+				data = stats.dividendYield;
 				break;
-			}
+			case Column::exDiv:
+				wcscpy_s(buffer, _countof(buffer), DateToWString(stats.exDividendDate).c_str());
+				m_data[i - 1] = { stats.exDividendDate, buffer };
+				continue;
+			case Column::Shares:
+				if (position)
+				{
+					swprintf_s(buffer, _countof(buffer), m_columns[i].format.c_str(), position->n);
+					m_data[i - 1] = { position->n, buffer };
+				}
+				else
+					m_data[i - 1] = { 0.0, L"" };
+				continue;
+			case Column::AvgCost:
+				if (position) data = position->avgCost;
+				break;
+			case Column::Realized:
+				if (position) data = position->realized_held + position->realized_unheld;
+				break;
+			case Column::Unrealized:
+				if (position) data = position->unrealized;
+				break;
+			case Column::ReturnsP:
+				if (position && position->n != 0) 
+					data = (position->realized_held + position->unrealized) / (position->avgCost * position->n) * 100.0f;
+				break;
+			case Column::APY:
+				if (position) data = position->APY;
+				break;
 			case Column::None:
 			default:
 				m_data[i - 1] = { 0.0, L"" };
-				break;
+				continue;
 			}
+			swprintf_s(buffer, _countof(buffer), m_columns[i].format.c_str(), data);
+			m_data[i - 1] = { data, buffer };
 		}
 	}
 	catch (const std::invalid_argument& ia) {

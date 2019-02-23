@@ -9,7 +9,7 @@ class Parthenos;
 
 struct Column
 {
-	enum Field { None, Ticker, Last, ChangeP, Change1YP, DivP };
+	enum Field { None, Ticker, Last, ChangeP, Change1YP, DivP, exDiv, Shares, AvgCost, Realized, Unrealized, ReturnsP, APY };
 
 	float width;
 	Field field = None;
@@ -19,11 +19,18 @@ struct Column
 	{
 		switch (field)
 		{
-		case Ticker: return L"Ticker";
-		case Last: return L"Last";
-		case ChangeP: return L"\u0394 %"; // \u0394 == \Delta
+		case Ticker:	return L"Ticker";
+		case Last:		return L"Last";
+		case ChangeP:	return L"\u0394 %"; // \u0394 == \Delta
 		case Change1YP: return L"\u03941Y %";
-		case DivP: return L"Div %";
+		case DivP:		return L"Div %";
+		case exDiv:		return L"Ex Div";
+		case Shares:	return L"Shares";
+		case AvgCost:	return L"Avg Cost";
+		case Realized:	return L"Realized";
+		case Unrealized: return L"Unrealized";
+		case ReturnsP:	return L"Return %";
+		case APY:		return L"APY";
 		case None:
 		default:
 			return L"";
@@ -70,7 +77,7 @@ public:
 	// Interface
 	inline std::wstring Ticker() const { return m_currTicker; }
 	void Load(std::wstring const & ticker, std::vector<Column> const & columns, 
-		bool reload = false, std::pair<Quote, Stats>* data = nullptr); // Queries
+		bool reload = false, std::pair<Quote, Stats>* data = nullptr, Position const * position = nullptr);
 	// Load should be called after SetSize
 	void Add(Column const & col); // Queries 
 	void Move(size_t iColumn, size_t iPos);
@@ -82,6 +89,7 @@ private:
 
 	AppItem *m_parent;
 	TextBox m_ticker;
+
 	std::wstring m_currTicker;
 	std::vector<Column> m_columns;
 	std::vector<std::pair<double, std::wstring>> m_data; // data, display string
@@ -92,7 +100,7 @@ private:
 	bool m_editableTickers = true;
 
 	// Do the actual HTTP query and format the string
-	void LoadData(std::wstring const & ticker, std::pair<Quote, Stats>* data);
+	void LoadData(std::wstring const & ticker, std::pair<Quote, Stats> const * data, Position const * position);
 
 };
 
@@ -119,7 +127,8 @@ public:
 	void ProcessMessages();
 
 	// Interface
-	void Load(std::vector<std::wstring> const & tickers, std::vector<Column> const & columns);
+	void Load(std::vector<std::wstring> const & tickers, std::vector<Column> const & columns,
+		std::vector<Position> const & positions);
 
 	// Parameters
 	static float const m_hTextPad; // 4.0f
@@ -136,6 +145,7 @@ private:
 	std::vector<std::wstring>		m_tickers;
 	std::vector<Column>				m_columns;
 	std::vector<IDWriteTextLayout*> m_pTextLayouts; // For column headers
+	std::vector<Position>			m_positions;
 	
 	// Flags
 	int		m_LButtonDown		= -1;	 // Left button pressed on an item

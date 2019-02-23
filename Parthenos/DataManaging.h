@@ -300,6 +300,7 @@ void AddTransactionToHoldings(std::vector<std::vector<Holdings>> & holdings, Tra
 std::vector<std::vector<Holdings>> FullTransactionsToHoldings(std::vector<Transaction> const & transactions);
 std::vector<std::vector<Holdings>> FlattenedHoldingsToTickers(std::vector<Holdings> const & holdings);
 std::vector<Position> HoldingsToPositions(std::vector<std::vector<Holdings>> const & holdings, Account account, date_t date);
+bool Positions_Compare(const Position a, std::wstring const & ticker);
 
 void PrintTickerHoldings(std::vector<Holdings> const & h);
 inline void PrintFlattenedHoldings(std::vector<Holdings> const & h)

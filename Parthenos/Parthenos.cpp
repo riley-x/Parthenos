@@ -306,8 +306,21 @@ LRESULT Parthenos::OnCreate()
 		FlattenedHoldingsToTickers(out), Account::Robinhood, GetCurrentDate());
 
 	std::vector<std::wstring> tickers = GetTickers(positions);
-	m_watchlist->Load(tickers, std::vector<Column>());
-	m_portfolioList->Load(tickers, std::vector<Column>());
+	std::vector<Column> portColumns = {
+		{90.0f, Column::Ticker, L""},
+		{60.0f, Column::Last, L"%.2lf"},
+		{60.0f, Column::ChangeP, L"%.2lf"},
+		{60.0f, Column::Shares, L"%d"},
+		{60.0f, Column::AvgCost, L"%.2lf"},
+		{60.0f, Column::Realized, L"%.2lf"},
+		{70.0f, Column::Unrealized, L"%.2lf"},
+		{60.0f, Column::ReturnsP, L"%.2lf"},
+		{60.0f, Column::APY, L"%.2lf"},
+		{60.0f, Column::exDiv, L""}
+	};
+
+	m_watchlist->Load(tickers, std::vector<Column>(), positions);
+	m_portfolioList->Load(tickers, portColumns, positions);
 
 	//m_watchlist->Load({ L"AAPL", L"MSFT", L"NVDA" }, std::vector<Column>());
 	//m_portfolioList->Load({ L"AAPL", L"MSFT", L"NVDA" }, std::vector<Column>());
