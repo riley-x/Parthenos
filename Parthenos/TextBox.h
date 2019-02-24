@@ -11,13 +11,14 @@ class Chart;
 class TextBox : public AppItem
 {
 public:
-	TextBox(HWND hwnd, D2Objects const & d2, AppItem *chart, 
+	TextBox(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent, 
 		D2Objects::Formats format = D2Objects::Segoe12) :
-		AppItem(hwnd, d2), m_parent(chart), m_format(format) {};
+		AppItem(hwnd, d2), m_parent(parent), m_format(format) {};
 	~TextBox();
 	
+	void SetSize(D2D1_RECT_F dipRect);
 	void Paint(D2D1_RECT_F updateRect);
-	void OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam);
+	bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled);
 	bool OnLButtonDown(D2D1_POINT_2F cursor);
 	void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam);
 	void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam);
@@ -26,13 +27,13 @@ public:
 	void OnTimer(WPARAM wParam, LPARAM lParam);
 
 	inline std::wstring String() const { return m_text; }
-	void SetText(std::wstring text);
+	void SetText(std::wstring text); // initalizes
 	inline void SetParameters(float leftOffset, bool border, size_t maxChars = 9) 
 	{
 		m_leftOffset = leftOffset; m_border = border; m_maxChars = maxChars;
 	}
 	void Activate();
-	void Deactivate(bool message = false); // message parent?
+	void Deactivate(bool message = false);
 
 private:
 	TextBox(const TextBox&) = delete; // non construction-copyable
@@ -58,7 +59,7 @@ private:
 	D2Objects::Formats	m_format;
 
 	// data
-	AppItem				*m_parent;
+	CTPMessageReceiver	*m_parent;
 	IDWriteTextLayout	*m_pTextLayout = NULL; // must recreate each edit
 
 	// helpers

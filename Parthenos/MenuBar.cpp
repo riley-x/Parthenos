@@ -91,12 +91,13 @@ void MenuBar::SetSize(D2D1_RECT_F dipRect)
 	}
 }
 
-void MenuBar::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
+bool MenuBar::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 {
 	for (auto button : m_buttons)
 	{
-		button->OnMouseMove(cursor, wParam);
+		handeled = button->OnMouseMove(cursor, wParam, handeled) || handeled;
 	}
+	return handeled;
 }
 
 bool MenuBar::OnLButtonDown(D2D1_POINT_2F cursor)
@@ -117,7 +118,7 @@ void MenuBar::ProcessCTPMessages()
 		else if (msg.sender == m_buttons[1]) // Account
 			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_ACCOUNT);
 		else if (msg.msg == L"Add...") // Transaction->Add...
-			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_TRANSACTIONADD);
+			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_ADDTRANSACTION);
 	}
 	if (!m_messages.empty()) m_messages.clear();
 }

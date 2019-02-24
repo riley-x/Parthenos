@@ -7,8 +7,18 @@ TextBox::~TextBox()
 	SafeRelease(&m_pTextLayout);
 }
 
+void TextBox::SetSize(D2D1_RECT_F dipRect)
+{
+	if (equalRect(dipRect, m_dipRect)) return;
+	m_dipRect = dipRect;
+	m_pixRect = DPIScale::DipsToPixels(m_dipRect);
+	CreateTextLayout();
+}
+
 void TextBox::Paint(D2D1_RECT_F updateRect)
 {
+	if (!overlapRect(m_dipRect, updateRect)) return;
+
 	// Draw highlight
 	if (m_selection)
 	{
@@ -52,11 +62,13 @@ void TextBox::Paint(D2D1_RECT_F updateRect)
 	}
 }
 
-void TextBox::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
+bool TextBox::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 {
-	if (inRect(cursor, m_dipRect))
+	bool out = false;
+	if (inRect(cursor, m_dipRect) && !handeled)
 	{
 		Cursor::SetCursor(Cursor::hIBeam);
+		out = true;
 	}
 	if (m_mouseSelection && (wParam & MK_LBUTTON))
 	{
@@ -86,7 +98,9 @@ void TextBox::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
 
 			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 		}
+		out = true;
 	}
+	return out;
 }
 
 bool TextBox::OnLButtonDown(D2D1_POINT_2F cursor)
@@ -346,10 +360,9 @@ void TextBox::Deactivate(bool message)
 void TextBox::CreateTextLayout()
 {
 	SafeRelease(&m_pTextLayout);
-	std::wstring str = String();
 	HRESULT hr = m_d2.pDWriteFactory->CreateTextLayout(
-		str.c_str(),					// The string to be laid out and formatted.
-		str.size(),						// The length of the string.
+		m_text.c_str(),					// The string to be laid out and formatted.
+		m_text.size(),					// The length of the string.
 		m_d2.pTextFormats[m_format],	// The text format to apply to the string (contains font information, etc).
 		m_dipRect.right - m_dipRect.left - 2 * m_leftOffset, // The width of the layout box.
 		m_dipRect.bottom - m_dipRect.top, // The height of the layout box.

@@ -143,11 +143,11 @@
     <ClCompile Include="Watchlist.cpp">
       <Filter>Source Files\AppItems</Filter>
     </ClCompile>
-    <ClCompile Include="MenuBar.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="PopupWindow.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MenuBar.cpp">
+      <Filter>Source Files\AppItems</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

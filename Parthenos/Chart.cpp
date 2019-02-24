@@ -47,10 +47,10 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 		m_d2.pRenderTarget->FillRectangle(m_menuRect, m_d2.pBrush);
 
 		// Ticker box
-		m_tickerBox.Paint(updateRect);
+		m_tickerBox.Paint(m_menuRect); // pass m_menuRect to force repaint
 
 		// Timeframe menu
-		m_timeframeButton.Paint(updateRect);
+		m_timeframeButton.Paint(m_menuRect);
 
 		// Chart type button highlight
 		m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
@@ -61,7 +61,7 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 		}
 
 		// Chart type buttons
-		m_chartTypeButtons.Paint(updateRect);
+		m_chartTypeButtons.Paint(m_menuRect);
 
 		// Menu division lines
 		m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
@@ -164,11 +164,12 @@ void Chart::SetSize(D2D1_RECT_F dipRect)
 	}
 }
 
-void Chart::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
+bool Chart::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 {
-	m_tickerBox.OnMouseMove(cursor, wParam);
-	m_timeframeButton.OnMouseMove(cursor, wParam);
+	handeled = m_timeframeButton.OnMouseMove(cursor, wParam, handeled) || handeled;
+	handeled = m_tickerBox.OnMouseMove(cursor, wParam, handeled) || handeled;
 	//ProcessCTPMessages(); // not needed
+	return handeled;
 }
 
 bool Chart::OnLButtonDown(D2D1_POINT_2F cursor)

@@ -3,7 +3,7 @@
 #include "Parthenos.h"
 
 
-BOOL AddTransactionWindow::Create(HINSTANCE hInstance)
+BOOL PopupWindow::Create(HINSTANCE hInstance)
 {
 	if (m_created) return FALSE;
 	m_created = TRUE;
@@ -12,25 +12,25 @@ BOOL AddTransactionWindow::Create(HINSTANCE hInstance)
 	args.hInstance = hInstance;
 	args.lpWindowName = L"AddTransaction";
 	args.dwStyle = BorderlessWindow::aero_borderless_style ^ WS_MAXIMIZEBOX ^ WS_THICKFRAME;
-	args.x = 200;
+	args.x = 400;
 	args.y = 200;
 	args.nWidth = 500;
 	args.nHeight = 500;
 
-	return BorderlessWindow<AddTransactionWindow>::Create(args);
+	return BorderlessWindow<PopupWindow>::Create(args);
 }
 
-LRESULT AddTransactionWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT PopupWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg)
 	{
 	case WM_NCCALCSIZE:
 	{
 		LRESULT ret = 0;
-		BorderlessWindow<AddTransactionWindow>::handle_message(uMsg, wParam, lParam, ret);
+		BorderlessWindow<PopupWindow>::handle_message(uMsg, wParam, lParam, ret);
 		return ret;
 	}
-	case WM_NCHITTEST: // don't pass to berderless since no resizing
+	case WM_NCHITTEST: // don't pass to borderless since no resizing
 		return OnNCHitTest(POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); 
 	case WM_CREATE:
 		return OnCreate();
@@ -92,23 +92,12 @@ LRESULT AddTransactionWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lPa
 	return DefWindowProc(m_hwnd, uMsg, wParam, lParam);
 }
 
-void AddTransactionWindow::PreShow()
-{
-	RECT rc;
-	BOOL bErr = GetClientRect(m_hwnd, &rc);
-	if (bErr == 0) OutputError(L"GetClientRect failed");
-	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
-
-	for (auto item : m_items)
-	{
-		item->SetSize(CalculateItemRect(item, dipRect));
-	}
-}
-
 ///////////////////////////////////////////////////////////
 // --- Message Handlers ---
+// These pretty much just pass to m_items, calling ProcessCTPMessages
+// as needed
 
-LRESULT AddTransactionWindow::OnCreate()
+LRESULT PopupWindow::OnCreate()
 {
 	m_d2.hwndParent = m_hwnd;
 	HRESULT hr = m_d2.CreateDeviceIndependentResources();
@@ -118,13 +107,10 @@ LRESULT AddTransactionWindow::OnCreate()
 		return -1;  // Fail CreateWindowEx.
 	}
 
-	m_titleBar = new TitleBar(m_hwnd, m_d2, this);
-	m_items.push_back(m_titleBar);
-	
 	return 0;
 }
 
-LRESULT AddTransactionWindow::OnNCHitTest(POINT cursor)
+LRESULT PopupWindow::OnNCHitTest(POINT cursor)
 {
 	if (!::ScreenToClient(m_hwnd, &cursor)) throw Error(L"ScreenToClient failed");
 
@@ -135,58 +121,26 @@ LRESULT AddTransactionWindow::OnNCHitTest(POINT cursor)
 		return HTCLIENT;
 }
 
-LRESULT AddTransactionWindow::OnPaint()
-{
-	RECT rc;
-	BOOL bErr = GetClientRect(m_hwnd, &rc);
-	if (bErr == 0) OutputError(L"GetClientRect failed");
 
-	HRESULT hr = m_d2.CreateGraphicsResources(m_hwnd);
-	if (SUCCEEDED(hr))
-	{
-		PAINTSTRUCT ps;
-		BeginPaint(m_hwnd, &ps);
-		D2D1_RECT_F dipRect = DPIScale::PixelsToDips(ps.rcPaint);
-		m_d2.pRenderTarget->BeginDraw();
-
-		if (ps.rcPaint.left == 0 && ps.rcPaint.top == 0 &&
-			ps.rcPaint.right == rc.right && ps.rcPaint.bottom == rc.bottom)
-		{
-			m_d2.pRenderTarget->Clear(Colors::MAIN_BACKGROUND);
-		}
-
-		for (auto item : m_items)
-			item->Paint(dipRect);
-
-		hr = m_d2.pRenderTarget->EndDraw();
-		if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
-		{
-			m_d2.DiscardGraphicsResources();
-		}
-		EndPaint(m_hwnd, &ps);
-	}
-
-	return 0;
-}
-
-LRESULT AddTransactionWindow::OnMouseMove(POINT cursor, WPARAM wParam)
+LRESULT PopupWindow::OnMouseMove(POINT cursor, WPARAM wParam)
 {
 	Cursor::isSet = false;
 	m_mouseTrack.OnMouseMove(m_hwnd);  // Start tracking.
 
 	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
 
+	bool handeled = false;
 	for (auto item : m_items)
 	{
-		if (item == m_titleBar) m_titleBar->OnMouseMoveP(cursor, wParam);
-		else item->OnMouseMove(dipCursor, wParam);
+		if (item == m_titleBar) handeled = m_titleBar->OnMouseMoveP(cursor, wParam, handeled) || handeled;
+		else handeled = item->OnMouseMove(dipCursor, wParam, handeled) || handeled;
 	}
 
 	if (!Cursor::isSet) ::SetCursor(Cursor::hArrow);
 	return 0;
 }
 
-LRESULT AddTransactionWindow::OnLButtonDown(POINT cursor, WPARAM wParam)
+LRESULT PopupWindow::OnLButtonDown(POINT cursor, WPARAM wParam)
 {
 	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
 	for (auto item : m_items)
@@ -199,7 +153,7 @@ LRESULT AddTransactionWindow::OnLButtonDown(POINT cursor, WPARAM wParam)
 	return 0;
 }
 
-LRESULT AddTransactionWindow::OnLButtonDblclk(POINT cursor, WPARAM wParam)
+LRESULT PopupWindow::OnLButtonDblclk(POINT cursor, WPARAM wParam)
 {
 	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
 	for (auto item : m_items)
@@ -209,7 +163,7 @@ LRESULT AddTransactionWindow::OnLButtonDblclk(POINT cursor, WPARAM wParam)
 	return 0;
 }
 
-LRESULT AddTransactionWindow::OnLButtonUp(POINT cursor, WPARAM wParam)
+LRESULT PopupWindow::OnLButtonUp(POINT cursor, WPARAM wParam)
 {
 	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
 	for (auto item : m_items)
@@ -221,7 +175,7 @@ LRESULT AddTransactionWindow::OnLButtonUp(POINT cursor, WPARAM wParam)
 	return 0;
 }
 
-LRESULT AddTransactionWindow::OnChar(wchar_t c, LPARAM lParam)
+LRESULT PopupWindow::OnChar(wchar_t c, LPARAM lParam)
 {
 	for (auto item : m_items)
 	{
@@ -230,7 +184,7 @@ LRESULT AddTransactionWindow::OnChar(wchar_t c, LPARAM lParam)
 	return 0;
 }
 
-bool AddTransactionWindow::OnKeyDown(WPARAM wParam, LPARAM lParam)
+bool PopupWindow::OnKeyDown(WPARAM wParam, LPARAM lParam)
 {
 	bool out = false;
 	for (auto item : m_items)
@@ -241,7 +195,7 @@ bool AddTransactionWindow::OnKeyDown(WPARAM wParam, LPARAM lParam)
 	return out;
 }
 
-LRESULT AddTransactionWindow::OnTimer(WPARAM wParam, LPARAM lParam)
+LRESULT PopupWindow::OnTimer(WPARAM wParam, LPARAM lParam)
 {
 	for (auto item : m_items)
 	{
@@ -260,6 +214,59 @@ LRESULT AddTransactionWindow::OnTimer(WPARAM wParam, LPARAM lParam)
 	//ProcessCTPMessages();
 	return 0;
 }
+
+
+///////////////////////////////////////////////////////////
+// --- AddTransactionWindow ---
+
+void AddTransactionWindow::PreShow()
+{
+	RECT rc;
+	BOOL bErr = GetClientRect(m_hwnd, &rc);
+	if (bErr == 0) OutputError(L"GetClientRect failed");
+	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
+
+	m_inputLeft = (dipRect.left + dipRect.right) / 2.0f;
+
+	// Create AppItems
+	m_titleBar = new TitleBar(m_hwnd, m_d2, this);
+	m_accountButton = new DropMenuButton(m_hwnd, m_d2, this);
+	m_transactionTypeButton = new DropMenuButton(m_hwnd, m_d2, this);
+	m_taxLotBox = new TextBox(m_hwnd, m_d2, this);
+	m_tickerBox = new TextBox(m_hwnd, m_d2, this);
+	m_nsharesBox = new TextBox(m_hwnd, m_d2, this);
+	m_dateBox = new TextBox(m_hwnd, m_d2, this);
+	m_expirationBox = new TextBox(m_hwnd, m_d2, this);
+	m_valueBox = new TextBox(m_hwnd, m_d2, this);
+	m_priceBox = new TextBox(m_hwnd, m_d2, this);
+	m_strikeBox = new TextBox(m_hwnd, m_d2, this);
+
+	m_items.reserve(11);
+
+	m_items.push_back(m_titleBar);
+	m_items.push_back(m_accountButton);
+	m_items.push_back(m_transactionTypeButton);
+	m_items.push_back(m_dateBox);
+	m_items.push_back(m_tickerBox);
+	m_items.push_back(m_nsharesBox);
+	m_items.push_back(m_priceBox);
+	m_items.push_back(m_valueBox);
+	m_items.push_back(m_expirationBox);
+	m_items.push_back(m_strikeBox);
+	m_items.push_back(m_taxLotBox);
+
+	m_accountButton->SetItems(m_accounts);
+	m_transactionTypeButton->SetItems(TRANSACTIONTYPE_STRINGS);
+	m_accountButton->SetActive(0);
+	m_transactionTypeButton->SetActive(0);
+
+	for (size_t i = 0; i < m_items.size(); i++) // skip TitleBar
+	{
+		m_items[i]->SetSize(CalculateItemRect(i, dipRect));
+	}
+
+}
+
 
 void AddTransactionWindow::ProcessCTPMessages()
 {
@@ -283,9 +290,9 @@ void AddTransactionWindow::ProcessCTPMessages()
 	if (!m_messages.empty()) m_messages.clear();
 }
 
-D2D1_RECT_F AddTransactionWindow::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dipRect)
+D2D1_RECT_F AddTransactionWindow::CalculateItemRect(size_t i, D2D1_RECT_F const & dipRect)
 {
-	if (item == m_titleBar)
+	if (i == 0) // TitleBar
 	{
 		return D2D1::RectF(
 			0.0f,
@@ -296,7 +303,82 @@ D2D1_RECT_F AddTransactionWindow::CalculateItemRect(AppItem * item, D2D1_RECT_F 
 	}
 	else
 	{
-		OutputMessage(L"CalculateItemRect: unkown item\n");
-		return D2D1::RectF(0.0f, 0.0f, 0.0f, 0.0f);
+		return D2D1::RectF(
+			m_inputLeft, // Flush right
+			m_inputTop + (i - 1) * (m_itemHeight + m_itemVPad),
+			m_inputLeft + m_itemWidth,
+			m_inputTop + (i - 1) * (m_itemHeight + m_itemVPad) + m_itemHeight
+		);
 	}
 }
+
+
+LRESULT AddTransactionWindow::OnPaint()
+{
+	RECT rc;
+	BOOL bErr = GetClientRect(m_hwnd, &rc);
+	if (bErr == 0) OutputError(L"GetClientRect failed");
+	D2D1_RECT_F fullRect = DPIScale::PixelsToDips(rc);
+
+	HRESULT hr = m_d2.CreateGraphicsResources(m_hwnd);
+	if (SUCCEEDED(hr))
+	{
+		PAINTSTRUCT ps;
+		BeginPaint(m_hwnd, &ps);
+		//D2D1_RECT_F dipRect = DPIScale::PixelsToDips(ps.rcPaint);
+		m_d2.pRenderTarget->BeginDraw();
+
+		// Repaint everything
+		m_d2.pRenderTarget->Clear(Colors::MAIN_BACKGROUND);
+
+		for (auto item : m_items)
+			item->Paint(fullRect);
+		DrawTexts();
+
+		m_accountButton->GetMenu().Paint(fullRect);
+		m_transactionTypeButton->GetMenu().Paint(fullRect);
+
+		hr = m_d2.pRenderTarget->EndDraw();
+		if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
+		{
+			m_d2.DiscardGraphicsResources();
+		}
+		EndPaint(m_hwnd, &ps);
+	}
+
+	return 0;
+}
+
+void AddTransactionWindow::DrawTexts()
+{
+	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
+
+	std::wstring title(L"Add a transaction:");
+	m_d2.pRenderTarget->DrawTextW(
+		title.c_str(),
+		title.size(),
+		m_d2.pTextFormats[D2Objects::Formats::Segoe12],
+		D2D1::RectF(10.0f, m_titleBarHeight + 10.0f, 200.0f, m_titleBarHeight + 24.0f),
+		m_d2.pBrush
+	);
+
+	m_d2.pTextFormats[D2Objects::Formats::Segoe12]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING);
+	for (size_t i = 0; i < m_labels.size(); i++)
+	{
+		D2D1_RECT_F dipRect = D2D1::RectF(
+			0.0f,
+			m_inputTop + i * (m_itemHeight + m_itemVPad),
+			m_inputLeft - m_labelHPad,
+			m_inputTop + i * (m_itemHeight + m_itemVPad) + m_itemHeight
+		);
+		m_d2.pRenderTarget->DrawText(
+			m_labels[i].c_str(),
+			m_labels[i].size(),
+			m_d2.pTextFormats[D2Objects::Formats::Segoe12],
+			dipRect,
+			m_d2.pBrush
+		);
+	}
+	m_d2.pTextFormats[D2Objects::Formats::Segoe12]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+}
+

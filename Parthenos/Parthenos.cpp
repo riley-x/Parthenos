@@ -256,10 +256,11 @@ void Parthenos::ProcessCTPMessages()
 			::InvalidateRect(m_hwnd, NULL, FALSE);
 			break;
 		}
-		case CTPMessage::MENUBAR_TRANSACTIONADD:
+		case CTPMessage::MENUBAR_ADDTRANSACTION:
 		{
 			BOOL ok = m_addTWin->Create(m_hInstance);
-			if (!ok) OutputError(L"Create TransactionAdd window failed");
+			if (!ok) OutputError(L"Create AddTransaction window failed");
+			m_addTWin->SetAccounts(m_accounts);
 			m_addTWin->PreShow();
 			ShowWindow(m_addTWin->Window(), SW_SHOW);
 			break;
@@ -346,7 +347,7 @@ LRESULT Parthenos::OnCreate()
 	}
 
 
-	// Register 'child' windows
+	// Create 'child' windows
 
 	WndCreateArgs args;
 	args.hInstance = m_hInstance;
@@ -355,9 +356,10 @@ LRESULT Parthenos::OnCreate()
 	args.hIcon = LoadIcon(args.hInstance, MAKEINTRESOURCE(IDI_PARTHENOS));
 	args.hIconSm = LoadIcon(args.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
-	m_addTWin = new AddTransactionWindow(L"ADDTRANSACTION");
+	// Only need to register once. All popups use the same message handler that splits via virtuals
+	m_addTWin = new AddTransactionWindow(L"PARTHENOSPOPUP");
 	BOOL ok = m_addTWin->Register(args);
-	if (!ok) OutputError(L"Register addTWin failed");
+	if (!ok) OutputError(L"Register Popup failed");
 	
 
 	// Create AppItems
@@ -475,16 +477,16 @@ LRESULT Parthenos::OnSize(WPARAM wParam)
 
 LRESULT Parthenos::OnMouseMove(POINT cursor, WPARAM wParam)
 {
-	//::SetCursor(Cursor::active);
 	Cursor::isSet = false;
 	m_mouseTrack.OnMouseMove(m_hwnd);  // Start tracking.
 
 	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
 
+	bool handeled = false;
 	for (auto item : m_activeItems)
 	{
-		if (item == m_titleBar) m_titleBar->OnMouseMoveP(cursor, wParam);
-		else item->OnMouseMove(dipCursor, wParam);
+		if (item == m_titleBar) handeled = m_titleBar->OnMouseMoveP(cursor, wParam, handeled) || handeled;
+		else handeled = item->OnMouseMove(dipCursor, wParam, handeled) || handeled;
 	}
 
 	if (!Cursor::isSet) ::SetCursor(Cursor::hArrow);

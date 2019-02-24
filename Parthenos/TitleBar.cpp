@@ -149,10 +149,23 @@ void TitleBar::Paint(D2D1_RECT_F updateRect)
 	m_d2.pRenderTarget->SetDpi(0, 0); 
 }
 
-void TitleBar::OnMouseMoveP(POINT cursor, WPARAM wParam)
+bool TitleBar::OnMouseMoveP(POINT cursor, WPARAM wParam, bool handeled)
 {
-	Buttons button = HitTest(cursor);
-	SetMouseOn(button);
+	if (!handeled)
+	{
+		Buttons button = HitTest(cursor);
+		if (button == Buttons::CLOSE || button == Buttons::MAXRESTORE || button == Buttons::MIN)
+		{
+			SetMouseOn(button);
+			return true;
+		}
+		else
+		{
+			SetMouseOn(Buttons::NONE);
+			return false;
+		}
+	}
+	return false;
 }
 
 bool TitleBar::OnLButtonDownP(POINT cursor)

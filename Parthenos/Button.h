@@ -152,19 +152,20 @@ private:
 	std::vector<Button*> m_buttons;
 };
 
-// Creates a drop down menu when clicked
+// Creates a drop down menu when clicked. Initialize with SetItems and either SetText or SetActive, before SetSize().
+// Make sure the owner of the button calls GetMenu().Paint() so the popup can be on top.
 class DropMenuButton : public Button
 {
 public:
 	// Constructors
-	DropMenuButton(HWND hwnd, D2Objects const & d2, AppItem *parent, bool dynamic = true) :
+	DropMenuButton(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent, bool dynamic = true) :
 		Button(hwnd, d2), m_menu(hwnd, d2), m_parent(parent), m_dynamic(dynamic) {};
 	~DropMenuButton() { if (!m_dynamic) SafeRelease(&m_activeLayout); }
 	
 	// AppItem overrides
 	void SetSize(D2D1_RECT_F dipRect);
 	void Paint(D2D1_RECT_F updateRect); // owner of button should call paint on popup
-	inline void OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam) { m_menu.OnMouseMove(cursor, wParam); }
+	inline bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled = false) { return m_menu.OnMouseMove(cursor, wParam, handeled); }
 	bool OnLButtonDown(D2D1_POINT_2F cursor);
 
 	// Interface
@@ -177,7 +178,7 @@ public:
 private:
 	// Objects
 	PopupMenu m_menu;
-	AppItem *m_parent;
+	CTPMessageReceiver *m_parent;
 
 	// Flags
 	bool m_active = false;

@@ -23,7 +23,7 @@ public:
 	Chart(HWND hwnd, D2Objects const & d2);
 	void Paint(D2D1_RECT_F updateRect);
 	void SetSize(D2D1_RECT_F dipRect);
-	void OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam);
+	bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled);
 	bool OnLButtonDown(D2D1_POINT_2F cursor);
 	void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam);
 	void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam);

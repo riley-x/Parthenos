@@ -56,19 +56,26 @@ void PopupMenu::Paint(D2D1_RECT_F updateRect)
 	m_d2.pRenderTarget->DrawRectangle(m_borderRect, m_d2.pBrush, DPIScale::hpx());
 }
 
-void PopupMenu::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
+bool PopupMenu::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 {
-	if (!m_active) return;
-	if (inRect(cursor, m_dipRect))
+	if (!m_active) return false;
+	if (inRect(cursor, m_dipRect) && !handeled)
 	{
-		m_highlight = getInd(cursor.y - m_dipRect.top);
-		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+		int highlight = getInd(cursor.y - m_dipRect.top);
+		if (highlight != m_highlight)
+		{
+			m_highlight = highlight;
+			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+		}
+		return true;
 	}
 	else if (m_highlight >= 0)
 	{
 		m_highlight = -1;
 		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+		return false;
 	}
+	return false;
 }
 
 // returns true when a selection is made and i, str are populated

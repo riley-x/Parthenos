@@ -20,7 +20,7 @@ public:
 	// AppItem overides
 	void SetSize(D2D1_RECT_F dipRect);
 	void Paint(D2D1_RECT_F updateRect);
-	void OnMouseMoveP(POINT cursor, WPARAM wParam);
+	bool OnMouseMoveP(POINT cursor, WPARAM wParam, bool handeled);
 	bool OnLButtonDownP(POINT cursor);
 
 	// Interface
@@ -31,8 +31,6 @@ public:
 	inline void SetMaximized(bool isMax) { m_maximized = isMax; }
 	inline void SetMouseOn(Buttons button) 
 	{
-		if (!(button == Buttons::MIN || button == Buttons::MAXRESTORE || button == Buttons::CLOSE))
-			button = Buttons::NONE;
 		if (m_mouseOn != button)
 		{
 			m_mouseOn = button;

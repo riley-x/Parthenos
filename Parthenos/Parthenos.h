@@ -24,7 +24,7 @@ class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver
 	MenuBar					*m_menuBar;
 
 	// 'Child' windows
-	AddTransactionWindow	*m_addTWin;
+	AddTransactionWindow	*m_addTWin = nullptr;
 
 	// Resource management
 	MouseTrackEvents			m_mouseTrack;

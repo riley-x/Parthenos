@@ -18,7 +18,7 @@ void Watchlist::Paint(D2D1_RECT_F updateRect)
 {
 	// When invalidating, converts to pixels then back to DIPs -> updateRect has smaller values
 	// than when invalidated.
-	if (updateRect.bottom <= m_dipRect.top || updateRect.left + 1 > m_dipRect.right) return;
+	if (!overlapRect(m_dipRect, updateRect)) return;
 
 	// Background
 	m_d2.pBrush->SetColor(Colors::WATCH_BACKGROUND);
@@ -40,7 +40,7 @@ void Watchlist::Paint(D2D1_RECT_F updateRect)
 
 	// Item texts
 	for (auto item : m_items)
-		item->Paint(updateRect);
+		item->Paint(m_dipRect); // pass watchlist rect as updateRect to force repaint
 
 	// Internal lines
 	m_d2.pBrush->SetColor(Colors::DULL_LINE);
@@ -106,15 +106,10 @@ void Watchlist::SetSize(D2D1_RECT_F dipRect)
 	CalculateLayouts();
 }
 
-void Watchlist::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
+bool Watchlist::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 {
-	if (m_editableTickers)
-	{
-		for (auto item : m_items) item->OnMouseMove(cursor, wParam);
-	}
-
 	int i = GetItem(cursor.y);
-	if (m_LButtonDown >= 0 && (wParam & MK_LBUTTON) && i != m_hover)
+	if (m_LButtonDown >= 0 && (wParam & MK_LBUTTON) && i != m_hover) // is dragging
 	{
 		m_ignoreSelection = true; // is dragging, so don't update even if dropped in same location
 		if (i >= 0 && i < static_cast<int>(m_items.size()))
@@ -127,7 +122,15 @@ void Watchlist::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
 			m_hover = -1;
 			::InvalidateRect(m_hwnd, &m_pixRect, false);
 		}
+		handeled = true;
 	}
+
+	if (m_editableTickers)
+	{
+		for (auto item : m_items) handeled = item->OnMouseMove(cursor, wParam, handeled) || handeled;
+	}
+
+	return handeled;
 	//ProcessCTPMessages();
 }
 
@@ -504,10 +507,10 @@ void WatchlistItem::SetSize(D2D1_RECT_F dipRect)
 	m_dipRect = dipRect;
 	m_pixRect = DPIScale::DipsToPixels(m_dipRect);
 
-	D2D1_RECT_F temp = m_ticker.GetDIPRect();
+	/*D2D1_RECT_F temp = m_ticker.GetDIPRect();
 	temp.top = m_dipRect.top;
-	temp.bottom = m_dipRect.bottom;
-	m_ticker.SetSize(temp);
+	temp.bottom = m_dipRect.bottom;*/
+	m_ticker.SetSize(dipRect);
 }
 
 void WatchlistItem::Paint(D2D1_RECT_F updateRect)

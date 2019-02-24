@@ -101,6 +101,13 @@ bool OHLC_Compare(const OHLC & a, const OHLC & b);
 // --- Portfolio ---
 
 enum class TransactionType : char { Transfer, Stock, Dividend, Interest, Fee, PutShort, PutLong, CallShort, CallLong };
+std::vector<std::wstring> const TRANSACTIONTYPE_STRINGS = { L"Transfer", L"Stock", L"Dividend", L"Interest", L"Fee",
+	L"Short Put", L"Long Put", L"Short Call", L"Long Call" };
+inline std::wstring to_wstring(TransactionType t)
+{
+	return TRANSACTIONTYPE_STRINGS[static_cast<char>(t)];
+}
+
 
 inline bool isOption(TransactionType type)
 {

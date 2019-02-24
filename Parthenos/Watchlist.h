@@ -53,7 +53,7 @@ public:
 	// AppItem overrides
 	void SetSize(D2D1_RECT_F dipRect); // The height should not change, or else call Load() again
 	void Paint(D2D1_RECT_F updateRect);
-	inline void OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam) { m_ticker.OnMouseMove(cursor, wParam); }
+	inline bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled) { return m_ticker.OnMouseMove(cursor, wParam, handeled); }
 	inline bool OnLButtonDown(D2D1_POINT_2F cursor)
 	{
 		bool out = false;
@@ -126,7 +126,7 @@ public:
 	// AppItem overrides
 	void Paint(D2D1_RECT_F updateRect);
 	void SetSize(D2D1_RECT_F dipRect);
-	void OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam);
+	bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled);
 	bool OnLButtonDown(D2D1_POINT_2F cursor);
 	void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam);
 	void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam);
