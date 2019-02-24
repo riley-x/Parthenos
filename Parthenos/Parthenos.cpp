@@ -17,6 +17,28 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 ///////////////////////////////////////////////////////////
 // --- Interface functions ---
 
+Parthenos::Parthenos(PCWSTR szClassName)
+	: BorderlessWindow(szClassName), m_accounts({ L"Robinhood", L"Arista" })
+{
+	// Read Holdings
+	FileIO holdingsFile;
+	holdingsFile.Init(ROOTDIR + L"port.hold");
+	holdingsFile.Open(GENERIC_READ);
+	std::vector<Holdings> out = holdingsFile.Read<Holdings>();
+	holdingsFile.Close();
+
+	// Holdings -> Positions
+	for (size_t i = 0; i < m_accounts.size(); i++)
+	{
+		std::vector<Position> positions = HoldingsToPositions(
+			FlattenedHoldingsToTickers(out), static_cast<char>(i), GetCurrentDate());
+		m_positions.push_back(positions);
+	}
+	std::vector<Position> positions = HoldingsToPositions(
+		FlattenedHoldingsToTickers(out), -1, GetCurrentDate()); // all accounts
+	m_positions.push_back(positions);
+}
+
 Parthenos::~Parthenos()
 {
 	for (auto item : m_allItems)
@@ -155,10 +177,10 @@ void Parthenos::PreShow()
 
 	for (auto item : m_allItems)
 	{
-		item->Init();
 		item->SetSize(CalculateItemRect(item, dipRect));
 	}
 
+	m_titleBar->SetActive(L"Chart");
 	m_chart->Draw(L"AAPL");
 }
 
@@ -192,23 +214,22 @@ void Parthenos::ProcessAppItemMessages()
 			break;
 		case CTPMessage::TITLEBAR_TAB:
 		{
-			switch (TitleBar::WStringToButton(msg.msg))
+			if (msg.msg == L"Portfolio")
 			{
-			case TitleBar::Buttons::PORTFOLIO:
 				m_activeItems.clear();
 				m_activeItems.push_back(m_titleBar);
 				m_activeItems.push_back(m_portfolioList);
 				m_activeItems.push_back(m_menuBar);
 				::InvalidateRect(m_hwnd, NULL, false);
 				break;
-			case TitleBar::Buttons::CHART:
+			}
+			else if (msg.msg == L"Chart")
+			{
 				m_activeItems.clear();
 				m_activeItems.push_back(m_titleBar);
 				m_activeItems.push_back(m_chart);
 				m_activeItems.push_back(m_watchlist);
 				::InvalidateRect(m_hwnd, NULL, false);
-				break;
-			default:
 				break;
 			}
 			break;
@@ -321,10 +342,25 @@ LRESULT Parthenos::OnCreate()
 		throw Error(L"OnCreate failed!");
 		return -1;  // Fail CreateWindowEx.
 	}
-	
-	m_accounts = { L"Robinhood", L"Arista" }; // TODO hardcoded right now
 
-	m_titleBar = new TitleBar(m_hwnd, m_d2, this, TitleBar::Buttons::CHART);
+
+	// Register 'child' windows
+
+	WndCreateArgs args;
+	args.hInstance = m_hInstance;
+	args.classStyle = CS_DBLCLKS;
+	args.hbrBackground = CreateSolidBrush(RGB(0, 0, 1));
+	args.hIcon = LoadIcon(args.hInstance, MAKEINTRESOURCE(IDI_PARTHENOS));
+	args.hIconSm = LoadIcon(args.hInstance, MAKEINTRESOURCE(IDI_SMALL));
+
+	m_addTWin = new AddTransactionWindow(L"ADDTRANSACTION");
+	BOOL ok = m_addTWin->Register(args);
+	if (!ok) OutputError(L"Register addTWin failed");
+	
+
+	// Create AppItems
+
+	m_titleBar = new TitleBar(m_hwnd, m_d2, this);
 	m_chart = new Chart(m_hwnd, m_d2);
 	m_watchlist = new Watchlist(m_hwnd, m_d2, this);
 	m_portfolioList = new Watchlist(m_hwnd, m_d2, this, false);
@@ -340,35 +376,9 @@ LRESULT Parthenos::OnCreate()
 	m_activeItems.push_back(m_watchlist);
 
 
-	// Register 'child' windows
-	WndCreateArgs args;
-	args.hInstance = m_hInstance;
-	args.classStyle = CS_DBLCLKS;
-	args.hbrBackground = CreateSolidBrush(RGB(0, 0, 1));
-	args.hIcon = LoadIcon(args.hInstance, MAKEINTRESOURCE(IDI_PARTHENOS));
-	args.hIconSm = LoadIcon(args.hInstance, MAKEINTRESOURCE(IDI_SMALL));
+	// Initialize any AppItems
 
-	m_addTWin = new AddTransactionWindow(L"ADDTRANSACTION");
-	BOOL ok = m_addTWin->Register(args);
-	if (!ok) OutputError(L"Register addTWin failed");
-
-	// Read Holdings
-	FileIO holdingsFile;
-	holdingsFile.Init(ROOTDIR + L"port.hold");
-	holdingsFile.Open(GENERIC_READ);
-	std::vector<Holdings> out = holdingsFile.Read<Holdings>();
-	holdingsFile.Close();
-
-	// Holdings -> Positions
-	for (size_t i = 0; i < m_accounts.size(); i++)
-	{
-		std::vector<Position> positions = HoldingsToPositions(
-			FlattenedHoldingsToTickers(out), static_cast<char>(i), GetCurrentDate());
-		m_positions.push_back(positions);
-	}
-	std::vector<Position> positions = HoldingsToPositions(
-		FlattenedHoldingsToTickers(out), -1, GetCurrentDate()); // all accounts
-	m_positions.push_back(positions);
+	m_titleBar->SetTabs({ L"Portfolio", L"Chart" });
 
 	std::vector<std::wstring> tickers = GetTickers(m_positions[m_currAccount]);
 	std::vector<Column> portColumns = {

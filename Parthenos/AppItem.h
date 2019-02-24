@@ -27,7 +27,6 @@ class AppItem
 {
 public:
 	AppItem(HWND hwnd, D2Objects const & d2) : m_hwnd(hwnd), m_d2(d2) {}
-	virtual void Init() { return; }
 	virtual void SetSize(D2D1_RECT_F dipRect) // provide item's rect
 	{ 
 		m_dipRect = dipRect; 

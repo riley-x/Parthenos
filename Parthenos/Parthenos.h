@@ -65,8 +65,7 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	Parthenos& operator=(const Parthenos&) = delete; // non copyable
 public:
 
-	Parthenos() : BorderlessWindow() {}
-	Parthenos(PCWSTR szClassName) : BorderlessWindow(szClassName) {}
+	Parthenos(PCWSTR szClassName);
 	~Parthenos();
 
 	LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);

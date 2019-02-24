@@ -9,25 +9,25 @@ class TitleBar : public AppItem
 {
 public:
 	// Statics
-	enum class Buttons { NONE, CAPTION, MIN, MAXRESTORE, CLOSE, PORTFOLIO, CHART };
-	static std::wstring ButtonToWString(Buttons button);
-	static Buttons WStringToButton(std::wstring name);
+	enum class Buttons { NONE, CAPTION, MIN, MAXRESTORE, CLOSE, TAB };
 	static float const iconHPad; // 6 DIPs
 
 	// Constructors
-	TitleBar(HWND hwnd, D2Objects const & d2, Parthenos *parent, Buttons initButton = Buttons::CHART)
-		: AppItem(hwnd, d2), m_parent(parent), m_tabButtons(hwnd, d2), m_initButton(initButton) {}
+	TitleBar(HWND hwnd, D2Objects const & d2, Parthenos *parent)
+		: AppItem(hwnd, d2), m_parent(parent), m_tabButtons(hwnd, d2) {}
 	~TitleBar() { SafeRelease(&m_bracketGeometries[0]); SafeRelease(&m_bracketGeometries[1]); }
 
 	// AppItem overides
-	void Init();
 	void SetSize(D2D1_RECT_F dipRect);
 	void Paint(D2D1_RECT_F updateRect);
 	void OnMouseMoveP(POINT cursor, WPARAM wParam);
 	bool OnLButtonDownP(POINT cursor);
 
 	// Interface
-	Buttons HitTest(POINT cursor);
+	inline Buttons HitTest(POINT cursor) { std::wstring dummy; return HitTest(cursor, dummy); }
+	Buttons HitTest(POINT cursor, std::wstring & name);
+	void SetTabs(std::vector<std::wstring> const & tabNames);
+	void SetActive(std::wstring name) { m_tabButtons.SetActive(name); }
 	inline void SetMaximized(bool isMax) { m_maximized = isMax; }
 	inline void SetMouseOn(Buttons button) 
 	{
@@ -49,12 +49,10 @@ private:
 
 	// Parameters
 	static int const	nIcons			= 3;
-	static int const	m_nButtons		= 4;
 	float const			m_tabLeftStart	= 100.0f;
 	float const			m_tabWidth		= 150.0f;
 	float const			m_dividerVPad	= 5.0f;
 	float const			m_bracketWidth	= 3.0f;
-	Buttons				m_initButton;
 
 	// Flags
 	bool				m_maximized = false;

@@ -45,13 +45,13 @@ LRESULT AddTransactionWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lPa
 	{
 		//case WM_CREATE:
 		//	return OnCreate();
-			//case WM_CLOSE: {
-			//	if (MessageBox(m_hwnd, L"Really quit?", L"Parthenos", MB_OKCANCEL) == IDOK)
-			//	{
-			//		::DestroyWindow(m_hwnd);
-			//	}
-			//	return 0;
-			//}
+		//case WM_CLOSE: {
+		//	if (MessageBox(m_hwnd, L"Really quit?", L"Parthenos", MB_OKCANCEL) == IDOK)
+		//	{
+		//		::DestroyWindow(m_hwnd);
+		//	}
+		//	return 0;
+		//}
 	case WM_DESTROY:
 		//m_d2.DiscardGraphicsResources();
 		//m_d2.DiscardDeviceIndependentResources();

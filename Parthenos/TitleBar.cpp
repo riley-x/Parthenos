@@ -6,23 +6,6 @@
 
 float const TitleBar::iconHPad = 6.0f;
 
-
-void TitleBar::Init()
-{
-	// Add tab buttons
-	std::wstring tabNames[m_nButtons] = { L"Portfolio", L"Chart", L"ASDF", L"ASDFASDF" };
-	for (int i = 0; i < m_nButtons; i++)
-	{
-		TextButton *temp = new TextButton(m_hwnd, m_d2);
-		temp->SetName(tabNames[i]);
-		
-		temp->SetBorderColor(false);
-		temp->SetFormat(D2Objects::Segoe18);
-		m_tabButtons.Add(temp);
-	}
-	m_tabButtons.SetActive(ButtonToWString(m_initButton));
-}
-
 void TitleBar::SetSize(D2D1_RECT_F dipRect)
 {
 	bool same_left = false;
@@ -174,28 +157,27 @@ void TitleBar::OnMouseMoveP(POINT cursor, WPARAM wParam)
 
 bool TitleBar::OnLButtonDownP(POINT cursor)
 {
-	Buttons button = HitTest(cursor);
+	std::wstring name;
+	Buttons button = HitTest(cursor, name);
 	switch (button)
 	{
-	case Buttons::PORTFOLIO:
-	case Buttons::CHART:
-		if (m_tabButtons.SetActive(ButtonToWString(button)))
+	case Buttons::TAB:
+		m_tabButtons.SetActive(name);
 		// fallthrough
 	case Buttons::CLOSE:
 	case Buttons::MAXRESTORE:
 	case Buttons::MIN:
-		m_parent->SendClientMessage(this, ButtonToWString(button), ButtonToCTPMessage(button)); // Invalidates
+		m_parent->SendClientMessage(this, name, ButtonToCTPMessage(button)); // Invalidates
 		break;
 	case Buttons::CAPTION:
 	case Buttons::NONE:
 	default:
 		break;
 	}
-
-	return false;
+	return false; // unused
 }
-
-TitleBar::Buttons TitleBar::HitTest(POINT cursor)
+	
+TitleBar::Buttons TitleBar::HitTest(POINT cursor, std::wstring & name)
 {
 	// Since command icons are flush right, test right to left
 	// Recall command icon rects are in pixels!
@@ -210,18 +192,27 @@ TitleBar::Buttons TitleBar::HitTest(POINT cursor)
 		else // need to convert to dips
 		{
 			D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
-			std::wstring name;
 			if (m_tabButtons.HitTest(dipCursor, name))
-			{
-				return WStringToButton(name);
-			}
+				return Buttons::TAB;
 			else
-			{
 				return Buttons::CAPTION;
-			}
 		}
 	}
 	return Buttons::NONE;
+}
+
+void TitleBar::SetTabs(std::vector<std::wstring> const & tabNames)
+{
+	// TODO Should clear tabButtons first
+	for (size_t i = 0; i < tabNames.size(); i++)
+	{
+		TextButton *temp = new TextButton(m_hwnd, m_d2);
+		temp->SetName(tabNames[i]);
+
+		temp->SetBorderColor(false);
+		temp->SetFormat(D2Objects::Segoe18);
+		m_tabButtons.Add(temp);
+	}
 }
 
 CTPMessage TitleBar::ButtonToCTPMessage(Buttons button)
@@ -234,33 +225,13 @@ CTPMessage TitleBar::ButtonToCTPMessage(Buttons button)
 		return CTPMessage::TITLEBAR_MAXRESTORE;
 	case Buttons::MIN:
 		return CTPMessage::TITLEBAR_MIN;
-	case Buttons::PORTFOLIO:
-	case Buttons::CHART:
+	case Buttons::TAB:
 		return CTPMessage::TITLEBAR_TAB;
 	default:
 		return CTPMessage::NONE;
 	}
 }
 
-std::wstring TitleBar::ButtonToWString(Buttons button)
-{
-	switch (button)
-	{
-	case Buttons::PORTFOLIO:
-		return L"Portfolio";
-	case Buttons::CHART:
-		return L"Chart";
-	default:
-		return L"";
-	}
-}
-
-TitleBar::Buttons TitleBar::WStringToButton(std::wstring name)
-{
-	if (name == L"Portfolio") return Buttons::PORTFOLIO;
-	else if (name == L"Chart") return Buttons::CHART;
-	else return Buttons::NONE;
-}
 
 // Create bracket geometries. Create at x=0; shift on paint
 void TitleBar::CreateBracketGeometry(int i)
