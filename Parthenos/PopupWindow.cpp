@@ -132,8 +132,7 @@ LRESULT PopupWindow::OnMouseMove(POINT cursor, WPARAM wParam)
 	bool handeled = false;
 	for (auto item : m_items)
 	{
-		if (item == m_titleBar) handeled = m_titleBar->OnMouseMoveP(cursor, wParam, handeled) || handeled;
-		else handeled = item->OnMouseMove(dipCursor, wParam, handeled) || handeled;
+		handeled = item->OnMouseMove(dipCursor, wParam, handeled) || handeled;
 	}
 
 	if (!Cursor::isSet) ::SetCursor(Cursor::hArrow);
@@ -145,8 +144,7 @@ LRESULT PopupWindow::OnLButtonDown(POINT cursor, WPARAM wParam)
 	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
 	for (auto item : m_items)
 	{
-		if (item == m_titleBar) m_titleBar->OnLButtonDownP(cursor);
-		else item->OnLButtonDown(dipCursor);
+		item->OnLButtonDown(dipCursor);
 	}
 
 	ProcessCTPMessages();

@@ -217,6 +217,14 @@ public:
 		return static_cast<float>(y) / scaleY;
 	}
 
+	static inline POINT DipsToPixels(D2D1_POINT_2F point)
+	{
+		POINT out;
+		out.x = DipsToPixelsX(point.x);
+		out.y = DipsToPixelsY(point.y);
+		return out;
+	}
+
 	static inline RECT DipsToPixels(D2D1_RECT_F rect)
 	{
 		RECT out;

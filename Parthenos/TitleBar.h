@@ -20,8 +20,8 @@ public:
 	// AppItem overides
 	void SetSize(D2D1_RECT_F dipRect);
 	void Paint(D2D1_RECT_F updateRect);
-	bool OnMouseMoveP(POINT cursor, WPARAM wParam, bool handeled);
-	bool OnLButtonDownP(POINT cursor);
+	bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled);
+	bool OnLButtonDown(D2D1_POINT_2F cursor);
 
 	// Interface
 	inline Buttons HitTest(POINT cursor) { std::wstring dummy; return HitTest(cursor, dummy); }
