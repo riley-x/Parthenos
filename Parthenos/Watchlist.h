@@ -138,6 +138,8 @@ public:
 	// Interface
 	void Load(std::vector<std::wstring> const & tickers, std::vector<Column> const & columns,
 		std::vector<Position> const & positions);
+	// Preserves columns but introduces a new set of tickers
+	void Reload(std::vector<std::wstring> const & tickers, std::vector<Position> const & positions);
 
 	// Parameters
 	static float const m_hTextPad; // 4.0f
@@ -176,6 +178,7 @@ private:
 	// Helpers
 
 	void CalculateLayouts();
+	void CreateItems();
 	// Get top of item i
 	inline float GetHeight(int i) { return m_dipRect.top + m_headerHeight + i * m_rowHeight; }
 	// Get index given y coord

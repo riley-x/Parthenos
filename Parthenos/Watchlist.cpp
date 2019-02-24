@@ -93,6 +93,7 @@ void Watchlist::Paint(D2D1_RECT_F updateRect)
 
 }
 
+// TODO don't need to re-calculate layouts each set size, i.e. making the table larger?
 void Watchlist::SetSize(D2D1_RECT_F dipRect)
 {
 	if (equalRect(m_dipRect, dipRect)) return;
@@ -307,6 +308,16 @@ void Watchlist::Load(std::vector<std::wstring> const & tickers, std::vector<Colu
 	m_positions = positions;
 }
 
+
+void Watchlist::Reload(std::vector<std::wstring> const & tickers, std::vector<Position> const & positions)
+{
+	m_tickers = tickers;
+	m_tickers.push_back(L""); // Empty WatchlistItem at end for input
+	m_positions = positions;
+
+	CreateItems();
+}
+
 void Watchlist::CalculateLayouts()
 {
 	// Create column headers, vertical divider lines
@@ -335,7 +346,6 @@ void Watchlist::CalculateLayouts()
 			break;
 		}
 
-
 		HRESULT hr = m_d2.pDWriteFactory->CreateTextLayout(
 			m_columns[i].Name().c_str(),	// The string to be laid out and formatted.
 			m_columns[i].Name().size(),		// The length of the string.
@@ -350,6 +360,13 @@ void Watchlist::CalculateLayouts()
 		m_vLines[i] = left; // i.e. right sisde of column i
 	}
 
+	CreateItems();
+}
+
+// Clears and populates m_items based on tickers in m_tickers, setting their position appropriately,
+// using data from an iex batch fetch and data in m_positions. Also creates the horizontal divider lines.
+void Watchlist::CreateItems()
+{
 	// Get data via batch request
 	std::vector<std::wstring> tickers(m_tickers.begin(), m_tickers.end() - 1); // empty string at end
 	std::vector<std::pair<Quote, Stats>> data = GetBatchQuoteStats(tickers);

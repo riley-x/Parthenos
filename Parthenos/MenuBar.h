@@ -9,7 +9,8 @@ class Parthenos;
 class MenuBar : public AppItem
 {
 public:
-	MenuBar(HWND hwnd, D2Objects const & d2, Parthenos *parent, float height);
+	MenuBar(HWND hwnd, D2Objects const & d2, Parthenos *parent, 
+		std::vector<std::wstring> accounts, float height);
 	~MenuBar();
 
 	// AppItem overrides

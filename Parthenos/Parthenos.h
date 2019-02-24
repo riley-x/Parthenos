@@ -23,15 +23,20 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	MenuBar					*m_menuBar;
 
 	// Resource management
-	MouseTrackEvents		m_mouseTrack;
-	D2Objects				m_d2;
-	std::deque<ClientMessage> m_messages;
+	MouseTrackEvents			m_mouseTrack;
+	D2Objects					m_d2;
+	std::deque<ClientMessage>	m_messages;
+
+	// Data
+	int	m_currAccount = 0;
+	std::vector<std::wstring>			m_accounts;
+	std::vector<std::vector<Position>>	m_positions; // same order as m_accounts; extra entry at end for 'All'
 
 	// Layout
-	float const				m_titleBarHeight = 30.0f;
-	float const				m_menuBarHeight = 17.0f;
-	float const				m_watchlistWidth = 350.0f;
-	float const				m_portfolioListWidth = 600.0f;
+	float const	m_titleBarHeight		= 30.0f;
+	float const	m_menuBarHeight			= 17.0f;
+	float const	m_watchlistWidth		= 350.0f;
+	float const	m_portfolioListWidth	= 600.0f;
 
 	// Message responses
 	LRESULT	OnCreate();
@@ -46,9 +51,12 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	bool	OnKeyDown(WPARAM wParam, LPARAM lParam);
 	LRESULT OnTimer(WPARAM wParam, LPARAM lParam);
 
+	// Helpers
+	int AccountToIndex(std::wstring account);
 	void ProcessAppItemMessages();
 	D2D1_RECT_F CalculateItemRect(AppItem* item, D2D1_RECT_F const & dipRect);
 
+	// Deleted
 	Parthenos(const Parthenos&) = delete; // non construction-copyable
 	Parthenos& operator=(const Parthenos&) = delete; // non copyable
 public:

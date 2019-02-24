@@ -251,10 +251,10 @@ public:
 
 	static inline void SnapToPixel(D2D1_RECT_F & rect, bool inwards = true)
 	{
-		rect.left = SnapToPixelX(rect.left) + (-1.0f * inwards) * halfPX;
-		rect.top = SnapToPixelY(rect.top) + (-1.0f * inwards) * halfPY;
-		rect.right = SnapToPixelX(rect.right) + (-1.0f * inwards) * halfPX;
-		rect.bottom = SnapToPixelY(rect.bottom) + (-1.0f * inwards) * halfPY;
+		rect.left = SnapToPixelX(rect.left) - (1.0f - 2.0f * inwards) * halfPX;
+		rect.top = SnapToPixelY(rect.top) - (1.0f - 2.0f * inwards) * halfPY;
+		rect.right = SnapToPixelX(rect.right) + (1.0f - 2.0f * inwards) * halfPX;
+		rect.bottom = SnapToPixelY(rect.bottom) + (1.0f - 2.0f * inwards) * halfPY;
 	}
 
 	static inline float hpx() { return halfPX; }

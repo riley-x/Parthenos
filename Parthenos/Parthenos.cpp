@@ -163,6 +163,15 @@ void Parthenos::PreShow()
 ///////////////////////////////////////////////////////////
 // --- Helper functions ---
 
+int Parthenos::AccountToIndex(std::wstring account)
+{
+	for (size_t i = 0; i < m_accounts.size(); i++)
+	{
+		if (m_accounts[i] == account) return static_cast<int>(i);
+	}
+	return -1; // also means "All"
+}
+
 void Parthenos::ProcessAppItemMessages()
 {
 	for (ClientMessage msg : m_messages)
@@ -209,6 +218,19 @@ void Parthenos::ProcessAppItemMessages()
 			{
 				m_chart->Draw(msg.msg);
 			}
+			break;
+		}
+		case CTPMessage::MENUBAR_ACCOUNT:
+		{
+			int account = AccountToIndex(msg.msg);
+			if (account < 0) account = m_positions.size() - 1; // last entry is 'all'
+			if (account == m_currAccount) break;
+
+			m_currAccount = account;
+			std::vector<std::wstring> tickers = GetTickers(m_positions[account]);
+			m_portfolioList->Reload(tickers, m_positions[account]);
+
+			::InvalidateRect(m_hwnd, NULL, FALSE);
 			break;
 		}
 		default:
@@ -291,12 +313,14 @@ LRESULT Parthenos::OnCreate()
 		throw Error(L"OnCreate failed!");
 		return -1;  // Fail CreateWindowEx.
 	}
+	
+	m_accounts = { L"Robinhood", L"Arista" }; // TODO hardcoded right now
 
 	m_titleBar = new TitleBar(m_hwnd, m_d2, this, TitleBar::Buttons::CHART);
 	m_chart = new Chart(m_hwnd, m_d2);
 	m_watchlist = new Watchlist(m_hwnd, m_d2, this);
 	m_portfolioList = new Watchlist(m_hwnd, m_d2, this, false);
-	m_menuBar = new MenuBar(m_hwnd, m_d2, this, m_menuBarHeight);
+	m_menuBar = new MenuBar(m_hwnd, m_d2, this, m_accounts, m_menuBarHeight);
 
 	m_allItems.push_back(m_titleBar);
 	m_allItems.push_back(m_chart);
@@ -315,10 +339,17 @@ LRESULT Parthenos::OnCreate()
 	holdingsFile.Close();
 
 	// Holdings -> Positions
+	for (size_t i = 0; i < m_accounts.size(); i++)
+	{
+		std::vector<Position> positions = HoldingsToPositions(
+			FlattenedHoldingsToTickers(out), i, GetCurrentDate());
+		m_positions.push_back(positions);
+	}
 	std::vector<Position> positions = HoldingsToPositions(
-		FlattenedHoldingsToTickers(out), 1, GetCurrentDate());
+		FlattenedHoldingsToTickers(out), -1, GetCurrentDate()); // all accounts
+	m_positions.push_back(positions);
 
-	std::vector<std::wstring> tickers = GetTickers(positions);
+	std::vector<std::wstring> tickers = GetTickers(m_positions[m_currAccount]);
 	std::vector<Column> portColumns = {
 		{70.0f, Column::Ticker, L""},
 		{60.0f, Column::Last, L"%.2lf"},
@@ -331,11 +362,8 @@ LRESULT Parthenos::OnCreate()
 		{60.0f, Column::ExDiv, L""},
 	};
 
-	m_watchlist->Load(tickers, std::vector<Column>(), positions);
-	m_portfolioList->Load(tickers, portColumns, positions);
-
-	//m_watchlist->Load({ L"AAPL", L"MSFT", L"NVDA" }, std::vector<Column>());
-	//m_portfolioList->Load({ L"AAPL", L"MSFT", L"NVDA" }, std::vector<Column>());
+	m_watchlist->Load(tickers, std::vector<Column>(), m_positions[m_currAccount]);
+	m_portfolioList->Load(tickers, portColumns, m_positions[m_currAccount]);
 
 	return 0;
 }

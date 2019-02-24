@@ -227,7 +227,7 @@ std::vector<std::vector<Holdings>> FlattenedHoldingsToTickers(std::vector<Holdin
 	return out;
 }
 
-// Calculates returns and APY using 'date' as end date.
+// Calculates returns and APY using 'date' as end date. Set account = -1 to use all accounts
 std::vector<Position> HoldingsToPositions(std::vector<std::vector<Holdings>> const & holdings, char account, date_t date)
 {
 	std::vector<Position> out;

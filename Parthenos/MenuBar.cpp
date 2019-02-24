@@ -1,7 +1,9 @@
 #include "stdafx.h"
 #include "MenuBar.h"
+#include "Parthenos.h"
 
-MenuBar::MenuBar(HWND hwnd, D2Objects const & d2, Parthenos * parent, float height)
+MenuBar::MenuBar(HWND hwnd, D2Objects const & d2, Parthenos * parent, 
+	std::vector<std::wstring> accounts, float height)
 	: AppItem(hwnd, d2), m_parent(parent)
 {
 	DropMenuButton *temp = new DropMenuButton(hwnd, d2, this, false);
@@ -9,9 +11,10 @@ MenuBar::MenuBar(HWND hwnd, D2Objects const & d2, Parthenos * parent, float heig
 	temp->SetItems({ L"TODO", L"Hello" });
 	m_buttons.push_back(temp);
 
+	accounts.push_back(L"All");
 	temp = new DropMenuButton(hwnd, d2, this, false);
 	temp->SetText(m_texts[1], m_widths[1], height);
-	temp->SetItems({ L"TODO", L"Hello" });
+	temp->SetItems(accounts);
 	m_buttons.push_back(temp);
 
 	temp = new DropMenuButton(hwnd, d2, this, false);
@@ -110,13 +113,11 @@ void MenuBar::ProcessMessages()
 {
 	for (ClientMessage msg : m_messages)
 	{
-		if (msg.imsg != CTPMessage::DROPMENU_SELECTED) return;
-		// Could == on the sender but not necessary if the names are distinct
-		if (msg.msg == L"Add")
-		{
+		if (msg.imsg != CTPMessage::DROPMENU_SELECTED); // clear below
+		else if (msg.sender == m_buttons[1]) // Account
+			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_ACCOUNT);
+		else if (msg.msg == L"Add") // Transaction->Add
 			OutputMessage(L"hi!\n");
-		}
-		// else if ...
 	}
 	if (!m_messages.empty()) m_messages.clear();
 }
