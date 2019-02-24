@@ -170,6 +170,7 @@
     <ClInclude Include="MenuBar.h" />
     <ClInclude Include="Parthenos.h" />
     <ClInclude Include="PopupMenu.h" />
+    <ClInclude Include="PopupWindow.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
@@ -190,6 +191,7 @@
     <ClCompile Include="HTTP.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Parthenos.cpp" />
+    <ClCompile Include="PopupWindow.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

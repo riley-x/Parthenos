@@ -40,7 +40,7 @@ public:
 	auto handle_message(UINT msg, WPARAM wparam, LPARAM lparam, LRESULT & ret) -> bool {
 		ret = 0;
 		switch (msg) {
-		case WM_NCCALCSIZE: {
+		case WM_NCCALCSIZE: { // processing this message prevents the caption from appearing
 			if (wparam == TRUE) {
 				auto& params = *reinterpret_cast<NCCALCSIZE_PARAMS*>(lparam);
 				adjust_maximized_client_rect(params.rgrc[0]);

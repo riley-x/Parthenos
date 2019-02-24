@@ -28,18 +28,15 @@
     <Filter Include="Source Files\Notes">
       <UniqueIdentifier>{897507f9-8f98-40cc-a799-6620494f45ee}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Windows">
+      <UniqueIdentifier>{6361302a-8fff-4a92-92a7-4f6d2f7f3e20}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="utilities.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Parthenos.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="BorderlessWindow.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="BaseWindow.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D2Objects.h">
@@ -90,6 +87,15 @@
     <ClInclude Include="MenuBar.h">
       <Filter>Header Files\AppItems</Filter>
     </ClInclude>
+    <ClInclude Include="BaseWindow.h">
+      <Filter>Header Files\Windows</Filter>
+    </ClInclude>
+    <ClInclude Include="BorderlessWindow.h">
+      <Filter>Header Files\Windows</Filter>
+    </ClInclude>
+    <ClInclude Include="PopupWindow.h">
+      <Filter>Header Files\Windows</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -138,6 +144,9 @@
       <Filter>Source Files\AppItems</Filter>
     </ClCompile>
     <ClCompile Include="MenuBar.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PopupWindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

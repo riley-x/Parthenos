@@ -9,6 +9,7 @@
 #include "Chart.h"
 #include "Watchlist.h"
 #include "MenuBar.h"
+#include "PopupWindow.h"
 
 
 class Parthenos : public BorderlessWindow<Parthenos>
@@ -21,6 +22,9 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	Watchlist				*m_watchlist;
 	Watchlist				*m_portfolioList;
 	MenuBar					*m_menuBar;
+
+	// 'Child' windows
+	AddTransactionWindow	*m_addTWin;
 
 	// Resource management
 	MouseTrackEvents			m_mouseTrack;
@@ -72,5 +76,8 @@ public:
 	// Handle initializations here instead of create
 	// ClientRect doesn't have correct size during WM_CREATE
 	void PreShow(); 
+
+
+	inline HINSTANCE Instance() const { return m_hInstance; }
 
 };

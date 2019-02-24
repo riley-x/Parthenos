@@ -19,7 +19,7 @@ MenuBar::MenuBar(HWND hwnd, D2Objects const & d2, Parthenos * parent,
 
 	temp = new DropMenuButton(hwnd, d2, this, false);
 	temp->SetText(m_texts[2], m_widths[2], height);
-	temp->SetItems({ L"Add" });
+	temp->SetItems({ L"Add..." });
 	m_buttons.push_back(temp);
 }
 
@@ -116,8 +116,8 @@ void MenuBar::ProcessMessages()
 		if (msg.imsg != CTPMessage::DROPMENU_SELECTED); // clear below
 		else if (msg.sender == m_buttons[1]) // Account
 			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_ACCOUNT);
-		else if (msg.msg == L"Add") // Transaction->Add
-			OutputMessage(L"hi!\n");
+		else if (msg.msg == L"Add...") // Transaction->Add...
+			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_TRANSACTIONADD);
 	}
 	if (!m_messages.empty()) m_messages.clear();
 }

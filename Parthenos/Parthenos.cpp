@@ -6,6 +6,7 @@
 #include "TitleBar.h"
 #include "HTTP.h"
 #include "DataManaging.h"
+#include "PopupWindow.h"
 
 #include <windowsx.h>
 
@@ -20,6 +21,7 @@ Parthenos::~Parthenos()
 {
 	for (auto item : m_allItems)
 		if (item) delete item;
+	if (m_addTWin) delete m_addTWin;
 }
 
 LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -233,6 +235,12 @@ void Parthenos::ProcessAppItemMessages()
 			::InvalidateRect(m_hwnd, NULL, FALSE);
 			break;
 		}
+		case CTPMessage::MENUBAR_TRANSACTIONADD:
+		{
+			CreatePopupWindow(m_addTWin, m_hInstance, PopupType::TransactionAdd);
+			OutputMessage(L"Hi!\n");
+			break;
+		}
 		default:
 			OutputMessage(L"Unknown message %d received\n", static_cast<int>(msg.imsg));
 			break;
@@ -331,6 +339,19 @@ LRESULT Parthenos::OnCreate()
 	m_activeItems.push_back(m_chart);
 	m_activeItems.push_back(m_watchlist);
 
+
+	// Register 'child' windows
+	WndCreateArgs args;
+	args.hInstance = m_hInstance;
+	args.classStyle = CS_DBLCLKS;
+	args.hbrBackground = CreateSolidBrush(RGB(0, 0, 1));
+	args.hIcon = LoadIcon(args.hInstance, MAKEINTRESOURCE(IDI_PARTHENOS));
+	args.hIconSm = LoadIcon(args.hInstance, MAKEINTRESOURCE(IDI_SMALL));
+
+	m_addTWin = new AddTransactionWindow(L"ADDTRANSACTION");
+	BOOL ok = m_addTWin->Register(args);
+	if (!ok) OutputError(L"Register addTWin failed");
+
 	// Read Holdings
 	FileIO holdingsFile;
 	holdingsFile.Init(ROOTDIR + L"port.hold");
@@ -342,7 +363,7 @@ LRESULT Parthenos::OnCreate()
 	for (size_t i = 0; i < m_accounts.size(); i++)
 	{
 		std::vector<Position> positions = HoldingsToPositions(
-			FlattenedHoldingsToTickers(out), i, GetCurrentDate());
+			FlattenedHoldingsToTickers(out), static_cast<char>(i), GetCurrentDate());
 		m_positions.push_back(positions);
 	}
 	std::vector<Position> positions = HoldingsToPositions(

@@ -27,8 +27,8 @@ private:
 
 	// Parameters
 	static const int	m_nButtons = 3;
-	const std::wstring  m_texts[m_nButtons] = { L"File", L"Account", L"Transaction" };
-	const float			m_widths[m_nButtons] = { 30.0f, 60.0f, 70.0f };
+	const std::wstring  m_texts[m_nButtons] = { L"File", L"Account", L"Transactions" };
+	const float			m_widths[m_nButtons] = { 30.0f, 60.0f, 80.0f };
 
 	// Drawing
 	float m_rBorder;

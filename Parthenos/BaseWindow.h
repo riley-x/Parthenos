@@ -98,7 +98,7 @@ public:
 
 protected:
 
-	PCWSTR  ClassName() const { return m_wsClassName.c_str(); }
+	PCWSTR ClassName() const { return m_wsClassName.c_str(); }
 	virtual LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) = 0;
 
 	std::wstring m_wsClassName;
