@@ -224,7 +224,7 @@ void AddTransactionWindow::PreShow()
 	if (bErr == 0) OutputError(L"GetClientRect failed");
 	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
 
-	m_inputLeft = (dipRect.left + dipRect.right) / 2.0f;
+	m_inputLeft = (dipRect.left + dipRect.right - m_itemWidth) / 2.0f;
 
 	// Create AppItems
 	m_titleBar = new TitleBar(m_hwnd, m_d2, this);
@@ -331,7 +331,7 @@ LRESULT AddTransactionWindow::OnPaint()
 
 		for (auto item : m_items)
 			item->Paint(fullRect);
-		DrawTexts();
+		DrawTexts(fullRect);
 
 		m_accountButton->GetMenu().Paint(fullRect);
 		m_transactionTypeButton->GetMenu().Paint(fullRect);
@@ -347,7 +347,7 @@ LRESULT AddTransactionWindow::OnPaint()
 	return 0;
 }
 
-void AddTransactionWindow::DrawTexts()
+void AddTransactionWindow::DrawTexts(D2D1_RECT_F fullRect)
 {
 	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
 
@@ -364,7 +364,7 @@ void AddTransactionWindow::DrawTexts()
 	for (size_t i = 0; i < m_labels.size(); i++)
 	{
 		D2D1_RECT_F dipRect = D2D1::RectF(
-			0.0f,
+			fullRect.left,
 			m_inputTop + i * (m_itemHeight + m_itemVPad),
 			m_inputLeft - m_labelHPad,
 			m_inputTop + i * (m_itemHeight + m_itemVPad) + m_itemHeight
@@ -377,6 +377,23 @@ void AddTransactionWindow::DrawTexts()
 			m_d2.pBrush
 		);
 	}
+
 	m_d2.pTextFormats[D2Objects::Formats::Segoe12]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+	for (size_t i = 0; i < extra_inds.size(); i++)
+	{
+		D2D1_RECT_F dipRect = D2D1::RectF(
+			m_inputLeft + m_itemWidth + m_labelHPad,
+			m_inputTop + extra_inds[i] * (m_itemHeight + m_itemVPad),
+			fullRect.right,
+			m_inputTop + extra_inds[i] * (m_itemHeight + m_itemVPad) + m_itemHeight
+		);
+		m_d2.pRenderTarget->DrawText(
+			extra_labels[i].c_str(),
+			extra_labels[i].size(),
+			m_d2.pTextFormats[D2Objects::Formats::Segoe12],
+			dipRect,
+			m_d2.pBrush
+		);
+	}
 }
 

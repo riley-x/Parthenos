@@ -104,6 +104,7 @@ void PopupMenu::Show(bool show)
 	::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 }
 
+// Creates the text layout and calculates the width and height of the menu
 void PopupMenu::SetItems(std::vector<std::wstring> const & items)
 {
 	if (m_items.size() > 0) return; // only set once
@@ -112,27 +113,30 @@ void PopupMenu::SetItems(std::vector<std::wstring> const & items)
 	for (auto x : m_pTextLayouts) SafeRelease(&x);
 	m_pTextLayouts.resize(items.size());
 
-	size_t max_size = 0;
-	for (auto item : items)
-	{
-		if (item.size() > max_size) max_size = item.size();
-	}
-
-	m_width = max(50.0f, 50.0f * ceil(max_size * (4.0f + m_fontSize) / 50.0f));
-	m_height = getTop(items.size());
-
 	for (size_t i = 0; i < items.size(); i++)
 	{
+		// TODO instead of 500.0f for the width, do another loop after calculating widths
 		HRESULT hr = m_d2.pDWriteFactory->CreateTextLayout(
 			items[i].c_str(),		// The string to be laid out and formatted.
 			items[i].size(),		// The length of the string.
 			m_d2.pTextFormats[m_format],   // The text format to apply to the string (contains font information, etc).
-			m_width,				// The width of the layout box.
+			500.0f,					// The width of the layout box.
 			m_fontSize,					// The height of the layout box.
 			&m_pTextLayouts[i]		// The IDWriteTextLayout interface pointer.
 		);
 		if (FAILED(hr)) throw Error(L"CreateTextLayout failed");
 	}
+
+	float max_width = 0;
+	DWRITE_TEXT_METRICS metrics;
+	for (auto layout : m_pTextLayouts)
+	{
+		layout->GetMetrics(&metrics);
+		if (metrics.width > max_width) max_width = metrics.width;
+	}
+
+	m_width = 50.0f * ceil((max_width + 20.0f) / 50.0f); // 20 DIP pad
+	m_height = getTop(items.size());
 }
 
 

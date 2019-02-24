@@ -78,14 +78,17 @@ private:
 	TextBox			*m_strikeBox;
 
 	// Data
-	std::vector<std::wstring> m_accounts;
-	std::vector<std::wstring> m_labels = { L"Date:", L"Ticker:", L"Shares/Contracts (signed):", L"Price:", L"Value (signed):",
+	std::vector<std::wstring>		m_accounts;
+	std::vector<std::wstring> const m_labels = { L"Account:", L"Transaction:", L"Date:", L"Ticker:", 
+		L"Shares/Contracts:", L"Price:", L"Value:",
 		L"Ex Date:", L"Strike:", L"Tax Lot:" };
-	Transaction		m_transaction = {};
+	std::vector<size_t> const		extra_inds = { 2, 4, 6, 7 };
+	std::vector<std::wstring> const	extra_labels = { L"YYYYMMDD", L"signed", L"signed", L"YYYYMMDD" };
+	Transaction						m_transaction = {};
 
 	// Layout
 	float			m_inputLeft;
-	float const		m_inputTop = 60.0f;
+	float const		m_inputTop = 70.0f;
 	float const		m_labelHPad = 10.0f;
 	float const		m_itemHeight = 14.0f;
 	float const		m_itemVPad = 6.0f;
@@ -94,5 +97,5 @@ private:
 	void ProcessCTPMessages();
 	D2D1_RECT_F CalculateItemRect(size_t i, D2D1_RECT_F const & dipRect);
 	LRESULT	OnPaint();
-	void DrawTexts();
+	void DrawTexts(D2D1_RECT_F fullRect);
 };

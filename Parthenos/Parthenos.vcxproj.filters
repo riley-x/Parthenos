@@ -22,20 +22,17 @@
     <Filter Include="Header Files\AppItems">
       <UniqueIdentifier>{c6191a8a-288d-4b97-a4ee-2100d778a3f5}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\VS">
-      <UniqueIdentifier>{34148477-50ed-4e8b-8a90-b98189ead491}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\Notes">
       <UniqueIdentifier>{897507f9-8f98-40cc-a799-6620494f45ee}</UniqueIdentifier>
     </Filter>
     <Filter Include="Header Files\Windows">
       <UniqueIdentifier>{6361302a-8fff-4a92-92a7-4f6d2f7f3e20}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Utilities">
+      <UniqueIdentifier>{34148477-50ed-4e8b-8a90-b98189ead491}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="utilities.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="D2Objects.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -67,13 +64,13 @@
       <Filter>Header Files\AppItems</Filter>
     </ClInclude>
     <ClInclude Include="Resource.h">
-      <Filter>Header Files\VS</Filter>
+      <Filter>Header Files\Utilities</Filter>
     </ClInclude>
     <ClInclude Include="targetver.h">
-      <Filter>Header Files\VS</Filter>
+      <Filter>Header Files\Utilities</Filter>
     </ClInclude>
     <ClInclude Include="stdafx.h">
-      <Filter>Header Files\VS</Filter>
+      <Filter>Header Files\Utilities</Filter>
     </ClInclude>
     <ClInclude Include="PopupMenu.h">
       <Filter>Header Files\AppItems</Filter>
@@ -95,6 +92,9 @@
     </ClInclude>
     <ClInclude Include="Parthenos.h">
       <Filter>Header Files\Windows</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities.h">
+      <Filter>Header Files\Utilities</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
