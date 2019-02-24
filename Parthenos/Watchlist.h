@@ -54,11 +54,14 @@ public:
 	void SetSize(D2D1_RECT_F dipRect); // The height should not change, or else call Load() again
 	void Paint(D2D1_RECT_F updateRect);
 	inline bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled) { return m_ticker.OnMouseMove(cursor, wParam, handeled); }
-	inline bool OnLButtonDown(D2D1_POINT_2F cursor)
+	inline bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 	{
+		if (handeled) return false;
 		bool out = false;
-		if (m_editableTickers) out = out || m_ticker.OnLButtonDown(cursor);
+		
+		if (m_editableTickers) out = m_ticker.OnLButtonDown(cursor, handeled) || out;
 		if (!out && inRect(cursor, m_dipRect)) m_LButtonDown = true;
+		
 		ProcessCTPMessages();
 		return out;
 	}
@@ -127,7 +130,7 @@ public:
 	void Paint(D2D1_RECT_F updateRect);
 	void SetSize(D2D1_RECT_F dipRect);
 	bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled);
-	bool OnLButtonDown(D2D1_POINT_2F cursor);
+	bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled);
 	void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam);
 	void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam);
 	bool OnChar(wchar_t c, LPARAM lParam);

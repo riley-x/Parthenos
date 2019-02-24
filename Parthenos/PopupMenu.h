@@ -13,7 +13,7 @@ public:
 	void SetSize(D2D1_RECT_F dipRect);
 	void Paint(D2D1_RECT_F updateRect);
 	bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled);
-	bool OnLButtonDown(D2D1_POINT_2F cursor, int & selection, std::wstring & str);
+	bool OnLButtonDown(D2D1_POINT_2F cursor, int & selection, std::wstring & str); // don't need to pass handeled since always on top
 
 	void Show(bool show = true);
 	void SetItems(std::vector<std::wstring> const & items);

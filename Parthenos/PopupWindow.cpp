@@ -128,7 +128,6 @@ LRESULT PopupWindow::OnMouseMove(POINT cursor, WPARAM wParam)
 	m_mouseTrack.OnMouseMove(m_hwnd);  // Start tracking.
 
 	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
-
 	bool handeled = false;
 	for (auto item : m_items)
 	{
@@ -142,9 +141,10 @@ LRESULT PopupWindow::OnMouseMove(POINT cursor, WPARAM wParam)
 LRESULT PopupWindow::OnLButtonDown(POINT cursor, WPARAM wParam)
 {
 	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
+	bool handeled = false;
 	for (auto item : m_items)
 	{
-		item->OnLButtonDown(dipCursor);
+		handeled = item->OnLButtonDown(dipCursor, handeled) || handeled;
 	}
 
 	ProcessCTPMessages();

@@ -168,8 +168,10 @@ bool TitleBar::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 	return false;
 }
 
-bool TitleBar::OnLButtonDown(D2D1_POINT_2F cursor)
+bool TitleBar::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 {
+	if (handeled) return false;
+
 	std::wstring name;
 	Buttons button = HitTest(DPIScale::DipsToPixels(cursor), name);
 	switch (button)
@@ -181,13 +183,12 @@ bool TitleBar::OnLButtonDown(D2D1_POINT_2F cursor)
 	case Buttons::MAXRESTORE:
 	case Buttons::MIN:
 		m_parent->SendClientMessage(this, name, ButtonToCTPMessage(button)); // Invalidates
-		break;
+		return true;
 	case Buttons::CAPTION:
 	case Buttons::NONE:
 	default:
-		break;
+		return false;
 	}
-	return false; // unused
 }
 	
 TitleBar::Buttons TitleBar::HitTest(POINT cursor, std::wstring & name)

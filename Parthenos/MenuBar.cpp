@@ -100,14 +100,14 @@ bool MenuBar::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 	return handeled;
 }
 
-bool MenuBar::OnLButtonDown(D2D1_POINT_2F cursor)
+bool MenuBar::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 {
 	for (auto button : m_buttons)
 	{
-		button->OnLButtonDown(cursor);
+		handeled = button->OnLButtonDown(cursor, handeled) || handeled;
 	}
 	ProcessCTPMessages();
-	return false;
+	return handeled;
 }
 
 void MenuBar::ProcessCTPMessages()

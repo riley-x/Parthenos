@@ -50,7 +50,7 @@ public:
 
 	// generally, should return true when mouse/keyboard captured
 	virtual bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled) { return false; }
-	virtual bool OnLButtonDown(D2D1_POINT_2F cursor) { return false; } // use 'handled' to respect z-order
+	virtual bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled) { return false; } // use 'handled' to respect z-order
 	virtual void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam) { return; }
 	virtual void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam) { return; }
 	virtual bool OnChar(wchar_t c, LPARAM lParam) { return false; }

@@ -7,11 +7,16 @@
 class Button : public AppItem
 {
 public:
+	// AppItem
 	using AppItem::AppItem;
-	virtual inline bool OnLButtonDown(D2D1_POINT_2F cursor) { return inRect(cursor, m_dipRect); }
+	virtual inline bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
+	{
+		if (!handeled) return inRect(cursor, m_dipRect); 
+		return false;
+	}
 
+	// Interface
 	virtual inline bool HitTest(D2D1_POINT_2F cursor) { return inRect(cursor, m_dipRect); }
-
 	virtual inline void SetClickRect(D2D1_RECT_F rect) { return; }
 	virtual inline D2D1_RECT_F GetClickRect() { return m_dipRect; }
 	void SetName(std::wstring name) { m_name = name; }
@@ -25,9 +30,16 @@ protected:
 class IconButton : public Button
 {
 public:
+	// AppItem
 	using Button::Button;
 	void Paint(D2D1_RECT_F updateRect);
-	bool OnLButtonDown(D2D1_POINT_2F cursor);
+	inline bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled) 
+	{
+		if (!handeled) return inRect(cursor, m_clickRect); 
+		return false;
+	}
+
+	// Interface
 	inline void SetIcon(size_t i) { m_iBitmap = i; } // index into d2.pD2DBitmaps
 	inline void SetClickRect(D2D1_RECT_F rect) { m_clickRect = rect; }
 	inline D2D1_RECT_F GetClickRect() { return m_clickRect; }
@@ -41,21 +53,23 @@ private:
 class ButtonGroup : public AppItem
 {
 public:
+	// AppItem
 	using AppItem::AppItem;
 	~ButtonGroup() { for (auto button : m_buttons) if (button) delete button; }
+	inline void Paint(D2D1_RECT_F updateRect) { for (auto button : m_buttons) button->Paint(updateRect); }
 
+	// Interface
 	inline void Add(Button * button) { m_buttons.push_back(button); }
 	inline size_t Size() const { return m_buttons.size(); } 
 	inline std::vector<Button*> Buttons() const { return m_buttons; };
 
-	inline void Paint(D2D1_RECT_F updateRect) { for (auto button : m_buttons) button->Paint(updateRect); }
-
 	// Does not allow clicking the current active button
-	inline bool OnLButtonDown(D2D1_POINT_2F cursor, std::wstring & name)
+	inline bool OnLButtonDown(D2D1_POINT_2F cursor, std::wstring & name, bool handeled)
 	{
+		if (handeled) return false;
 		for (int i = 0; i < static_cast<int>(m_buttons.size()); i++)
 		{
-			if (i != m_active && m_buttons[i]->OnLButtonDown(cursor))
+			if (i != m_active && m_buttons[i]->OnLButtonDown(cursor, handeled))
 			{
 				name = m_buttons[i]->Name();
 				m_active = i;
@@ -166,7 +180,7 @@ public:
 	void SetSize(D2D1_RECT_F dipRect);
 	void Paint(D2D1_RECT_F updateRect); // owner of button should call paint on popup
 	inline bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled = false) { return m_menu.OnMouseMove(cursor, wParam, handeled); }
-	bool OnLButtonDown(D2D1_POINT_2F cursor);
+	bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled);
 
 	// Interface
 	void SetText(std::wstring text, float width, float height); // For non-dynamic, the text of the button

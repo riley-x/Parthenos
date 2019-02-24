@@ -134,14 +134,13 @@ bool Watchlist::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 	//ProcessCTPMessages();
 }
 
-bool Watchlist::OnLButtonDown(D2D1_POINT_2F cursor)
+bool Watchlist::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 {
-	bool isTextBox = false;
 	for (auto item : m_items)
 	{
-		if (item->OnLButtonDown(cursor)) isTextBox = true;
+		handeled = item->OnLButtonDown(cursor, handeled) || handeled;
 	}
-	if (!isTextBox && inRect(cursor, m_dipRect))
+	if (!handeled && inRect(cursor, m_dipRect))
 	{
 		int i = GetItem(cursor.y);
 		if (i >= 0 && i < static_cast<int>(m_items.size()))
@@ -151,10 +150,11 @@ bool Watchlist::OnLButtonDown(D2D1_POINT_2F cursor)
 			// Reset flags for dragging -- not dragging yet
 			m_hover = -1;
 			m_ignoreSelection = false; 
+			return true;
 		}
 	}
 	ProcessCTPMessages();
-	return false; // unused
+	return handeled; // unused
 }
 
 void Watchlist::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)

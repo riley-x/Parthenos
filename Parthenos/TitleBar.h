@@ -21,7 +21,7 @@ public:
 	void SetSize(D2D1_RECT_F dipRect);
 	void Paint(D2D1_RECT_F updateRect);
 	bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled);
-	bool OnLButtonDown(D2D1_POINT_2F cursor);
+	bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled);
 
 	// Interface
 	inline Buttons HitTest(POINT cursor) { std::wstring dummy; return HitTest(cursor, dummy); }

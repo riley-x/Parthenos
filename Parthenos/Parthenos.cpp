@@ -481,7 +481,6 @@ LRESULT Parthenos::OnMouseMove(POINT cursor, WPARAM wParam)
 	m_mouseTrack.OnMouseMove(m_hwnd);  // Start tracking.
 
 	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
-
 	bool handeled = false;
 	for (auto item : m_activeItems)
 	{
@@ -497,9 +496,10 @@ LRESULT Parthenos::OnMouseMove(POINT cursor, WPARAM wParam)
 LRESULT Parthenos::OnLButtonDown(POINT cursor, WPARAM wParam)
 {
 	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
+	bool handeled = false;
 	for (auto item : m_activeItems)
 	{
-		item->OnLButtonDown(dipCursor);
+		handeled = item->OnLButtonDown(dipCursor, handeled) || handeled;
 	}
 	
 	ProcessCTPMessages();

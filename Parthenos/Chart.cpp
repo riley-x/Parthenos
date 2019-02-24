@@ -172,15 +172,15 @@ bool Chart::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 	return handeled;
 }
 
-bool Chart::OnLButtonDown(D2D1_POINT_2F cursor)
+bool Chart::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 {
-	m_tickerBox.OnLButtonDown(cursor);
-	m_timeframeButton.OnLButtonDown(cursor);
+	handeled = m_timeframeButton.OnLButtonDown(cursor, handeled) || handeled;
+	handeled = m_tickerBox.OnLButtonDown(cursor, handeled) || handeled;
 
-	if (inRect(cursor, m_menuRect))
+	if (!handeled && inRect(cursor, m_menuRect))
 	{
 		std::wstring name;
-		if (m_chartTypeButtons.OnLButtonDown(cursor, name))
+		if (m_chartTypeButtons.OnLButtonDown(cursor, name, handeled))
 		{
 			MainChartType newType = MainChartType::none;
 			if (name == L"Candlestick")
@@ -196,11 +196,12 @@ bool Chart::OnLButtonDown(D2D1_POINT_2F cursor)
 				m_currentMChart = newType;
 				DrawCurrentState();
 			}
+			return true;
 		}
 	}
 
 	ProcessCTPMessages();
-	return false; // unused
+	return handeled; 
 }
 
 void Chart::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)

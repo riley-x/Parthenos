@@ -20,17 +20,6 @@ void IconButton::Paint(D2D1_RECT_F updateRect)
 	}
 }
 
-bool IconButton::OnLButtonDown(D2D1_POINT_2F cursor)
-{
-	if (cursor.x >= m_clickRect.left &&
-		cursor.x <= m_clickRect.right &&
-		cursor.y >= m_clickRect.top &&
-		cursor.y <= m_clickRect.bottom)
-	{
-		return true;
-	}
-	return false;
-}
 
 ///////////////////////////////////////////////////////////
 // --- DropMenuButton ---
@@ -109,8 +98,9 @@ void DropMenuButton::Paint(D2D1_RECT_F updateRect)
 	// owner of button should call paint on popup
 }
 
-bool DropMenuButton::OnLButtonDown(D2D1_POINT_2F cursor)
+bool DropMenuButton::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 {
+	bool out = false;
 	if (m_active)
 	{
 		int i;
@@ -119,18 +109,21 @@ bool DropMenuButton::OnLButtonDown(D2D1_POINT_2F cursor)
 		{
 			if (m_dynamic) SetActive(i);
 			m_parent->PostClientMessage(this, str, CTPMessage::DROPMENU_SELECTED);
+			out = true;
 		}
+		// Deactivate on click, always
 		m_active = false;
 		m_menu.Show(false);
 		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 	}
-	else if (inRect(cursor, m_dipRect))
+	else if (!handeled && inRect(cursor, m_dipRect))
 	{
 		m_active = true;
 		m_menu.Show();
 		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+		out = true;
 	}
-	return false;
+	return out;
 }
 
 void DropMenuButton::SetText(std::wstring text, float width, float height)

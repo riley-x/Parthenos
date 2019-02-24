@@ -24,7 +24,7 @@ public:
 	void Paint(D2D1_RECT_F updateRect);
 	void SetSize(D2D1_RECT_F dipRect);
 	bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled);
-	bool OnLButtonDown(D2D1_POINT_2F cursor);
+	bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled);
 	void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam);
 	void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam);
 	bool OnChar(wchar_t c, LPARAM lParam);

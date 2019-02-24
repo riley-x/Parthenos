@@ -103,7 +103,7 @@ bool TextBox::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 	return out;
 }
 
-bool TextBox::OnLButtonDown(D2D1_POINT_2F cursor)
+bool TextBox::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 {
 	if (!inRect(cursor, m_dipRect))
 	{
@@ -114,6 +114,7 @@ bool TextBox::OnLButtonDown(D2D1_POINT_2F cursor)
 		}
 		return false;
 	}
+	if (handeled) return false;
 
 	DWRITE_HIT_TEST_METRICS hitTestMetrics;
 	BOOL isTrailingHit;

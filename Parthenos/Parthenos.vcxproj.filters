@@ -36,9 +36,6 @@
     <ClInclude Include="utilities.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Parthenos.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="D2Objects.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -94,6 +91,9 @@
       <Filter>Header Files\Windows</Filter>
     </ClInclude>
     <ClInclude Include="PopupWindow.h">
+      <Filter>Header Files\Windows</Filter>
+    </ClInclude>
+    <ClInclude Include="Parthenos.h">
       <Filter>Header Files\Windows</Filter>
     </ClInclude>
   </ItemGroup>
