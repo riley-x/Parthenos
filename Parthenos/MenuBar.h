@@ -18,7 +18,7 @@ public:
 	void SetSize(D2D1_RECT_F dipRect);
 	void OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam);
 	bool OnLButtonDown(D2D1_POINT_2F cursor);
-	void ProcessMessages();
+	void ProcessCTPMessages();
 
 private:
 	// Objects

@@ -105,11 +105,11 @@ bool MenuBar::OnLButtonDown(D2D1_POINT_2F cursor)
 	{
 		button->OnLButtonDown(cursor);
 	}
-	ProcessMessages();
+	ProcessCTPMessages();
 	return false;
 }
 
-void MenuBar::ProcessMessages()
+void MenuBar::ProcessCTPMessages()
 {
 	for (ClientMessage msg : m_messages)
 	{

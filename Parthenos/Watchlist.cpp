@@ -128,7 +128,7 @@ void Watchlist::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
 			::InvalidateRect(m_hwnd, &m_pixRect, false);
 		}
 	}
-	//ProcessMessages();
+	//ProcessCTPMessages();
 }
 
 bool Watchlist::OnLButtonDown(D2D1_POINT_2F cursor)
@@ -150,7 +150,7 @@ bool Watchlist::OnLButtonDown(D2D1_POINT_2F cursor)
 			m_ignoreSelection = false; 
 		}
 	}
-	ProcessMessages();
+	ProcessCTPMessages();
 	return false; // unused
 }
 
@@ -171,7 +171,7 @@ void Watchlist::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)
 		SortByColumn(column);
 		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 	}
-	//ProcessMessages();
+	//ProcessCTPMessages();
 }
 
 // If dragging an element, does the insertion above the drop location
@@ -195,7 +195,7 @@ void Watchlist::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 		m_hover = -1;
 		m_LButtonDown = -1;
 	}
-	ProcessMessages();
+	ProcessCTPMessages();
 }
 
 bool Watchlist::OnChar(wchar_t c, LPARAM lParam)
@@ -208,7 +208,7 @@ bool Watchlist::OnChar(wchar_t c, LPARAM lParam)
 			if (item->OnChar(c, lParam)) return true;
 		}
 	}
-	//ProcessMessages();
+	//ProcessCTPMessages();
 	return false;
 }
 
@@ -221,7 +221,7 @@ bool Watchlist::OnKeyDown(WPARAM wParam, LPARAM lParam)
 		{
 			if (item->OnKeyDown(wParam, lParam)) out = true;
 		}
-		ProcessMessages();
+		ProcessCTPMessages();
 	}
 	return out;
 }
@@ -232,10 +232,10 @@ void Watchlist::OnTimer(WPARAM wParam, LPARAM lParam)
 	{
 		for (auto item : m_items) item->OnTimer(wParam, lParam);
 	}
-	//ProcessMessages();
+	//ProcessCTPMessages();
 }
 
-void Watchlist::ProcessMessages()
+void Watchlist::ProcessCTPMessages()
 {
 	for (ClientMessage msg : m_messages)
 	{
@@ -537,10 +537,10 @@ inline void WatchlistItem::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 			m_parent->PostClientMessage(this, m_ticker.String(), CTPMessage::WATCHLIST_SELECTED);
 		}
 	}
-	//ProcessMessages(); // not needed
+	//ProcessCTPMessages(); // not needed
 }
 
-void WatchlistItem::ProcessMessages()
+void WatchlistItem::ProcessCTPMessages()
 {
 	for (ClientMessage msg : m_messages)
 	{

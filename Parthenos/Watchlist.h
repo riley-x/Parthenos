@@ -59,7 +59,7 @@ public:
 		bool out = false;
 		if (m_editableTickers) out = out || m_ticker.OnLButtonDown(cursor);
 		if (!out && inRect(cursor, m_dipRect)) m_LButtonDown = true;
-		ProcessMessages();
+		ProcessCTPMessages();
 		return out;
 	}
 	inline void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam) { return m_ticker.OnLButtonDblclk(cursor, wParam); }
@@ -68,12 +68,12 @@ public:
 	inline bool OnKeyDown(WPARAM wParam, LPARAM lParam) 
 	{
 		bool out = m_ticker.OnKeyDown(wParam, lParam); 
-		ProcessMessages();
+		ProcessCTPMessages();
 		return out;
 	}
 	inline void OnTimer(WPARAM wParam, LPARAM lParam) { return m_ticker.OnTimer(wParam, lParam); }
 
-	void ProcessMessages();
+	void ProcessCTPMessages();
 
 	// Interface
 	inline std::wstring Ticker() const { return m_currTicker; }
@@ -133,7 +133,7 @@ public:
 	bool OnChar(wchar_t c, LPARAM lParam);
 	bool OnKeyDown(WPARAM wParam, LPARAM lParam);
 	void OnTimer(WPARAM wParam, LPARAM lParam);
-	void ProcessMessages();
+	void ProcessCTPMessages();
 
 	// Interface
 	void Load(std::vector<std::wstring> const & tickers, std::vector<Column> const & columns,

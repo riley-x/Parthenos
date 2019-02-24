@@ -23,7 +23,18 @@ typedef struct ClientMessage_struct
 	CTPMessage imsg;
 } ClientMessage;
 
-class AppItem
+
+class CTPMessageReceiver
+{
+public:
+	virtual void SendClientMessage(AppItem *sender, std::wstring msg, CTPMessage imsg) { m_messages.push_front({ sender,msg,imsg }); }
+	virtual void PostClientMessage(AppItem *sender, std::wstring msg, CTPMessage imsg) { m_messages.push_back({ sender,msg,imsg }); }
+protected:
+	virtual void ProcessCTPMessages() { if (!m_messages.empty()) m_messages.clear(); }
+	std::deque<ClientMessage> m_messages;
+};
+
+class AppItem : public CTPMessageReceiver
 {
 public:
 	AppItem(HWND hwnd, D2Objects const & d2) : m_hwnd(hwnd), m_d2(d2) {}
@@ -46,9 +57,6 @@ public:
 	virtual bool OnKeyDown(WPARAM wParam, LPARAM lParam) { return false; }
 	virtual void OnTimer(WPARAM wParam, LPARAM lParam) { return; }
 
-	virtual void PostClientMessage(AppItem *sender, std::wstring msg, CTPMessage imsg) { m_messages.push_back({ sender,msg,imsg }); }
-	virtual void ProcessMessages() { if (!m_messages.empty()) m_messages.clear(); }
-
 	D2D1_RECT_F GetDIPRect() const { return m_dipRect; }
 
 protected:
@@ -58,5 +66,4 @@ protected:
 	RECT			m_pixRect; // pixels in main window client coordinates
 	D2D1_RECT_F		m_dipRect = D2D1::RectF(-1, -1, -1, -1);
 
-	std::deque<ClientMessage> m_messages;
 };

@@ -13,7 +13,7 @@ public:
 	static float const iconHPad; // 6 DIPs
 
 	// Constructors
-	TitleBar(HWND hwnd, D2Objects const & d2, Parthenos *parent)
+	TitleBar(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent)
 		: AppItem(hwnd, d2), m_parent(parent), m_tabButtons(hwnd, d2) {}
 	~TitleBar() { SafeRelease(&m_bracketGeometries[0]); SafeRelease(&m_bracketGeometries[1]); }
 
@@ -44,7 +44,7 @@ public:
 
 private:
 	// Objects
-	Parthenos			*m_parent;
+	CTPMessageReceiver	*m_parent;
 	ButtonGroup			m_tabButtons;
 
 	// Parameters

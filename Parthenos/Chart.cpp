@@ -168,7 +168,7 @@ void Chart::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam)
 {
 	m_tickerBox.OnMouseMove(cursor, wParam);
 	m_timeframeButton.OnMouseMove(cursor, wParam);
-	//ProcessMessages(); // not needed
+	//ProcessCTPMessages(); // not needed
 }
 
 bool Chart::OnLButtonDown(D2D1_POINT_2F cursor)
@@ -198,45 +198,45 @@ bool Chart::OnLButtonDown(D2D1_POINT_2F cursor)
 		}
 	}
 
-	ProcessMessages();
+	ProcessCTPMessages();
 	return false; // unused
 }
 
 void Chart::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)
 {
 	m_tickerBox.OnLButtonDblclk(cursor, wParam);
-	// ProcessMessages(); // not needed
+	// ProcessCTPMessages(); // not needed
 }
 
 void Chart::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 {
 	m_tickerBox.OnLButtonUp(cursor, wParam);
-	// ProcessMessages(); // not needed
+	// ProcessCTPMessages(); // not needed
 }
 
 bool Chart::OnChar(wchar_t c, LPARAM lParam)
 {
 	c = towupper(c);
 	bool out = m_tickerBox.OnChar(c, lParam);
-	// ProcessMessages(); // not needed
+	// ProcessCTPMessages(); // not needed
 	return out;
 }
 
 bool Chart::OnKeyDown(WPARAM wParam, LPARAM lParam)
 {
 	bool out = m_tickerBox.OnKeyDown(wParam, lParam);
-	ProcessMessages();
+	ProcessCTPMessages();
 	return out;
 }
 
 void Chart::OnTimer(WPARAM wParam, LPARAM lParam)
 {
 	m_tickerBox.OnTimer(wParam, lParam);
-	//ProcessMessages(); // not needed
+	//ProcessCTPMessages(); // not needed
 }
 
 
-void Chart::ProcessMessages()
+void Chart::ProcessCTPMessages()
 {
 	for (ClientMessage msg : m_messages)
 	{

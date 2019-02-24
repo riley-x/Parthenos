@@ -12,7 +12,7 @@
 #include "PopupWindow.h"
 
 
-class Parthenos : public BorderlessWindow<Parthenos>
+class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver
 {
 	// Logical components
 	std::vector<AppItem*>	m_activeItems; // items that need to be painted
@@ -29,7 +29,6 @@ class Parthenos : public BorderlessWindow<Parthenos>
 	// Resource management
 	MouseTrackEvents			m_mouseTrack;
 	D2Objects					m_d2;
-	std::deque<ClientMessage>	m_messages;
 
 	// Data
 	int	m_currAccount = 0;
@@ -57,7 +56,7 @@ class Parthenos : public BorderlessWindow<Parthenos>
 
 	// Helpers
 	int AccountToIndex(std::wstring account);
-	void ProcessAppItemMessages();
+	void ProcessCTPMessages();
 	D2D1_RECT_F CalculateItemRect(AppItem* item, D2D1_RECT_F const & dipRect);
 
 	// Deleted
@@ -69,14 +68,7 @@ public:
 	~Parthenos();
 
 	LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);
-	// From an AppItem
-	void SendClientMessage(AppItem *sender, std::wstring msg, CTPMessage imsg) { m_messages.push_front({ sender,msg,imsg }); }
-	void PostClientMessage(AppItem *sender, std::wstring msg, CTPMessage imsg) { m_messages.push_back({ sender,msg,imsg }); }
 	// Handle initializations here instead of create
 	// ClientRect doesn't have correct size during WM_CREATE
 	void PreShow(); 
-
-
-	inline HINSTANCE Instance() const { return m_hInstance; }
-
 };

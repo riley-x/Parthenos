@@ -30,7 +30,7 @@ public:
 	bool OnChar(wchar_t c, LPARAM lParam);
 	bool OnKeyDown(WPARAM wParam, LPARAM lParam);
 	void OnTimer(WPARAM wParam, LPARAM lParam);
-	void ProcessMessages();
+	void ProcessCTPMessages();
 
 	// Interface
 	void Draw(std::wstring ticker); // uses the chart's saved state

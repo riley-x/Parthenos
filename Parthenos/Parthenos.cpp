@@ -196,7 +196,7 @@ int Parthenos::AccountToIndex(std::wstring account)
 	return -1; // also means "All"
 }
 
-void Parthenos::ProcessAppItemMessages()
+void Parthenos::ProcessCTPMessages()
 {
 	for (ClientMessage msg : m_messages)
 	{
@@ -258,8 +258,10 @@ void Parthenos::ProcessAppItemMessages()
 		}
 		case CTPMessage::MENUBAR_TRANSACTIONADD:
 		{
-			CreatePopupWindow(m_addTWin, m_hInstance, PopupType::TransactionAdd);
-			OutputMessage(L"Hi!\n");
+			BOOL ok = m_addTWin->Create(m_hInstance);
+			if (!ok) OutputError(L"Create TransactionAdd window failed");
+			m_addTWin->PreShow();
+			ShowWindow(m_addTWin->Window(), SW_SHOW);
 			break;
 		}
 		default:
@@ -487,7 +489,7 @@ LRESULT Parthenos::OnMouseMove(POINT cursor, WPARAM wParam)
 
 	if (!Cursor::isSet) ::SetCursor(Cursor::hArrow);
 
-	//ProcessMessages();
+	//ProcessCTPMessages();
 	return 0;
 }
 
@@ -500,7 +502,7 @@ LRESULT Parthenos::OnLButtonDown(POINT cursor, WPARAM wParam)
 		else item->OnLButtonDown(dipCursor);
 	}
 	
-	ProcessAppItemMessages();
+	ProcessCTPMessages();
 	return 0;
 }
 
@@ -511,7 +513,7 @@ LRESULT Parthenos::OnLButtonDblclk(POINT cursor, WPARAM wParam)
 	{
 		item->OnLButtonDblclk(dipCursor, wParam);
 	}
-	//ProcessMessages();
+	//ProcessCTPMessages();
 	return 0;
 }
 
@@ -522,7 +524,7 @@ LRESULT Parthenos::OnLButtonUp(POINT cursor, WPARAM wParam)
 	{
 		item->OnLButtonUp(dipCursor, wParam);
 	}
-	ProcessAppItemMessages();
+	ProcessCTPMessages();
 	
 	// ReleaseCapture();
 	return 0;
@@ -534,7 +536,7 @@ LRESULT Parthenos::OnChar(wchar_t c, LPARAM lParam)
 	{
 		if (item->OnChar(c, lParam)) break;
 	}
-	//ProcessMessages();
+	//ProcessCTPMessages();
 	return 0;
 }
 
@@ -545,7 +547,7 @@ bool Parthenos::OnKeyDown(WPARAM wParam, LPARAM lParam)
 	{
 		if (item->OnKeyDown(wParam, lParam)) out = true;
 	}
-	//ProcessMessages();
+	//ProcessCTPMessages();
 	return out;
 }
 
@@ -565,7 +567,7 @@ LRESULT Parthenos::OnTimer(WPARAM wParam, LPARAM lParam)
 			Timers::nActiveP1[i] = 0;
 		}
 	}
-	//ProcessMessages();
+	//ProcessCTPMessages();
 	return 0;
 }
 

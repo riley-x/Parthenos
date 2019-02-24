@@ -19,7 +19,7 @@ public:
 	
 	BOOL Create(WndCreateArgs args)
 	{
-		args.dwStyle = aero_borderless_style;
+		if (args.dwStyle == WS_OVERLAPPEDWINDOW) args.dwStyle = aero_borderless_style;
 		if (args.x == CW_USEDEFAULT) args.x = 300;
 		if (args.y == CW_USEDEFAULT) args.y = 200;
 		if (args.nWidth  == CW_USEDEFAULT) args.nWidth  = 800;

@@ -82,7 +82,7 @@ void TitleBar::Paint(D2D1_RECT_F updateRect)
 
 	// Paint tab dividers
 	m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
-	for (size_t i = 0; i <= m_tabButtons.Size(); i++)
+	for (size_t i = 0; i < m_tabButtons.Size(); i++)
 	{
 		float x = m_tabLeftStart + i * m_tabWidth;
 		m_d2.pRenderTarget->DrawLine(
