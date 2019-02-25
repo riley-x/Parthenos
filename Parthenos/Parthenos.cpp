@@ -164,6 +164,8 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		break; // pass on to DefWindowProc to process WM_CHAR messages...?
 	case WM_TIMER:
 		return OnTimer(wParam, lParam);
+	case WM_APP:
+		ProcessCTPMessages();
 	}
 	return DefWindowProc(m_hwnd, uMsg, wParam, lParam);
 }
@@ -260,9 +262,20 @@ void Parthenos::ProcessCTPMessages()
 		{
 			BOOL ok = m_addTWin->Create(m_hInstance);
 			if (!ok) OutputError(L"Create AddTransaction window failed");
+			m_addTWin->SetParent(this, m_hwnd);
 			m_addTWin->SetAccounts(m_accounts);
 			m_addTWin->PreShow();
 			ShowWindow(m_addTWin->Window(), SW_SHOW);
+			break;
+		}
+		case CTPMessage::WINDOW_ADDTRANSACTION_P:
+		{
+			Transaction *t = reinterpret_cast<Transaction*>(msg.sender);
+			if (!t) break;
+
+			OutputDebugStringW(t->to_wstring().c_str());
+			
+			delete t;
 			break;
 		}
 		default:

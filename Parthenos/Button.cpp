@@ -1,6 +1,19 @@
 #include "stdafx.h"
 #include "Button.h"
 
+///////////////////////////////////////////////////////////
+// --- Button ---
+
+bool Button::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
+{
+	if (!handeled && inRect(cursor, m_dipRect))
+	{
+		if (m_parent) m_parent->PostClientMessage(this, m_name, CTPMessage::BUTTON_DOWN);
+		return true;
+	}
+	return false;
+}
+
 
 ///////////////////////////////////////////////////////////
 // --- IconButton ---
@@ -130,6 +143,7 @@ void DropMenuButton::SetText(std::wstring text, float width, float height)
 {
 	if (m_dynamic) return; // Use SetActive instead
 
+	m_name = text;
 	m_d2.pTextFormats[m_menu.m_format]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
 	SafeRelease(&m_activeLayout);
 	HRESULT hr = m_d2.pDWriteFactory->CreateTextLayout(
@@ -145,7 +159,12 @@ void DropMenuButton::SetText(std::wstring text, float width, float height)
 
 void DropMenuButton::SetActive(size_t i)
 {
-	if (m_dynamic) m_activeLayout = m_menu.GetLayout(i);
+	if (m_dynamic)
+	{
+		m_activeSelection = i;
+		m_activeLayout = m_menu.GetLayout(i);
+		m_name = m_menu.GetItem(i);
+	}
 }
 
 ///////////////////////////////////////////////////////////
@@ -179,3 +198,4 @@ void TextButton::Paint(D2D1_RECT_F updateRect)
 	);
 	m_d2.pTextFormats[m_format]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
 }
+

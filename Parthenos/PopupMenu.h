@@ -17,13 +17,13 @@ public:
 
 	void Show(bool show = true);
 	void SetItems(std::vector<std::wstring> const & items);
-	inline IDWriteTextLayout* GetLayout(size_t i) { if (i < m_pTextLayouts.size()) return m_pTextLayouts[i]; else return NULL; }
+	inline std::wstring GetItem(size_t i) const { if (i < m_items.size()) return m_items[i]; else return L""; }
+	inline IDWriteTextLayout* GetLayout(size_t i) const { if (i < m_pTextLayouts.size()) return m_pTextLayouts[i]; else return NULL; }
 
 	float const m_vPad = 3.0f;
 	float const m_fontSize = 12.0f;
 	D2Objects::Formats const m_format = D2Objects::Segoe12;
 private:
-
 	// Data
 	std::vector<std::wstring> m_items;
 

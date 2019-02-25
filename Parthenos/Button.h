@@ -9,11 +9,8 @@ class Button : public AppItem
 public:
 	// AppItem
 	using AppItem::AppItem;
-	virtual inline bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
-	{
-		if (!handeled) return inRect(cursor, m_dipRect); 
-		return false;
-	}
+	Button(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent) : AppItem(hwnd, d2), m_parent(parent) {}
+	virtual bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled);
 
 	// Interface
 	virtual inline bool HitTest(D2D1_POINT_2F cursor) { return inRect(cursor, m_dipRect); }
@@ -24,7 +21,7 @@ public:
 
 protected:
 	std::wstring m_name;
-	bool m_isDown = false; // pressed
+	CTPMessageReceiver *m_parent = nullptr;
 };
 
 class IconButton : public Button
@@ -173,7 +170,7 @@ class DropMenuButton : public Button
 public:
 	// Constructors
 	DropMenuButton(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent, bool dynamic = true) :
-		Button(hwnd, d2), m_menu(hwnd, d2), m_parent(parent), m_dynamic(dynamic) {};
+		Button(hwnd, d2), m_menu(hwnd, d2), m_dynamic(dynamic) { m_parent = parent; }
 	~DropMenuButton() { if (!m_dynamic) SafeRelease(&m_activeLayout); }
 	
 	// AppItem overrides
@@ -186,13 +183,17 @@ public:
 	void SetText(std::wstring text, float width, float height); // For non-dynamic, the text of the button
 	inline void SetItems(std::vector<std::wstring> const & items) { m_menu.SetItems(items); }
 	void SetActive(size_t i);
+	inline int GetSelection() const { return m_activeSelection; }
 	inline PopupMenu & GetMenu() { return m_menu; }
 	inline bool IsActive() const { return m_active; }
 
 private:
 	// Objects
 	PopupMenu m_menu;
-	CTPMessageReceiver *m_parent;
+
+	// State
+	int m_activeSelection = 0;
+	IDWriteTextLayout* m_activeLayout;
 
 	// Flags
 	bool m_active = false;
@@ -201,7 +202,6 @@ private:
 	// Layout
 	D2D1_RECT_F m_textRect;
 	D2D1_RECT_F m_iconRect; // down arrow
-	IDWriteTextLayout* m_activeLayout;
 };
 
 class TextButton : public Button

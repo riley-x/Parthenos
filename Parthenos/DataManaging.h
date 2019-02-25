@@ -107,6 +107,12 @@ inline std::wstring to_wstring(TransactionType t)
 {
 	return TRANSACTIONTYPE_STRINGS[static_cast<char>(t)];
 }
+inline TransactionType TransactionStringToEnum(std::wstring const & s)
+{
+	auto it = std::find(TRANSACTIONTYPE_STRINGS.begin(), TRANSACTIONTYPE_STRINGS.end(), s);
+	if (it == TRANSACTIONTYPE_STRINGS.end()) throw std::invalid_argument("Bad transaction");
+	return static_cast<TransactionType>(it - TRANSACTIONTYPE_STRINGS.begin());
+}
 
 
 inline bool isOption(TransactionType type)

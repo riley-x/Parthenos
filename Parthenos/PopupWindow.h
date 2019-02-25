@@ -22,7 +22,6 @@ public:
 	virtual void PreShow() = 0; // Handle AppItem creation here
 
 protected:
-
 	// Objects
 	std::vector<AppItem*>	m_items;
 	TitleBar				*m_titleBar;
@@ -64,7 +63,12 @@ public:
 
 	void PreShow();
 	inline void SetAccounts(std::vector<std::wstring> const & accounts) { m_accounts = accounts; }
+	inline void SetParent(CTPMessageReceiver *parent, HWND phwnd) { m_parent = parent; m_phwnd = phwnd; }
 private:
+	// Parent
+	HWND				m_phwnd;
+	CTPMessageReceiver  *m_parent;
+
 	// Items
 	DropMenuButton	*m_accountButton;
 	DropMenuButton  *m_transactionTypeButton;
@@ -76,6 +80,8 @@ private:
 	TextBox			*m_valueBox;
 	TextBox			*m_priceBox;
 	TextBox			*m_strikeBox;
+	TextButton		*m_ok;
+	TextButton		*m_cancel;
 
 	// Data
 	std::vector<std::wstring>		m_accounts;
@@ -84,18 +90,25 @@ private:
 		L"Ex Date:", L"Strike:", L"Tax Lot:" };
 	std::vector<size_t> const		extra_inds = { 2, 4, 6, 7 };
 	std::vector<std::wstring> const	extra_labels = { L"YYYYMMDD", L"signed", L"signed", L"YYYYMMDD" };
-	Transaction						m_transaction = {};
 
 	// Layout
-	float			m_inputLeft;
-	float const		m_inputTop = 70.0f;
-	float const		m_labelHPad = 10.0f;
-	float const		m_itemHeight = 14.0f;
-	float const		m_itemVPad = 6.0f;
-	float const		m_itemWidth = 100.0f;
+	float		m_center;
+	float		m_inputLeft;
+	float const	m_inputTop = 70.0f;
+	float const	m_labelHPad = 10.0f;
+	float const	m_itemHeight = 14.0f;
+	float const	m_itemVPad = 6.0f;
+	float const	m_itemWidth = 100.0f;
+	float const	m_buttonHPad = 10.0f;
+	float const	m_buttonVPad = 30.0f;
+	float const	m_buttonWidth = 50.0f;
+	float const	m_buttonHeight = 20.0f;
+
+	// Functions
+	LRESULT	OnPaint();
 
 	void ProcessCTPMessages();
 	D2D1_RECT_F CalculateItemRect(size_t i, D2D1_RECT_F const & dipRect);
-	LRESULT	OnPaint();
 	void DrawTexts(D2D1_RECT_F fullRect);
+	Transaction *CreateTransaction();
 };
