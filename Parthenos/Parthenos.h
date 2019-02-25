@@ -58,6 +58,7 @@ class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver
 	int AccountToIndex(std::wstring account);
 	void ProcessCTPMessages();
 	D2D1_RECT_F CalculateItemRect(AppItem* item, D2D1_RECT_F const & dipRect);
+	void AddTransaction(Transaction t);
 
 	// Deleted
 	Parthenos(const Parthenos&) = delete; // non construction-copyable

@@ -272,9 +272,7 @@ void Parthenos::ProcessCTPMessages()
 		{
 			Transaction *t = reinterpret_cast<Transaction*>(msg.sender);
 			if (!t) break;
-
-			OutputDebugStringW(t->to_wstring().c_str());
-			
+			AddTransaction(*t);
 			delete t;
 			break;
 		}
@@ -338,6 +336,35 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 		OutputMessage(L"CalculateItemRect: unkown item\n");
 		return D2D1::RectF(0.0f, 0.0f, 0.0f, 0.0f);
 	}
+}
+
+
+void Parthenos::AddTransaction(Transaction t)
+{
+	// Append to transaction history
+	FileIO transFile;
+	transFile.Init(ROOTDIR + L"hist.trans");
+	transFile.Open();
+	transFile.Append(&t, sizeof(Transaction));
+	transFile.Close();
+
+	// Update holdings
+	FileIO holdingsFile;
+	holdingsFile.Init(ROOTDIR + L"port.hold");
+	holdingsFile.Open();
+	std::vector<Holdings> flattenedHoldings = holdingsFile.Read<Holdings>();
+	std::vector<std::vector<Holdings>> holdings = FlattenedHoldingsToTickers(flattenedHoldings);
+	AddTransactionToHoldings(holdings, t);
+	std::vector<Holdings> out;
+	for (auto const & x : holdings) out.insert(out.end(), x.begin(), x.end());
+	holdingsFile.Write(out.data(), sizeof(Holdings) * out.size());
+	holdingsFile.Close();
+
+	// Update positions
+	std::vector<Position> positions = HoldingsToPositions(holdings, t.account, GetCurrentDate());
+	m_positions[t.account] = positions;
+	positions = HoldingsToPositions(holdings, -1, GetCurrentDate()); // all accounts
+	m_positions.back() = positions;
 }
 
 
