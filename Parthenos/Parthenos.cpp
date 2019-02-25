@@ -365,6 +365,10 @@ void Parthenos::AddTransaction(Transaction t)
 	m_positions[t.account] = positions;
 	positions = HoldingsToPositions(holdings, -1, GetCurrentDate()); // all accounts
 	m_positions.back() = positions;
+
+	// Update watchlist
+	std::vector<std::wstring> tickers = GetTickers(m_positions[t.account]);
+	m_portfolioList->Reload(tickers, m_positions[t.account]);
 }
 
 
@@ -385,6 +389,9 @@ LRESULT Parthenos::OnCreate()
 		throw Error(L"OnCreate failed!");
 		return -1;  // Fail CreateWindowEx.
 	}
+
+	// Add timer object to global
+	Timers::WndTimersMap.insert({ m_hwnd, &m_timers });
 
 
 	// Create 'child' windows
@@ -600,11 +607,11 @@ LRESULT Parthenos::OnTimer(WPARAM wParam, LPARAM lParam)
 
 	for (int i = 1; i < Timers::n_timers + 1; i++)
 	{
-		if (Timers::nActiveP1[i] == 1)
+		if (m_timers.nActiveP1[i] == 1)
 		{
 			BOOL err = ::KillTimer(m_hwnd, i);
 			if (err == 0)  OutputError(L"Kill timer failed");
-			Timers::nActiveP1[i] = 0;
+			m_timers.nActiveP1[i] = 0;
 		}
 	}
 	//ProcessCTPMessages();

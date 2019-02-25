@@ -100,6 +100,8 @@ LRESULT PopupWindow::OnCreate()
 		return -1;  // Fail CreateWindowEx.
 	}
 
+	Timers::WndTimersMap.insert({ m_hwnd, &m_timers });
+
 	return 0;
 }
 
@@ -196,11 +198,11 @@ LRESULT PopupWindow::OnTimer(WPARAM wParam, LPARAM lParam)
 
 	for (int i = 1; i < Timers::n_timers + 1; i++)
 	{
-		if (Timers::nActiveP1[i] == 1)
+		if (m_timers.nActiveP1[i] == 1)
 		{
 			BOOL err = ::KillTimer(m_hwnd, i);
 			if (err == 0)  OutputError(L"Kill timer failed");
-			Timers::nActiveP1[i] = 0;
+			m_timers.nActiveP1[i] = 0;
 		}
 	}
 	//ProcessCTPMessages();

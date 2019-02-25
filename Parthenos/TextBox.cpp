@@ -336,13 +336,17 @@ void TextBox::Activate()
 	{
 		m_active = true;
 		m_flash = true; // caret shown immediately
-		if (Timers::nActiveP1[Timers::IDT_CARET] == 0)
+		auto it = Timers::WndTimersMap.find(m_hwnd);
+		if (it != Timers::WndTimersMap.end())
 		{
-			Timers::nActiveP1[Timers::IDT_CARET]++;
-			UINT_PTR err = ::SetTimer(m_hwnd, Timers::IDT_CARET, Timers::CARET_TIME, NULL);
-			if (err == 0) OutputError(L"Set timer failed");
+			if (it->second->nActiveP1[Timers::IDT_CARET] == 0)
+			{
+				it->second->nActiveP1[Timers::IDT_CARET]++;
+				UINT_PTR err = ::SetTimer(m_hwnd, Timers::IDT_CARET, Timers::CARET_TIME, NULL);
+				if (err == 0) OutputError(L"Set timer failed");
+			}
+			it->second->nActiveP1[Timers::IDT_CARET]++;
 		}
-		Timers::nActiveP1[Timers::IDT_CARET]++;
 	}
 }
 
@@ -351,7 +355,11 @@ void TextBox::Deactivate(bool message)
 {
 	if (m_active)
 	{
-		Timers::nActiveP1[Timers::IDT_CARET]--;
+		auto it = Timers::WndTimersMap.find(m_hwnd);
+		if (it != Timers::WndTimersMap.end())
+		{
+			it->second->nActiveP1[Timers::IDT_CARET]--;
+		}
 		m_selection = false;
 		m_active = false;
 		if (message) m_parent->PostClientMessage(this, String(), CTPMessage::TEXTBOX_DEACTIVATED);

@@ -140,8 +140,13 @@ namespace Timers
 {
 	const int n_timers = 1;
 	enum { IDT_CARET = 1 }; // no zero
-	extern int nActiveP1[n_timers + 1]; // extra entry for easy indexing
-	// Set 0 for deleted, 1 to flag deletion (delays a little)
+
+	struct WndTimers
+	{
+		int nActiveP1[n_timers + 1] = {}; // extra entry for easy indexing
+		// Set 0 for deleted, 1 to flag deletion (delays a little)
+	};
+	extern std::map<void*, WndTimers*> WndTimersMap; // Global map so don't have to pass timers to every object
 
 	const UINT CARET_TIME = 750; // 0.75 seconds
 }

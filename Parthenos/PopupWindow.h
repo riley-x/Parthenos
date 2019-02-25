@@ -25,6 +25,7 @@ protected:
 	// Objects
 	std::vector<AppItem*>	m_items;
 	TitleBar				*m_titleBar;
+	Timers::WndTimers		m_timers;
 
 	// Resources 
 	D2Objects m_d2;

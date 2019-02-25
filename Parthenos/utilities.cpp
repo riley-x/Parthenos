@@ -11,7 +11,7 @@ float DPIScale::halfPY = 0.5f;
 float DPIScale::fullPX = 1.0f;
 float DPIScale::fullPY = 1.0f;
 
-int Timers::nActiveP1[Timers::n_timers + 1] = {};
+std::map<void*, Timers::WndTimers*> Timers::WndTimersMap;
 
 bool Cursor::isSet = false;
 HCURSOR Cursor::active = Cursor::hArrow;

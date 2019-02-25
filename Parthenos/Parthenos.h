@@ -27,8 +27,9 @@ class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver
 	AddTransactionWindow	*m_addTWin = nullptr;
 
 	// Resource management
-	MouseTrackEvents			m_mouseTrack;
-	D2Objects					m_d2;
+	MouseTrackEvents		m_mouseTrack;
+	D2Objects				m_d2;
+	Timers::WndTimers		m_timers;
 
 	// Data
 	int	m_currAccount = 0;
