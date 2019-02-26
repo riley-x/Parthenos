@@ -44,14 +44,11 @@ struct Column
 class WatchlistItem : public AppItem
 {
 public:
-	WatchlistItem(HWND hwnd, D2Objects const & d2, AppItem *parent) :
-		AppItem(hwnd, d2), m_parent(parent), m_ticker(hwnd, d2, this) {}
-	WatchlistItem(HWND hwnd, D2Objects const & d2, AppItem *parent, bool editable) :
-		AppItem(hwnd, d2), m_parent(parent), m_ticker(hwnd, d2, this), m_editableTickers(editable) {}
+	WatchlistItem(HWND hwnd, D2Objects const & d2, AppItem *parent, bool editable = true);
 	~WatchlistItem() { for (auto item : m_pTextLayouts) SafeRelease(&item); }
 
 	// AppItem overrides
-	void SetSize(D2D1_RECT_F dipRect); // The height should not change, or else call Load() again
+	void SetSize(D2D1_RECT_F dipRect);	// Load should be called before SetSize
 	void Paint(D2D1_RECT_F updateRect);
 	inline bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled) { return m_ticker.OnMouseMove(cursor, wParam, handeled); }
 	inline bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
@@ -78,11 +75,12 @@ public:
 
 	void ProcessCTPMessages();
 
+
 	// Interface
 	inline std::wstring Ticker() const { return m_currTicker; }
 	void Load(std::wstring const & ticker, std::vector<Column> const & columns, 
-		bool reload = false, std::pair<Quote, Stats>* data = nullptr, Position const * position = nullptr);
-	// Load should be called after SetSize
+		std::pair<Quote, Stats> const * data = nullptr, Position const * position = nullptr, bool reload = false);
+	// Load should be called before SetSize
 	inline double GetData(size_t iColumn) const 
 	{ 
 		if (iColumn - 1 < m_data.size())
@@ -109,11 +107,9 @@ private:
 	std::vector<float> m_origins; // left DIP for the text layouts
 
 	bool m_LButtonDown = false;
-	bool m_editableTickers = true;
+	bool m_editableTickers;
 
-	// Do the actual HTTP query and format the string
-	void LoadData(std::wstring const & ticker, std::pair<Quote, Stats> const * data, Position const * position);
-
+	void CreateTextLayouts(bool same_height);
 };
 
 
