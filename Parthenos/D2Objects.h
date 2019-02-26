@@ -23,10 +23,11 @@ public:
 	// Pointers
 
 	// Rendering 
-	ID2D1Factory            *pFactory				= NULL;
+	ID2D1Factory1           *pFactory				= NULL;
 	ID2D1HwndRenderTarget   *pRenderTarget			= NULL;
 	ID2D1SolidColorBrush    *pBrush					= NULL;
 	ID2D1StrokeStyle		*pDashedStyle			= NULL;
+	ID2D1StrokeStyle1		*pFixedTransformStyle	= NULL;
 
 	// Direct Write pointers
 	IDWriteFactory          *pDWriteFactory			= NULL;

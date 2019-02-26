@@ -252,9 +252,10 @@ public:
 		return static_cast<int>(static_cast<float>(y) * scaleY);
 	}
 
+
 	static inline float SnapToPixelX(float x)
 	{
-		return round(x * scaleX) / scaleX; // when drawing lines, align to 0.5 boundaries
+		return round(x * scaleX) / scaleX; 
 	}
 
 	static inline float SnapToPixelY(float y)
@@ -270,6 +271,8 @@ public:
 		rect.bottom = SnapToPixelY(rect.bottom) + (1.0f - 2.0f * inwards) * halfPY;
 	}
 
+	// NOTE: when drawing lines, need to align to 0.5 boundaries. Use hp() below.
+	// Use D2D1_STROKE_TRANSFORM_TYPE_HAIRLINE in future
 	static inline float hpx() { return halfPX; }
 	static inline float hpy() { return halfPY; }
 	static inline float px() { return fullPX; }

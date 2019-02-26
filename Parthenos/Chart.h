@@ -36,36 +36,35 @@ public:
 	void Draw(std::wstring ticker); // uses the chart's saved state
 	void Draw(std::wstring ticker, MainChartType type, Timeframe tf); // TODO pass a state struct or something
 
-
 private:
 
-	// extra parameters
+	// Parameters
 	float				m_menuHeight	= 26.0f;
 	float				m_commandHPad	= 5.0f;
 
-	// state
+	// State
 	std::wstring		m_ticker;
 	MainChartType		m_currentMChart = MainChartType::none;
 	Timeframe			m_currentTimeframe = Timeframe::none;
 
-	// data
+	// Data
 	std::vector<OHLC>	m_OHLC;
 	std::vector<date_t> m_dates;
 	std::vector<double> m_closes;
 	std::vector<double> m_highs;
 	std::vector<double> m_lows;
 
-	// child objects
+	// Child objects
 	Axes				m_axes;
 	TextBox				m_tickerBox;
 	ButtonGroup			m_chartTypeButtons;
 	DropMenuButton		m_timeframeButton;
 
-	// drawing
+	// Painting
 	D2D1_RECT_F			m_menuRect;
 	std::vector<float>	m_divisions;
 
-	// helper functions
+	// Helper functions
 	void Load(std::wstring ticker, int range = 1260); // # datapoints in days. default to 5 years 
 	void DrawMainChart(MainChartType type, Timeframe timeframe);
 	void DrawCurrentState();

@@ -30,6 +30,7 @@
 // reference additional headers your program requires here
 #include <d2d1.h>
 #pragma comment(lib, "d2d1")
+#include <d2d1_1.h>
 #include <dwrite.h>
 #pragma comment(lib, "dwrite")
 #include <wincodec.h>

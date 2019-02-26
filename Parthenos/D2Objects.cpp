@@ -5,14 +5,20 @@
 HRESULT D2Objects::CreateDeviceIndependentResources()
 {
 	// Create a Direct2D factory
-	HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &pFactory);
+	//HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &pFactory);
+	HRESULT hr = D2D1CreateFactory(
+		D2D1_FACTORY_TYPE_SINGLE_THREADED, 
+		__uuidof(ID2D1Factory1),
+		NULL, 
+		reinterpret_cast<void**>(&pFactory)
+	);
 
 	// Initialize DPI settings
 	if (SUCCEEDED(hr))
 	{
 		DPIScale::Initialize(pFactory);
 	}
-	// Create dashed strokey style
+	// Create dashed stroke style
 	if (SUCCEEDED(hr))
 	{
 		D2D1_STROKE_STYLE_PROPERTIES strokeStyleProperties = D2D1::StrokeStyleProperties(
@@ -26,6 +32,22 @@ HRESULT D2Objects::CreateDeviceIndependentResources()
 		);
 
 		hr = pFactory->CreateStrokeStyle(strokeStyleProperties, NULL, 0, &pDashedStyle);
+	}
+	// Create fixed transform style
+	if (SUCCEEDED(hr))
+	{
+		D2D1_STROKE_STYLE_PROPERTIES1 strokeStyleProperties = D2D1::StrokeStyleProperties1(
+			D2D1_CAP_STYLE_FLAT,				// The start cap.
+			D2D1_CAP_STYLE_FLAT,				// The end cap.
+			D2D1_CAP_STYLE_FLAT,				// The dash cap.
+			D2D1_LINE_JOIN_MITER,				// The line join.
+			10.0f,								// The miter limit.
+			D2D1_DASH_STYLE_SOLID,				// The dash style.
+			0.0f,								// The dash offset.
+			D2D1_STROKE_TRANSFORM_TYPE_FIXED	// The transform type.
+		);
+
+		hr = pFactory->CreateStrokeStyle(strokeStyleProperties, NULL, 0, &pFixedTransformStyle);
 	}
 	// Create a DirectWrite factory
 	if (SUCCEEDED(hr))
@@ -231,6 +253,7 @@ void D2Objects::DiscardDeviceIndependentResources()
 	}
 	SafeRelease(&pIWICFactory);
 	SafeRelease(&pDashedStyle);
+	SafeRelease(&pFixedTransformStyle);
 
 	for (int i = 0; i < nIcons; i++)
 	{

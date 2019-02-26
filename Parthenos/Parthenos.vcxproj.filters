@@ -96,6 +96,9 @@
     <ClInclude Include="utilities.h">
       <Filter>Header Files\Utilities</Filter>
     </ClInclude>
+    <ClInclude Include="PieChart.h">
+      <Filter>Header Files\AppItems</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -147,6 +150,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="MenuBar.cpp">
+      <Filter>Source Files\AppItems</Filter>
+    </ClCompile>
+    <ClCompile Include="PieChart.cpp">
       <Filter>Source Files\AppItems</Filter>
     </ClCompile>
   </ItemGroup>

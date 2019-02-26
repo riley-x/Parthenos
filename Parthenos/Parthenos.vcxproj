@@ -169,6 +169,7 @@
     <ClInclude Include="HTTP.h" />
     <ClInclude Include="MenuBar.h" />
     <ClInclude Include="Parthenos.h" />
+    <ClInclude Include="PieChart.h" />
     <ClInclude Include="PopupMenu.h" />
     <ClInclude Include="PopupWindow.h" />
     <ClInclude Include="Resource.h" />
@@ -185,6 +186,7 @@
     <ClCompile Include="D2Objects.cpp" />
     <ClCompile Include="DataManaging.cpp" />
     <ClCompile Include="MenuBar.cpp" />
+    <ClCompile Include="PieChart.cpp" />
     <ClCompile Include="PopupMenu.cpp" />
     <ClCompile Include="FileIO.cpp" />
     <ClCompile Include="Graphing.cpp" />

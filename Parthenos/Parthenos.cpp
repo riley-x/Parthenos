@@ -216,24 +216,23 @@ void Parthenos::ProcessCTPMessages()
 			break;
 		case CTPMessage::TITLEBAR_TAB:
 		{
+			m_activeItems.clear();
+			m_activeItems.push_back(m_titleBar);
 			if (msg.msg == L"Portfolio")
 			{
-				m_activeItems.clear();
-				m_activeItems.push_back(m_titleBar);
 				m_activeItems.push_back(m_portfolioList);
 				m_activeItems.push_back(m_menuBar);
-				::InvalidateRect(m_hwnd, NULL, false);
-				break;
+			}
+			else if (msg.msg == L"Returns")
+			{
+
 			}
 			else if (msg.msg == L"Chart")
 			{
-				m_activeItems.clear();
-				m_activeItems.push_back(m_titleBar);
 				m_activeItems.push_back(m_chart);
 				m_activeItems.push_back(m_watchlist);
-				::InvalidateRect(m_hwnd, NULL, false);
-				break;
 			}
+			::InvalidateRect(m_hwnd, NULL, false);
 			break;
 		}
 		case CTPMessage::WATCHLIST_SELECTED:
@@ -341,7 +340,7 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 
 void Parthenos::AddTransaction(Transaction t)
 {
-	// Append to transaction history
+	// Update transaction history
 	FileIO transFile;
 	transFile.Init(ROOTDIR + L"hist.trans");
 	transFile.Open();
@@ -429,7 +428,7 @@ LRESULT Parthenos::OnCreate()
 
 	// Initialize any AppItems
 
-	m_titleBar->SetTabs({ L"Portfolio", L"Chart" });
+	m_titleBar->SetTabs({ L"Portfolio", L"Returns", L"Chart" });
 
 	std::vector<std::wstring> tickers = GetTickers(m_positions[m_currAccount]);
 	std::vector<Column> portColumns = {
