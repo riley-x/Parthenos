@@ -324,14 +324,49 @@ inline void PrintFlattenedHoldings(std::vector<Holdings> const & h)
 	}
 }
 
-inline std::vector<std::wstring> GetTickers(std::vector<Position> const & positions)
+inline std::vector<std::wstring> GetTickers(std::vector<Position> const & positions, bool cash = false)
 {
 	std::vector<std::wstring> out;
 	out.reserve(positions.size());
 	for (auto const & x : positions)
 	{
-		if (x.ticker == L"CASH") continue;
+		if (!cash && x.ticker == L"CASH") continue;
 		out.push_back(x.ticker);
 	}
 	return out;
+}
+
+inline std::vector<double> GetMarketValues(std::vector<Position> const & positions, bool cash = false)
+{
+	std::vector<double> out;
+	out.reserve(positions.size());
+	for (auto const & x : positions)
+	{
+		if (x.ticker == L"CASH")
+		{
+			if (cash) out.push_back(x.marketPrice + x.realized_held);
+		}
+		else out.push_back(x.n * x.marketPrice);
+	}
+	return out;
+}
+
+// (Free cash, total transfers)
+inline std::pair<double, double> GetCash(std::vector<Position> const & positions)
+{
+	double free_cash = 0;
+	double transfers;
+	for (auto const & x : positions)
+	{
+		if (x.ticker == L"CASH")
+		{
+			transfers = x.marketPrice;
+			free_cash += x.marketPrice + x.realized_held;
+		}
+		else
+		{
+			free_cash += -x.n * x.avgCost + x.realized_held + x.realized_unheld;
+		}
+	}
+	return { free_cash, transfers };
 }

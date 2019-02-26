@@ -16,6 +16,8 @@
 #include <malloc.h>
 #include <memory.h>
 #include <tchar.h>
+#define _USE_MATH_DEFINES
+#include <cmath>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -25,6 +27,7 @@
 #include <ctime>
 #include <exception>
 #include <algorithm>
+#include <numeric>
 
 
 // reference additional headers your program requires here

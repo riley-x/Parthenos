@@ -239,7 +239,7 @@ std::vector<Position> HoldingsToPositions(std::vector<std::vector<Holdings>> con
 
 		Position temp = {};
 		temp.ticker = h[0].tickerInfo.ticker;
-		if (temp.ticker != L"CASH")	temp.marketPrice = GetPrice(temp.ticker);
+		if (temp.ticker != L"CASH")	temp.marketPrice = GetPrice(temp.ticker); // TODO turn this into a batch request
 
 		// store running weighted numerator in temp.APY -- divide by sumWeights at end
 		double sumWeights = 0;
@@ -264,8 +264,9 @@ std::vector<Position> HoldingsToPositions(std::vector<std::vector<Holdings>> con
 
 			if (temp.ticker == L"CASH")
 			{
-				temp.marketPrice = header.sumWeights;
-				temp.realized_held = header.sumReal;
+				temp.marketPrice += header.sumWeights;
+				temp.realized_held += header.sumReal;
+				if (account >= 0) break;
 				iHeader += h[iHeader].head.nLots + h[iHeader].head.nOptions + 1;
 				continue;
 			}

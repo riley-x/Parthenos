@@ -10,6 +10,7 @@
 #include "Watchlist.h"
 #include "MenuBar.h"
 #include "PopupWindow.h"
+#include "PieChart.h"
 
 
 class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver
@@ -22,6 +23,7 @@ class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver
 	Watchlist				*m_watchlist;
 	Watchlist				*m_portfolioList;
 	MenuBar					*m_menuBar;
+	PieChart				*m_pieChart;
 
 	// 'Child' windows
 	AddTransactionWindow	*m_addTWin = nullptr;
@@ -39,6 +41,8 @@ class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver
 	// Layout
 	float const	m_titleBarHeight		= 30.0f;
 	float const	m_menuBarHeight			= 17.0f;
+	float		m_titleBarBottom; // snap to pixel boundry
+	float		m_menuBarBottom;
 	float const	m_watchlistWidth		= 350.0f;
 	float const	m_portfolioListWidth	= 600.0f;
 
@@ -60,6 +64,7 @@ class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver
 	void ProcessCTPMessages();
 	D2D1_RECT_F CalculateItemRect(AppItem* item, D2D1_RECT_F const & dipRect);
 	void AddTransaction(Transaction t);
+	void LoadPieChart();
 
 	// Deleted
 	Parthenos(const Parthenos&) = delete; // non construction-copyable

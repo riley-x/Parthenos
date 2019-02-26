@@ -113,7 +113,7 @@ inline std::vector<size_t> sort_indexes(const std::vector<T> &v, Compare comp = 
 
 	// sort indexes based on comparing values in v
 	std::sort(idx.begin(), idx.end(),
-		[&v](size_t i1, size_t i2) {return comp(v[i1], v[i2]); });
+		[&](size_t i1, size_t i2) {return comp(v[i1], v[i2]); });
 
 	return idx;
 }
@@ -133,7 +133,9 @@ namespace Colors
 
 	const D2D1_COLOR_F ALMOST_WHITE		= D2D1::ColorF(0.95f, 0.95f, 0.95f, 1.0f);
 	const D2D1_COLOR_F MAIN_TEXT		= D2D1::ColorF(0.8f, 0.8f, 0.8f, 1.0f);
+
 	const D2D1_COLOR_F ACCENT			= D2D1::ColorF(0.8f, 0.0f, 0.5f, 1.0f);
+	const D2D1_COLOR_F GREEN			= D2D1::ColorF(32.0f / 255, 214.0f / 255, 126.0f / 255, 1.0f);
 }
 
 namespace Timers

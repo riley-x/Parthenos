@@ -13,6 +13,7 @@
 
 // Forward declarations
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+inline std::wstring MakeLongLabel(std::wstring const & ticker, double val, double percent);
 
 ///////////////////////////////////////////////////////////
 // --- Interface functions ---
@@ -28,6 +29,7 @@ Parthenos::Parthenos(PCWSTR szClassName)
 	holdingsFile.Close();
 
 	// Holdings -> Positions
+	// TODO get prices via batch and pass to function
 	for (size_t i = 0; i < m_accounts.size(); i++)
 	{
 		std::vector<Position> positions = HoldingsToPositions(
@@ -222,6 +224,7 @@ void Parthenos::ProcessCTPMessages()
 			{
 				m_activeItems.push_back(m_portfolioList);
 				m_activeItems.push_back(m_menuBar);
+				m_activeItems.push_back(m_pieChart);
 			}
 			else if (msg.msg == L"Returns")
 			{
@@ -291,14 +294,14 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 			0.0f,
 			0.0f,
 			dipRect.right,
-			DPIScale::SnapToPixelY(m_titleBarHeight)
+			m_titleBarBottom
 		);
 	}
 	else if (item == m_chart)
 	{
 		return D2D1::RectF(
 			DPIScale::SnapToPixelX(m_watchlistWidth),
-			DPIScale::SnapToPixelY(m_titleBarHeight),
+			m_titleBarBottom,
 			dipRect.right,
 			dipRect.bottom
 		);
@@ -307,7 +310,7 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 	{
 		return D2D1::RectF(
 			0.0f,
-			DPIScale::SnapToPixelY(m_titleBarHeight),
+			m_titleBarBottom,
 			DPIScale::SnapToPixelX(m_watchlistWidth),
 			dipRect.bottom
 		);
@@ -316,8 +319,8 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 	{
 		return D2D1::RectF(
 			0.0f,
-			DPIScale::SnapToPixelY(m_titleBarHeight + m_menuBarHeight),
-			m_portfolioListWidth,
+			m_menuBarBottom,
+			DPIScale::SnapToPixelX(m_portfolioListWidth),
 			DPIScale::SnapToPixelY((dipRect.bottom + m_titleBarHeight + m_menuBarHeight) / 2.0f)
 		);
 	}
@@ -325,14 +328,23 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 	{
 		return D2D1::RectF(
 			0.0f,
-			DPIScale::SnapToPixelY(m_titleBarHeight),
-			m_portfolioListWidth,
-			DPIScale::SnapToPixelY(m_titleBarHeight + m_menuBarHeight)
+			m_titleBarBottom,
+			DPIScale::SnapToPixelX(m_portfolioListWidth),
+			m_menuBarBottom
+		);
+	}
+	else if (item == m_pieChart)
+	{
+		return D2D1::RectF(
+			DPIScale::SnapToPixelX(m_portfolioListWidth),
+			m_titleBarBottom,
+			dipRect.right,
+			dipRect.bottom
 		);
 	}
 	else
 	{
-		OutputMessage(L"CalculateItemRect: unkown item\n");
+		OutputMessage(L"CalculateItemRect: unknown item\n");
 		return D2D1::RectF(0.0f, 0.0f, 0.0f, 0.0f);
 	}
 }
@@ -368,6 +380,60 @@ void Parthenos::AddTransaction(Transaction t)
 	// Update watchlist
 	std::vector<std::wstring> tickers = GetTickers(m_positions[t.account]);
 	m_portfolioList->Reload(tickers, m_positions[t.account]);
+}
+
+void Parthenos::LoadPieChart()
+{
+	std::vector<double> market_values = GetMarketValues(m_positions[m_currAccount]);
+	std::vector<std::wstring> tickers = GetTickers(m_positions[m_currAccount]);
+
+	std::vector<double> data; 
+	std::vector<std::wstring> short_labels;
+	std::vector<std::wstring> long_labels;
+	std::vector<D2D1_COLOR_F> colors;
+
+	data.reserve(tickers.size() + 1); // Add one for cash
+	short_labels.reserve(tickers.size() + 1);
+	long_labels.reserve(tickers.size() + 2);
+	colors.reserve(tickers.size() + 1);
+
+	double sum = std::accumulate(market_values.begin(), market_values.end(), 0.0);
+	std::pair<double, double> cash = GetCash(m_positions[m_currAccount]);
+	sum += cash.first;
+
+	// Default long label
+	wchar_t buffer[100];
+	swprintf_s(buffer, _countof(buffer), L"%s\n$%.2lf", m_accounts[m_currAccount].c_str(), sum);
+	long_labels.push_back(std::wstring(buffer));
+
+	// Sort by market value
+	std::vector<size_t> inds = sort_indexes(market_values, std::greater<>{});
+	for (size_t i = 0; i < market_values.size(); i++)
+	{
+		if (market_values[inds[i]] <= 0.01) break;
+		double value = market_values[inds[i]];
+		std::wstring ticker = tickers[inds[i]];
+
+		data.push_back(value);
+		short_labels.push_back(ticker);
+		long_labels.push_back(MakeLongLabel(ticker, value, 100.0 * value / sum));
+		colors.push_back(Colors::ACCENT); // TODO
+	}
+
+	// Cash
+	data.push_back(cash.first);
+	short_labels.push_back(L"CASH");
+	long_labels.push_back(MakeLongLabel(L"CASH", cash.first, 100.0 * cash.first / sum));
+	colors.push_back(Colors::GREEN);
+
+	m_pieChart->Load(data, colors, short_labels, long_labels);
+}
+
+inline std::wstring MakeLongLabel(std::wstring const & ticker, double val, double percent)
+{
+	wchar_t buffer[100];
+	swprintf_s(buffer, _countof(buffer), L"%s\n$%.2lf, %.2lf%%", ticker.c_str(), val, percent);
+	return std::wstring(buffer);
 }
 
 
@@ -410,17 +476,23 @@ LRESULT Parthenos::OnCreate()
 
 	// Create AppItems
 
+	// Calculate layouts
+	m_titleBarBottom = DPIScale::SnapToPixelY(m_titleBarHeight);
+	m_menuBarBottom = DPIScale::SnapToPixelY(m_titleBarHeight + m_menuBarHeight);
+
 	m_titleBar = new TitleBar(m_hwnd, m_d2, this);
 	m_chart = new Chart(m_hwnd, m_d2);
 	m_watchlist = new Watchlist(m_hwnd, m_d2, this);
 	m_portfolioList = new Watchlist(m_hwnd, m_d2, this, false);
-	m_menuBar = new MenuBar(m_hwnd, m_d2, this, m_accounts, m_menuBarHeight);
+	m_menuBar = new MenuBar(m_hwnd, m_d2, this, m_accounts, m_menuBarBottom - m_titleBarBottom);
+	m_pieChart = new PieChart(m_hwnd, m_d2);
 
 	m_allItems.push_back(m_titleBar);
 	m_allItems.push_back(m_chart);
 	m_allItems.push_back(m_watchlist);
 	m_allItems.push_back(m_portfolioList);
 	m_allItems.push_back(m_menuBar);
+	m_allItems.push_back(m_pieChart);
 	m_activeItems.push_back(m_titleBar);
 	m_activeItems.push_back(m_chart);
 	m_activeItems.push_back(m_watchlist);
@@ -445,6 +517,7 @@ LRESULT Parthenos::OnCreate()
 
 	m_watchlist->Load(tickers, std::vector<Column>(), m_positions[m_currAccount]);
 	m_portfolioList->Load(tickers, portColumns, m_positions[m_currAccount]);
+	LoadPieChart();
 
 	return 0;
 }
