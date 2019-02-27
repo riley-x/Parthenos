@@ -28,6 +28,7 @@ public:
 	// Call before SetSize
 	void Load(std::vector<double> const & data, std::vector<D2D1_COLOR_F> const & colors,
 		std::vector<std::wstring> const & shortLabels, std::vector<std::wstring> const & longLabels); 
+	inline void Refresh() { CreateTextLayouts(); }
 
 
 private:
@@ -49,7 +50,7 @@ private:
 	float m_trueRadius; // radius in DIPs
 	float m_shortLayoutSize;
 	float m_longLayoutSize;
-	D2D1_COLOR_F					m_borderColor = Colors::BRIGHT_LINE;
+	D2D1_COLOR_F					m_borderColor = Colors::ALMOST_WHITE;
 	D2D1_POINT_2F					m_center;
 	std::vector<float>				m_angles; // in degrees
 	std::vector<ID2D1PathGeometry*> m_wedges; // These have center at (0,0), start at theta = 0, CC, and trueRadius 1

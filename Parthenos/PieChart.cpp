@@ -186,7 +186,6 @@ void PieChart::CreateTextLayouts()
 		if (FAILED(hr)) throw Error(L"PieChart: CreateTextLayout failed");
 	}
 	m_d2.pTextFormats[D2Objects::Formats::Segoe18]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
-
 }
 
 float PieChart::CalculateTrueRadius(D2D1_RECT_F dipRect)

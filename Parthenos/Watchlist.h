@@ -9,7 +9,7 @@ class Parthenos;
 
 struct Column
 {
-	enum Field { None, Ticker, Last, ChangeP, Change1YP, DivP, ExDiv, Shares, AvgCost, Realized, Unrealized, ReturnsT, ReturnsP, APY };
+	enum Field { None, Ticker, Last, ChangeP, Change1YP, DivP, ExDiv, Shares, AvgCost, Equity, Realized, Unrealized, ReturnsT, ReturnsP, APY };
 
 	float width;
 	Field field = None;
@@ -27,6 +27,7 @@ struct Column
 		case ExDiv:		return L"Ex Div";
 		case Shares:	return L"Shares";
 		case AvgCost:	return L"Avg Cost";
+		case Equity:	return L"Equity";
 		case Realized:	return L"Realized";
 		case Unrealized: return L"Unrealized";
 		case ReturnsT:	return L"Returns";
@@ -92,6 +93,7 @@ public:
 	//void Add(Column const & col); // Queries 
 	//void Move(size_t iColumn, size_t iPos);
 	//void Delete(size_t iColumn);
+	void TruncateColumns(size_t i);
 
 private:
 	WatchlistItem(const WatchlistItem&) = delete; // non construction-copyable
@@ -140,7 +142,7 @@ public:
 	void Load(std::vector<std::wstring> const & tickers, std::vector<Position> const & positions);
 	void Load(std::vector<std::wstring> const & tickers, std::vector<Position> const & positions,
 		std::vector<std::pair<Quote, Stats>> const & data);
-	inline void Refresh() { CalculateLayouts(); } // On a second load, items are created but not with position
+	inline void Refresh() { CreateTextLayouts(); } // On a second load, items are created but not with position
 
 	// Parameters
 	static float const m_hTextPad; // 4.0f
@@ -177,7 +179,7 @@ private:
 
 	// Helpers
 
-	void CalculateLayouts();
+	void CreateTextLayouts();
 	// Get top of item i
 	inline float GetHeight(int i) { return m_dipRect.top + m_headerHeight + i * m_rowHeight; }
 	// Get index given y coord

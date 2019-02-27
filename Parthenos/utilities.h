@@ -103,6 +103,24 @@ template <class T> void SafeRelease(T **ppT)
 	}
 }
 
+// with negative in from of the $ sign, commas, and 2 decimal places
+inline std::wstring FormatDollar(double x)
+{
+	wchar_t buffer[30];
+	swprintf_s(buffer, _countof(buffer), L"%.2lf", x);
+	std::wstring out(buffer);
+
+	int insertPosition = out.length() - 6;
+	while (insertPosition > 0) {
+		out.insert(insertPosition, L",");
+		insertPosition -= 3;
+	}
+
+	insertPosition = (x < 0) ? 1 : 0;
+	out.insert(insertPosition, L"$");
+	return out;
+}
+
 // Returns the indices of v sorted based on the the values of v. Does not sort v itself
 template <typename T, class Compare=std::less<>>
 inline std::vector<size_t> sort_indexes(const std::vector<T> &v, Compare comp = {}) {
@@ -159,7 +177,8 @@ namespace Colors
 	const D2D1_COLOR_F MAIN_TEXT		= D2D1::ColorF(0.8f, 0.8f, 0.8f, 1.0f);
 
 	const D2D1_COLOR_F ACCENT			= D2D1::ColorF(0.8f, 0.0f, 0.5f, 1.0f);
-	const D2D1_COLOR_F GREEN			= D2D1::ColorF(32.0f / 255, 214.0f / 255, 126.0f / 255, 1.0f);
+	const D2D1_COLOR_F PURPLE			= D2D1::ColorF(0x8000C0);
+	const D2D1_COLOR_F GREEN			= D2D1::ColorF(0x008040);
 }
 
 namespace Timers

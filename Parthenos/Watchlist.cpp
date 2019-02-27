@@ -103,7 +103,7 @@ void Watchlist::SetSize(D2D1_RECT_F dipRect)
 	m_rightBorder = m_dipRect.right - DPIScale::hpx();
 	m_headerBorder = DPIScale::SnapToPixelY(m_dipRect.top + m_headerHeight) - DPIScale::hpy();
 
-	CalculateLayouts();
+	CreateTextLayouts();
 }
 
 bool Watchlist::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
@@ -349,7 +349,7 @@ void Watchlist::Load(std::vector<std::wstring> const & tickers, std::vector<Posi
 	}
 }
 
-void Watchlist::CalculateLayouts()
+void Watchlist::CreateTextLayouts()
 {
 	// Create column headers, vertical divider lines
 	float left = m_dipRect.left;
@@ -359,7 +359,7 @@ void Watchlist::CalculateLayouts()
 
 	for (size_t i = 0; i < m_columns.size(); i++)
 	{
-		if (left + m_columns[i].width >= m_dipRect.right)
+		if (left + m_columns[i].width > m_dipRect.right)
 		{
 			OutputMessage(L"Warning: Columns exceed watchlist width\n");
 			if (i > 0)
@@ -367,12 +367,14 @@ void Watchlist::CalculateLayouts()
 				m_vLines.resize(i - 1);
 				m_pTextLayouts.resize(i - 1);
 				m_columns.resize(i - 1);
+				for (auto item : m_items) item->TruncateColumns(i - 1);
 			}
 			else
 			{
 				m_vLines.clear();
 				m_pTextLayouts.clear();
 				m_columns.clear();
+				for (auto item : m_items) item->TruncateColumns(0);
 			}
 			break;
 		}
@@ -654,6 +656,9 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const 
 			case Column::AvgCost:
 				if (position) data = position->avgCost;
 				break;
+			case Column::Equity:
+				if (position) data = position->avgCost * position->n;
+				break;
 			case Column::Realized:
 				if (position) data = position->realized_held + position->realized_unheld;
 				break;
@@ -687,6 +692,12 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const 
 	}
 }
 
+void WatchlistItem::TruncateColumns(size_t i)
+{
+	if (m_columns.size() > i) m_columns.resize(i);
+	if (m_data.size() > i) m_data.resize(i);
+}
+
 
 // If same_height, don't recreate the layouts, just the textbox
 void WatchlistItem::CreateTextLayouts(bool same_height)
@@ -711,12 +722,6 @@ void WatchlistItem::CreateTextLayouts(bool same_height)
 
 	for (size_t i = 0; i < m_data.size(); i++)
 	{
-		// Shift index into columns by 1 to skip Ticker
-		if (left + m_columns[i+1].width >= m_dipRect.right)
-		{
-			throw std::invalid_argument("Columns exceed WatchlistItem width"); // exception so no clean up necessary
-		}
-
 		m_origins[i] = left + Watchlist::m_hTextPad;
 
 		HRESULT hr = m_d2.pDWriteFactory->CreateTextLayout(
@@ -729,6 +734,7 @@ void WatchlistItem::CreateTextLayouts(bool same_height)
 		);
 		if (FAILED(hr)) throw Error(L"CreateTextLayout failed");
 
+		// Shift index into columns by 1 to skip Ticker
 		left += m_columns[i+1].width;
 	}
 }

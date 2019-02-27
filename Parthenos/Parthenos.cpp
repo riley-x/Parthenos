@@ -261,6 +261,8 @@ void Parthenos::ProcessCTPMessages()
 			std::vector<std::wstring> tickers = GetTickers(m_positions[account]);
 			m_portfolioList->Load(tickers, m_positions[account], FilterByKeyMatch(m_tickers, m_stats, tickers));
 			m_portfolioList->Refresh();
+			LoadPieChart();
+			m_pieChart->Refresh();
 
 			::InvalidateRect(m_hwnd, NULL, FALSE);
 			break;
@@ -388,6 +390,29 @@ void Parthenos::AddTransaction(Transaction t)
 	m_portfolioList->Refresh();
 }
 
+inline D2D1_COLOR_F Randomizer(std::wstring str)
+{
+	float r = 1.0f, g = 1.0f, b = 1.0f;
+	for (size_t i = 0; i < str.size(); i++)
+	{
+		float x = (static_cast<float>(str[i]) - 65.0f) / 25.0f; // assumes A = 65
+		if (x < 0 || x > 1) break;
+		switch (i % 3)
+		{
+		case 0:
+			r = r * x;
+			break;
+		case 1:
+			g = g * x;
+			break;
+		case 2:
+			b = b * x;
+			break;
+		}
+	}
+	return D2D1::ColorF(r, g, b);
+}
+
 void Parthenos::LoadPieChart()
 {
 	std::vector<double> market_values = GetMarketValues(m_positions[m_currAccount]);
@@ -409,7 +434,9 @@ void Parthenos::LoadPieChart()
 
 	// Default long label
 	wchar_t buffer[100];
-	swprintf_s(buffer, _countof(buffer), L"%s\n$%.2lf", m_accounts[m_currAccount].c_str(), sum);
+	std::wstring account = (m_currAccount == m_positions.size() - 1) ? 
+		L"All Accounts" : m_accounts[m_currAccount].c_str();
+	swprintf_s(buffer, _countof(buffer), L"%s\n%s", account.c_str(), FormatDollar(sum).c_str());
 	long_labels.push_back(std::wstring(buffer));
 
 	// Sort by market value
@@ -423,7 +450,7 @@ void Parthenos::LoadPieChart()
 		data.push_back(value);
 		short_labels.push_back(ticker);
 		long_labels.push_back(MakeLongLabel(ticker, value, 100.0 * value / sum));
-		colors.push_back(Colors::ACCENT); // TODO
+		colors.push_back(Randomizer(ticker)); // TODO
 	}
 
 	// Cash
@@ -438,7 +465,7 @@ void Parthenos::LoadPieChart()
 inline std::wstring MakeLongLabel(std::wstring const & ticker, double val, double percent)
 {
 	wchar_t buffer[100];
-	swprintf_s(buffer, _countof(buffer), L"%s\n$%.2lf, %.2lf%%", ticker.c_str(), val, percent);
+	swprintf_s(buffer, _countof(buffer), L"%s\n%s, %.2lf%%", ticker.c_str(), FormatDollar(val).c_str(), percent);
 	return std::wstring(buffer);
 }
 
@@ -511,11 +538,12 @@ LRESULT Parthenos::OnCreate()
 	std::vector<std::wstring> tickers = GetTickers(m_positions[m_currAccount]);
 	std::vector<std::pair<Quote, Stats>> stats = FilterByKeyMatch(m_tickers, m_stats, tickers);
 	std::vector<Column> portColumns = {
-		{70.0f, Column::Ticker, L""},
+		{60.0f, Column::Ticker, L""},
 		{60.0f, Column::Last, L"%.2lf"},
 		{60.0f, Column::ChangeP, L"%.2lf"},
-		{60.0f, Column::Shares, L"%d"},
+		{50.0f, Column::Shares, L"%d"},
 		{60.0f, Column::AvgCost, L"%.2lf"},
+		{60.0f, Column::Equity, L"%.2lf"},
 		{60.0f, Column::ReturnsT, L"%.2lf"},
 		{60.0f, Column::ReturnsP, L"%.2lf"},
 		{60.0f, Column::APY, L"%.2lf"},
