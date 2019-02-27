@@ -239,6 +239,17 @@ void Parthenos::ProcessCTPMessages()
 				m_activeItems.push_back(m_chart);
 				m_activeItems.push_back(m_watchlist);
 			}
+			if (m_sizeChanged)
+			{
+				RECT rc;
+				GetClientRect(m_hwnd, &rc);
+				D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
+
+				for (auto item : m_allItems)
+				{
+					item->SetSize(CalculateItemRect(item, dipRect));
+				}
+			}
 			::InvalidateRect(m_hwnd, NULL, false);
 			break;
 		}
@@ -392,25 +403,31 @@ void Parthenos::AddTransaction(Transaction t)
 
 inline D2D1_COLOR_F Randomizer(std::wstring str)
 {
-	float r = 1.0f, g = 1.0f, b = 1.0f;
+	str = str + str;
+	float hsv[3] = { 60.0f, 0.5f, 0.5f };
 	for (size_t i = 0; i < str.size(); i++)
 	{
 		float x = (static_cast<float>(str[i]) - 65.0f) / 25.0f; // assumes A = 65
 		if (x < 0 || x > 1) break;
-		switch (i % 3)
-		{
-		case 0:
-			r = r * x;
-			break;
-		case 1:
-			g = g * x;
-			break;
-		case 2:
-			b = b * x;
-			break;
-		}
+		hsv[0] += x * 240;
+		if (i % 3 > 0) hsv[i % 3] = (hsv[i % 3] + 5 * x) / 6.0f;
 	}
-	return D2D1::ColorF(r, g, b);
+	
+	size_t i = 0;
+	hsv[0] = hsv[0] - 360.0f * floor(hsv[0] / 360.0f);
+	while (30.0f <= hsv[0] && hsv[0] <= 70.0f) // get rid of yellow shades
+	{
+		float x = (static_cast<float>(str[i % str.size()]) - 65.0f) / 25.0f; // assumes A = 65
+		if (x < 0 || x > 1) break;
+		hsv[0] += x * 320.0f;
+		hsv[0] = hsv[0] - 360.0f * floor(hsv[0] / 360.0f);
+		i++;
+	}
+
+	hsv[1] = 0.3f + 0.6f * hsv[1]; // (0.3, 0.9) value
+	hsv[2] = 0.4f + 0.4f * hsv[2]; // (0.4, 0.8) value
+	OutputMessage(L"%s: %f %f %f\n", str.c_str(), hsv[0], hsv[1], hsv[2]);
+	return Colors::HSVtoRGB(hsv);
 }
 
 void Parthenos::LoadPieChart()
@@ -606,6 +623,8 @@ LRESULT Parthenos::OnPaint()
 
 LRESULT Parthenos::OnSize(WPARAM wParam)
 {
+	m_sizeChanged = true;
+
 	if (wParam == SIZE_MAXIMIZED)
 		m_titleBar->SetMaximized(true);
 	else if (wParam == SIZE_RESTORED)

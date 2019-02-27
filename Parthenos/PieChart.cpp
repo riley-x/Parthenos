@@ -40,6 +40,30 @@ void PieChart::Paint(D2D1_RECT_F updateRect)
 	}
 	m_d2.pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
 
+	// Borders ( this is cleaner than drawing the geometry borders
+	m_d2.pBrush->SetColor(Colors::ALMOST_WHITE);
+	offset_angle = 0.0f;
+	for (size_t i = 0; i < m_angles.size(); i++)
+	{
+		float offset_radians = static_cast<float>(M_PI / 180.0 * offset_angle);
+		float x = m_trueRadius * sin(offset_radians);
+		float y = m_trueRadius * -cos(offset_radians);
+		m_d2.pRenderTarget->DrawLine(
+			D2D1::Point2F(m_center.x + m_innerRadius * x, m_center.y + m_innerRadius * y),
+			D2D1::Point2F(m_center.x + m_outerRadius * x, m_center.y + m_outerRadius * y),
+			m_d2.pBrush, 2.0f
+		);
+		offset_angle += m_angles[i];
+	}
+	m_d2.pRenderTarget->DrawEllipse(
+		D2D1::Ellipse(m_center, m_trueRadius * m_innerRadius, m_trueRadius * m_innerRadius), 
+		m_d2.pBrush, 2.0f
+	);
+	m_d2.pRenderTarget->DrawEllipse(
+		D2D1::Ellipse(m_center, m_trueRadius * m_outerRadius, m_trueRadius * m_outerRadius),
+		m_d2.pBrush, 2.0f
+	);
+
 	// Short labels
 	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
 	offset_angle = 0.0f;
@@ -212,6 +236,6 @@ void PieChart::PaintWedge(ID2D1PathGeometry * pWedge, float offset_angle, D2D1_C
 
 	m_d2.pBrush->SetColor(color);
 	m_d2.pRenderTarget->FillGeometry(pWedge, m_d2.pBrush);
-	m_d2.pBrush->SetColor(m_borderColor);
-	m_d2.pRenderTarget->DrawGeometry(pWedge, m_d2.pBrush, 2.0f, m_d2.pFixedTransformStyle);
+	//m_d2.pBrush->SetColor(m_borderColor);
+	//m_d2.pRenderTarget->DrawGeometry(pWedge, m_d2.pBrush, 2.0f, m_d2.pFixedTransformStyle);
 }

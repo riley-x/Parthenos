@@ -48,6 +48,9 @@ class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver
 	float const	m_watchlistWidth		= 350.0f;
 	float const	m_portfolioListWidth	= 600.0f;
 
+	// Flags
+	bool m_sizeChanged = false; // For tab changes
+
 	// Message responses
 	LRESULT	OnCreate();
 	LRESULT OnNCHitTest(POINT cursor);

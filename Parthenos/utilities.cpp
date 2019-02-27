@@ -149,3 +149,31 @@ std::wstring DateToWString(date_t date)
 		+ std::to_wstring(date % 100) + L"/"
 		+ std::to_wstring((date / 10000) % 100);
 }
+
+// h [0, 360), s [0,1], v [0,1]
+D2D1_COLOR_F Colors::HSVtoRGB(float hsv[3])
+{
+	float c = hsv[2] * hsv[1];
+	int i = static_cast<int>(floor(hsv[0] / 60.0f));
+	float ff = hsv[0] / 60.0f - i;
+	
+	float p = hsv[2] * (1.0f - hsv[1]);
+	float q = hsv[2] * (1.0f - (hsv[1] * ff));
+	float t = hsv[2] * (1.0f - (hsv[1] * (1.0 - ff)));
+
+	switch (i) {
+	case 0:
+		return D2D1::ColorF(hsv[2], t, p);
+	case 1:
+		return D2D1::ColorF(q, hsv[2], p);
+	case 2:
+		return D2D1::ColorF(p, hsv[2], t);
+	case 3:
+		return D2D1::ColorF(p, q, hsv[2]);
+	case 4:
+		return D2D1::ColorF(t, p, hsv[2]);
+	case 5:
+	default:
+		return D2D1::ColorF(hsv[2], p, q);
+	}
+}
