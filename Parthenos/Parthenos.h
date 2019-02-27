@@ -35,8 +35,10 @@ class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver
 
 	// Data
 	int	m_currAccount = 0;
-	std::vector<std::wstring>			m_accounts;
-	std::vector<std::vector<Position>>	m_positions; // same order as m_accounts; extra entry at end for 'All'
+	std::vector<std::wstring>				m_accounts;
+	std::vector<std::vector<Position>>		m_positions; // same order as m_accounts; extra entry at end for 'All'
+	std::vector<std::wstring>				m_tickers; // tickers in all accounts
+	std::vector<std::pair<Quote, Stats>>	m_stats; // in same order as m_tickers
 
 	// Layout
 	float const	m_titleBarHeight		= 30.0f;

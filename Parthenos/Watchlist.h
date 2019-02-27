@@ -135,10 +135,12 @@ public:
 	void ProcessCTPMessages();
 
 	// Interface
-	void Load(std::vector<std::wstring> const & tickers, std::vector<Column> const & columns,
-		std::vector<Position> const & positions);
-	// Preserves columns but introduces a new set of tickers
-	void Reload(std::vector<std::wstring> const & tickers, std::vector<Position> const & positions);
+	void SetColumns(); // default columns
+	void SetColumns(std::vector<Column> const & columns);
+	void Load(std::vector<std::wstring> const & tickers, std::vector<Position> const & positions);
+	void Load(std::vector<std::wstring> const & tickers, std::vector<Position> const & positions,
+		std::vector<std::pair<Quote, Stats>> const & data);
+	inline void Refresh() { CalculateLayouts(); } // On a second load, items are created but not with position
 
 	// Parameters
 	static float const m_hTextPad; // 4.0f
@@ -152,10 +154,9 @@ private:
 
 	// Data
 	std::vector<WatchlistItem*>		m_items;
-	std::vector<std::wstring>		m_tickers;
 	std::vector<Column>				m_columns;
 	std::vector<IDWriteTextLayout*> m_pTextLayouts; // For column headers
-	std::vector<Position>			m_positions;
+	std::vector<Position>			m_positions; // Store these in case columns change from user input
 	
 	// Flags
 	int		m_LButtonDown		= -1;	 // Left button pressed on an item
@@ -177,7 +178,6 @@ private:
 	// Helpers
 
 	void CalculateLayouts();
-	void CreateItems();
 	// Get top of item i
 	inline float GetHeight(int i) { return m_dipRect.top + m_headerHeight + i * m_rowHeight; }
 	// Get index given y coord

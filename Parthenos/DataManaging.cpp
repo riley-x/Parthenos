@@ -808,6 +808,8 @@ bool Positions_Compare(const Position a, std::wstring const & ticker)
 	return std::wstring(a.ticker) < ticker;
 }
 
+
+
 // Updates the holdings for a single ticker with the transaction.
 // Assumes h has the ticker struct
 void AddTransactionToTickerHoldings(std::vector<Holdings> & h, Transaction const & t)

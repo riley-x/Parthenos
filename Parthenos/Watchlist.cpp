@@ -287,38 +287,66 @@ void Watchlist::ProcessCTPMessages()
 	if (!m_messages.empty()) m_messages.clear();
 }
 
-void Watchlist::Load(std::vector<std::wstring> const & tickers, std::vector<Column> const & columns, 
-	std::vector<Position> const & positions)
+void Watchlist::SetColumns()
 {
-	m_tickers = tickers;
-	m_tickers.push_back(L""); // Empty WatchlistItem at end for input
-	if (columns.empty())
-	{
-		m_columns = {
+	m_columns = {
 			{90.0f, Column::Ticker, L""},
 			{60.0f, Column::Last, L"%.2lf"},
 			{60.0f, Column::ChangeP, L"%.2lf"},
 			{60.0f, Column::Change1YP, L"%.2lf"},
 			{60.0f, Column::DivP, L"%.2lf"}
-		};
-	}
+	};
+}
+
+void Watchlist::SetColumns(std::vector<Column> const & columns)
+{
+	if (columns.empty()) SetColumns();
 	else
 	{
 		m_columns = columns;
 		if (m_columns.front().field != Column::Ticker)
 			m_columns.insert(m_columns.begin(), { 60.0f, Column::Ticker, L"" });
 	}
-	m_positions = positions;
 }
 
-
-void Watchlist::Reload(std::vector<std::wstring> const & tickers, std::vector<Position> const & positions)
+// Get data via batch request
+void Watchlist::Load(std::vector<std::wstring> const & tickers, std::vector<Position> const & positions)
 {
-	m_tickers = tickers;
-	m_tickers.push_back(L""); // Empty WatchlistItem at end for input
+	Load(tickers, positions, GetBatchQuoteStats(tickers));
+}
+
+// Clears and creates m_items
+void Watchlist::Load(std::vector<std::wstring> const & tickers, std::vector<Position> const & positions,
+	std::vector<std::pair<Quote, Stats>> const & data)
+{
+	if (tickers.size() != data.size())
+		return OutputMessage(L"Watchlist tickers and data don't line up\n");
+
 	m_positions = positions;
 
-	CreateItems();
+	std::vector<std::wstring> _tickers = tickers;
+	_tickers.push_back(L""); // Empty WatchlistItem at end for input
+
+	for (auto x : m_items) if (x) delete x;
+	m_items.clear();
+	m_items.reserve(_tickers.size());
+	for (size_t i = 0; i < _tickers.size(); i++)
+	{
+		WatchlistItem *temp = new WatchlistItem(m_hwnd, m_d2, this, m_editableTickers);
+		if (i == _tickers.size() - 1)
+		{
+			temp->Load(_tickers[i], m_columns, nullptr, nullptr);
+		}
+		else
+		{
+			// Get position if available
+			Position const * pPosition = nullptr;
+			auto it = std::lower_bound(m_positions.begin(), m_positions.end(), _tickers[i], Positions_Compare);
+			if (it != m_positions.end()) pPosition = &(*it);
+			temp->Load(_tickers[i], m_columns, &data[i], pPosition);
+		}
+		m_items.push_back(temp);
+	}
 }
 
 void Watchlist::CalculateLayouts()
@@ -363,49 +391,41 @@ void Watchlist::CalculateLayouts()
 		m_vLines[i] = left; // i.e. right sisde of column i
 	}
 
-	CreateItems();
-}
-
-// Clears and populates m_items based on tickers in m_tickers, setting their position appropriately,
-// using data from an iex batch fetch and data in m_positions. Also creates the horizontal divider lines.
-void Watchlist::CreateItems()
-{
-	// Get data via batch request
-	std::vector<std::wstring> tickers(m_tickers.begin(), m_tickers.end() - 1); // empty string at end
-	std::vector<std::pair<Quote, Stats>> data = GetBatchQuoteStats(tickers);
-
-	// Create WatchlistItems, horizontal divider lines
-	m_hLines.resize(m_tickers.size());
-	for (auto x : m_items) if (x) delete x;
-	m_items.clear();
-	m_items.reserve(m_tickers.size());
-
+	// Set size of WatchlistItems, horizontal divider lines
+	m_hLines.resize(m_items.size());
 	float top = m_dipRect.top + m_headerHeight;
-	for (size_t i = 0; i < m_tickers.size(); i++)
+	for (size_t i = 0; i < m_items.size(); i++)
 	{
-		if (top + m_rowHeight > m_dipRect.bottom) break;
+		if (top + m_rowHeight > m_dipRect.bottom)
+		{
+			OutputMessage(L"Warning: Watchlist too many items");
+			if (i > 0)
+			{
+				m_hLines.resize(i - 1);
+				for (size_t j = i; j < m_items.size(); j++) if (m_items[j]) delete m_items[j];
+				m_items.resize(i - 1);
+			}
+			else
+			{
+				m_vLines.clear();
+				for (auto x : m_items) if (x) delete x;
+				m_items.clear();
+			}
+			break;
+		}
 
-		// Get position if available
-		Position const * pPosition = nullptr;
-		auto it = std::lower_bound(m_positions.begin(), m_positions.end(), m_tickers[i], Positions_Compare);
-		if (it != m_positions.end()) pPosition = &(*it);
-
-		WatchlistItem *temp = new WatchlistItem(m_hwnd, m_d2, this, m_editableTickers);
-		if (i < data.size()) temp->Load(m_tickers[i], m_columns, &data[i], pPosition);
-		else temp->Load(m_tickers[i], m_columns, nullptr, pPosition);
-		temp->SetSize(D2D1::RectF(
+		m_items[i]->SetSize(D2D1::RectF(
 			m_dipRect.left,
 			top,
 			m_dipRect.right,
 			top + m_rowHeight
 		));
 
-		m_items.push_back(temp);
-
 		top += m_rowHeight;
 		m_hLines[i] = top; // i.e. bottom of item i
 	}
 }
+
 
 // Move item iOld to iNew, shifting everything in between appropriately.
 // If iNew < iOld, moves iOld to above the current item at iNew.

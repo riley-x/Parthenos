@@ -151,7 +151,6 @@ void PieChart::CreateWedge(ID2D1PathGeometry ** ppGeometry, float radians)
 // Creates the layouts for the labels.
 void PieChart::CreateTextLayouts()
 {
-
 	// Short labels
 	m_d2.pTextFormats[D2Objects::Formats::Segoe12]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
 	for (auto x : m_shortLabelLayouts) SafeRelease(&x);
@@ -169,7 +168,6 @@ void PieChart::CreateTextLayouts()
 		if (FAILED(hr)) throw Error(L"PieChart: CreateTextLayout failed");
 	}
 	m_d2.pTextFormats[D2Objects::Formats::Segoe12]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
-
 
 	// Long labels
 	m_d2.pTextFormats[D2Objects::Formats::Segoe18]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);

@@ -118,6 +118,29 @@ inline std::vector<size_t> sort_indexes(const std::vector<T> &v, Compare comp = 
 	return idx;
 }
 
+// Given 'keys' mapping to equal sized 'vals', returns a vector containing those values corresponding
+// to keys in 'filter'. Assumes 'keys' and 'filter' are ordered in the same sense.
+template <typename T1, typename T2>
+std::vector<T2> FilterByKeyMatch(std::vector<T1> keys, std::vector<T2> vals, std::vector<T1> filter)
+{
+	std::vector<T2> out;
+	out.reserve(filter.size());
+
+	size_t ikey = 0;
+	size_t ifilter = 0;
+	while (ifilter < filter.size() && ikey < keys.size())
+	{
+		if (filter[ifilter] == keys[ikey])
+		{
+			out.push_back(vals[ikey]);
+			ifilter++;
+		}
+		ikey++;
+	}
+
+	return out;
+}
+
 namespace Colors
 {
 	const D2D1_COLOR_F HIGHLIGHT		= D2D1::ColorF(0.3f, 0.3f, 0.3f, 1.0f);

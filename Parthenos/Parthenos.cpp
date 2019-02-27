@@ -39,6 +39,9 @@ Parthenos::Parthenos(PCWSTR szClassName)
 	std::vector<Position> positions = HoldingsToPositions(
 		FlattenedHoldingsToTickers(out), -1, GetCurrentDate()); // all accounts
 	m_positions.push_back(positions);
+
+	m_tickers = GetTickers(m_positions.back()); // all tickers
+	m_stats = GetBatchQuoteStats(m_tickers);
 }
 
 Parthenos::~Parthenos()
@@ -255,7 +258,8 @@ void Parthenos::ProcessCTPMessages()
 
 			m_currAccount = account;
 			std::vector<std::wstring> tickers = GetTickers(m_positions[account]);
-			m_portfolioList->Reload(tickers, m_positions[account]);
+			m_portfolioList->Load(tickers, m_positions[account], FilterByKeyMatch(m_tickers, m_stats, tickers));
+			m_portfolioList->Refresh();
 
 			::InvalidateRect(m_hwnd, NULL, FALSE);
 			break;
@@ -371,15 +375,18 @@ void Parthenos::AddTransaction(Transaction t)
 	holdingsFile.Write(out.data(), sizeof(Holdings) * out.size());
 	holdingsFile.Close();
 
-	// Update positions
+	// Update positions and other data
 	std::vector<Position> positions = HoldingsToPositions(holdings, t.account, GetCurrentDate());
 	m_positions[t.account] = positions;
 	positions = HoldingsToPositions(holdings, -1, GetCurrentDate()); // all accounts
 	m_positions.back() = positions;
+	m_tickers = GetTickers(positions);
+	m_stats = GetBatchQuoteStats(m_tickers);
 
 	// Update watchlist
 	std::vector<std::wstring> tickers = GetTickers(m_positions[t.account]);
-	m_portfolioList->Reload(tickers, m_positions[t.account]);
+	m_portfolioList->Load(tickers, m_positions[t.account], FilterByKeyMatch(m_tickers, m_stats, tickers));
+	m_portfolioList->Refresh();
 }
 
 void Parthenos::LoadPieChart()
@@ -394,7 +401,7 @@ void Parthenos::LoadPieChart()
 
 	data.reserve(tickers.size() + 1); // Add one for cash
 	short_labels.reserve(tickers.size() + 1);
-	long_labels.reserve(tickers.size() + 2);
+	long_labels.reserve(tickers.size() + 2); // Add another for default label
 	colors.reserve(tickers.size() + 1);
 
 	double sum = std::accumulate(market_values.begin(), market_values.end(), 0.0);
@@ -503,6 +510,7 @@ LRESULT Parthenos::OnCreate()
 	m_titleBar->SetTabs({ L"Portfolio", L"Returns", L"Chart" });
 
 	std::vector<std::wstring> tickers = GetTickers(m_positions[m_currAccount]);
+	std::vector<std::pair<Quote, Stats>> stats = FilterByKeyMatch(m_tickers, m_stats, tickers);
 	std::vector<Column> portColumns = {
 		{70.0f, Column::Ticker, L""},
 		{60.0f, Column::Last, L"%.2lf"},
@@ -514,9 +522,11 @@ LRESULT Parthenos::OnCreate()
 		{60.0f, Column::APY, L"%.2lf"},
 		{60.0f, Column::ExDiv, L""},
 	};
+	m_watchlist->SetColumns(); // use defaults
+	m_portfolioList->SetColumns(portColumns);
 
-	m_watchlist->Load(tickers, std::vector<Column>(), m_positions[m_currAccount]);
-	m_portfolioList->Load(tickers, portColumns, m_positions[m_currAccount]);
+	m_watchlist->Load(tickers, m_positions[m_currAccount], stats);
+	m_portfolioList->Load(tickers, m_positions[m_currAccount], stats);
 	LoadPieChart();
 
 	return 0;
