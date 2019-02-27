@@ -28,20 +28,21 @@ Parthenos::Parthenos(PCWSTR szClassName)
 	std::vector<Holdings> out = holdingsFile.Read<Holdings>();
 	holdingsFile.Close();
 
+	NestedHoldings holdings = FlattenedHoldingsToTickers(out);
+	m_tickers = GetTickers(holdings); // all tickers
+	m_stats = GetBatchQuoteStats(m_tickers);
+
 	// Holdings -> Positions
 	// TODO get prices via batch and pass to function
 	for (size_t i = 0; i < m_accounts.size(); i++)
 	{
 		std::vector<Position> positions = HoldingsToPositions(
-			FlattenedHoldingsToTickers(out), static_cast<char>(i), GetCurrentDate());
+			holdings, static_cast<char>(i), GetCurrentDate(), GetMarketPrices(m_stats));
 		m_positions.push_back(positions);
 	}
 	std::vector<Position> positions = HoldingsToPositions(
-		FlattenedHoldingsToTickers(out), -1, GetCurrentDate()); // all accounts
+		holdings, -1, GetCurrentDate(), GetMarketPrices(m_stats)); // all accounts
 	m_positions.push_back(positions);
-
-	m_tickers = GetTickers(m_positions.back()); // all tickers
-	m_stats = GetBatchQuoteStats(m_tickers);
 }
 
 Parthenos::~Parthenos()
@@ -375,13 +376,11 @@ void Parthenos::AddTransaction(Transaction t)
 	holdingsFile.Write(out.data(), sizeof(Holdings) * out.size());
 	holdingsFile.Close();
 
-	// Update positions and other data
-	std::vector<Position> positions = HoldingsToPositions(holdings, t.account, GetCurrentDate());
-	m_positions[t.account] = positions;
-	positions = HoldingsToPositions(holdings, -1, GetCurrentDate()); // all accounts
-	m_positions.back() = positions;
-	m_tickers = GetTickers(positions);
+	// Update data
+	m_tickers = GetTickers(holdings);
 	m_stats = GetBatchQuoteStats(m_tickers);
+	m_positions[t.account] = HoldingsToPositions(holdings, t.account, GetCurrentDate(), GetMarketPrices(m_stats));
+	m_positions.back() = HoldingsToPositions(holdings, -1, GetCurrentDate(), GetMarketPrices(m_stats)); // all accounts
 
 	// Update watchlist
 	std::vector<std::wstring> tickers = GetTickers(m_positions[t.account]);

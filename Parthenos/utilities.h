@@ -119,7 +119,8 @@ inline std::vector<size_t> sort_indexes(const std::vector<T> &v, Compare comp = 
 }
 
 // Given 'keys' mapping to equal sized 'vals', returns a vector containing those values corresponding
-// to keys in 'filter'. Assumes 'keys' and 'filter' are ordered in the same sense.
+// to keys in 'filter'. Assumes 'keys' and 'filter' are ordered in the same sense. If 'filter' contains
+// a value not in 'keys', the function will return values up to that filter.
 template <typename T1, typename T2>
 std::vector<T2> FilterByKeyMatch(std::vector<T1> keys, std::vector<T2> vals, std::vector<T1> filter)
 {

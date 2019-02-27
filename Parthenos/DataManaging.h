@@ -97,6 +97,14 @@ std::vector<std::pair<Quote, Stats>> GetBatchQuoteStats(std::vector<std::wstring
 std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source = apiSource::iex, size_t last_n = 0);
 bool OHLC_Compare(const OHLC & a, const OHLC & b);
 
+inline std::vector<double> GetMarketPrices(std::vector<std::pair<Quote, Stats>> qstats)
+{
+	std::vector<double> out;
+	out.reserve(qstats.size());
+	for (auto & x : qstats)	out.push_back(x.first.latestPrice);
+	return out;
+}
+
 ///////////////////////////////////////////////////////////
 // --- Portfolio ---
 
@@ -263,6 +271,8 @@ typedef union Holdings_union
 	Option option;
 } Holdings;
 
+typedef std::vector<std::vector<Holdings>> NestedHoldings;
+
 typedef struct Position_struct
 {
 	int n;					
@@ -308,10 +318,11 @@ inline double GetAPY(double gain, double cost_in, date_t start_date, date_t end_
 }
 
 std::vector<Transaction> CSVtoTransactions(std::wstring filepath);
-void AddTransactionToHoldings(std::vector<std::vector<Holdings>> & holdings, Transaction const & transaction);
-std::vector<std::vector<Holdings>> FullTransactionsToHoldings(std::vector<Transaction> const & transactions);
-std::vector<std::vector<Holdings>> FlattenedHoldingsToTickers(std::vector<Holdings> const & holdings);
-std::vector<Position> HoldingsToPositions(std::vector<std::vector<Holdings>> const & holdings, char account, date_t date);
+void AddTransactionToHoldings(NestedHoldings & holdings, Transaction const & transaction);
+NestedHoldings FullTransactionsToHoldings(std::vector<Transaction> const & transactions);
+NestedHoldings FlattenedHoldingsToTickers(std::vector<Holdings> const & holdings);
+std::vector<Position> HoldingsToPositions(NestedHoldings const & holdings,
+	char account, date_t date, std::vector<double> prices);
 bool Positions_Compare(const Position a, std::wstring const & ticker);
 
 void PrintTickerHoldings(std::vector<Holdings> const & h);
@@ -322,6 +333,19 @@ inline void PrintFlattenedHoldings(std::vector<Holdings> const & h)
 	{
 		PrintTickerHoldings(i);
 	}
+}
+
+inline std::vector<std::wstring> GetTickers(NestedHoldings const & holdings, bool cash = false)
+{
+	std::vector<std::wstring> out;
+	out.reserve(holdings.size());
+	for (auto const & x : holdings)
+	{
+		std::wstring ticker(x[0].tickerInfo.ticker);
+		if (!cash && ticker == L"CASH") continue;
+		out.push_back(ticker);
+	}
+	return out;
 }
 
 inline std::vector<std::wstring> GetTickers(std::vector<Position> const & positions, bool cash = false)

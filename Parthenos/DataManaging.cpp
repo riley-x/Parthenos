@@ -33,7 +33,7 @@ size_t GetPurchaseLot(std::vector<Holdings> const & h, size_t i_header, size_t n
 
 
 ///////////////////////////////////////////////////////////
-// --- Interface Functions ---
+// --- Stock Data Interface Functions ---
 
 
 double GetPrice(std::wstring ticker)
@@ -134,6 +134,9 @@ std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source, size_t last_n)
 	return out;
 }
 
+///////////////////////////////////////////////////////////
+// --- Transactions and Positions Interface Functions ---
+
 
 // CSV with columns date,account,ticker,n,value,price,type,expiration,strike
 // separated by \r\n (generate from excel). Assumes tax_lot = 0.
@@ -164,7 +167,7 @@ std::vector<Transaction> CSVtoTransactions(std::wstring filepath)
 	return out;
 }
 
-void AddTransactionToHoldings(std::vector<std::vector<Holdings>> & holdings, Transaction const & t)
+void AddTransactionToHoldings(NestedHoldings & holdings, Transaction const & t)
 {
 	// See if ticker is present already
 	std::wstring ticker(t.ticker);
@@ -193,7 +196,7 @@ void AddTransactionToHoldings(std::vector<std::vector<Holdings>> & holdings, Tra
 //
 // Note that the stock lots contain sell information, denoted by lot.active == -1, to account for sales between
 // the ex-dividend and payout dates. Call ReduceSalesLots to collapse these.
-std::vector<std::vector<Holdings>> FullTransactionsToHoldings(std::vector<Transaction> const & transactions)
+NestedHoldings FullTransactionsToHoldings(std::vector<Transaction> const & transactions)
 {
 	std::vector<std::vector<Holdings>> holdings; // Holdings for each ticker, sorted by ticker
 
@@ -205,7 +208,8 @@ std::vector<std::vector<Holdings>> FullTransactionsToHoldings(std::vector<Transa
 	return holdings;
 }
 
-std::vector<std::vector<Holdings>> FlattenedHoldingsToTickers(std::vector<Holdings> const & holdings)
+
+NestedHoldings FlattenedHoldingsToTickers(std::vector<Holdings> const & holdings)
 {
 	size_t i = 0;
 	std::vector<std::vector<Holdings>> out;
@@ -227,19 +231,27 @@ std::vector<std::vector<Holdings>> FlattenedHoldingsToTickers(std::vector<Holdin
 	return out;
 }
 
-// Calculates returns and APY using 'date' as end date. Set account = -1 to use all accounts
-std::vector<Position> HoldingsToPositions(std::vector<std::vector<Holdings>> const & holdings, char account, date_t date)
+// Calculates returns and APY using 'date' as end date. Set 'account' = -1 to use all accounts.
+// 'prices' should contain the latest market price in the same order as the tickers in holdings, except CASH.
+// Note this function does not truncate transactions to 'date'!
+std::vector<Position> HoldingsToPositions(NestedHoldings const & holdings,
+	char account, date_t date, std::vector<double> prices)
 {
 	std::vector<Position> out;
 
 	// Loop over tickers
+	size_t i = 0; // index into prices, discounting cash
 	for (std::vector<Holdings> h : holdings)
 	{
 		if (h.empty()) throw std::invalid_argument("Holdings is empty");
 
 		Position temp = {};
 		temp.ticker = h[0].tickerInfo.ticker;
-		if (temp.ticker != L"CASH")	temp.marketPrice = GetPrice(temp.ticker); // TODO turn this into a batch request
+		if (temp.ticker != L"CASH")
+		{
+			temp.marketPrice = prices[i];
+			i++;
+		}
 
 		// store running weighted numerator in temp.APY -- divide by sumWeights at end
 		double sumWeights = 0;
@@ -343,6 +355,7 @@ std::vector<Position> HoldingsToPositions(std::vector<std::vector<Holdings>> con
 	} // end loop over tickers
 	return out;
 }
+
 
 void PrintTickerHoldings(std::vector<Holdings> const & h)
 {
