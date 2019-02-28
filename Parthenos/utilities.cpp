@@ -159,7 +159,7 @@ D2D1_COLOR_F Colors::HSVtoRGB(float hsv[3])
 	
 	float p = hsv[2] * (1.0f - hsv[1]);
 	float q = hsv[2] * (1.0f - (hsv[1] * ff));
-	float t = hsv[2] * (1.0f - (hsv[1] * (1.0 - ff)));
+	float t = hsv[2] * (1.0f - (hsv[1] * (1.0f - ff)));
 
 	switch (i) {
 	case 0:

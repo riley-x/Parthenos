@@ -40,8 +40,8 @@ void PieChart::Paint(D2D1_RECT_F updateRect)
 	}
 	m_d2.pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
 
-	// Borders ( this is cleaner than drawing the geometry borders
-	m_d2.pBrush->SetColor(Colors::ALMOST_WHITE);
+	// Borders (this is cleaner than drawing the geometry borders)
+	m_d2.pBrush->SetColor(m_borderColor);
 	offset_angle = 0.0f;
 	for (size_t i = 0; i < m_angles.size(); i++)
 	{
@@ -86,17 +86,39 @@ void PieChart::Paint(D2D1_RECT_F updateRect)
 	}
 
 	// Long label
-	if (m_mouseOn >= 0)
+	m_d2.pRenderTarget->DrawTextLayout(
+		D2D1::Point2F(m_center.x - m_longLayoutSize / 2.0f, m_center.y - m_longLayoutSize / 2.0f),
+		m_longLabelLayouts[m_mouseOn + 1],
+		m_d2.pBrush
+	);
+}
+
+bool PieChart::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
+{
+	D2D1_POINT_2F point = D2D1::Point2F(cursor.x - m_center.x, cursor.y - m_center.y);
+	if (inRect(cursor, m_dipRect) && !handeled &&
+		!inRadius(point, m_trueRadius * m_innerRadius) && inRadius(point, m_trueRadius * m_outerRadius))
 	{
-		// TODO
+		float degree = std::atan2(point.x, -point.y) * 180.0f / (float)M_PI;
+		if (degree < 0) degree += 360.0f;
+		
+		size_t i = 0;
+		while (degree >= 0) degree -= m_angles[i++];
+		if (m_mouseOn != i - 1)
+		{
+			m_mouseOn = i - 1;
+			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+		}
+		return true;
 	}
-	else if (!m_longLabelLayouts.empty())
+	else
 	{
-		m_d2.pRenderTarget->DrawTextLayout(
-			D2D1::Point2F(m_center.x - m_longLayoutSize / 2.0f, m_center.y - m_longLayoutSize / 2.0f),
-			m_longLabelLayouts[0],
-			m_d2.pBrush
-		);
+		if (m_mouseOn >= 0)
+		{
+			m_mouseOn = -1;
+			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+		}
+		return false;
 	}
 }
 

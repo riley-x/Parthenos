@@ -33,15 +33,15 @@ Parthenos::Parthenos(PCWSTR szClassName)
 	m_stats = GetBatchQuoteStats(m_tickers);
 
 	// Holdings -> Positions
-	// TODO get prices via batch and pass to function
+	date_t date = GetCurrentDate();
 	for (size_t i = 0; i < m_accounts.size(); i++)
 	{
 		std::vector<Position> positions = HoldingsToPositions(
-			holdings, static_cast<char>(i), GetCurrentDate(), GetMarketPrices(m_stats));
+			holdings, static_cast<char>(i), date, GetMarketPrices(m_stats));
 		m_positions.push_back(positions);
 	}
 	std::vector<Position> positions = HoldingsToPositions(
-		holdings, -1, GetCurrentDate(), GetMarketPrices(m_stats)); // all accounts
+		holdings, -1, date, GetMarketPrices(m_stats)); // all accounts
 	m_positions.push_back(positions);
 }
 
@@ -405,6 +405,7 @@ inline D2D1_COLOR_F Randomizer(std::wstring str)
 {
 	str = str + str;
 	float hsv[3] = { 60.0f, 0.5f, 0.5f };
+
 	for (size_t i = 0; i < str.size(); i++)
 	{
 		float x = (static_cast<float>(str[i]) - 65.0f) / 25.0f; // assumes A = 65
@@ -412,10 +413,13 @@ inline D2D1_COLOR_F Randomizer(std::wstring str)
 		hsv[0] += x * 240;
 		if (i % 3 > 0) hsv[i % 3] = (hsv[i % 3] + 5 * x) / 6.0f;
 	}
-	
 	size_t i = 0;
 	hsv[0] = hsv[0] - 360.0f * floor(hsv[0] / 360.0f);
-	while (30.0f <= hsv[0] && hsv[0] <= 70.0f) // get rid of yellow shades
+	hsv[1] = 0.3f + 0.6f * hsv[1]; // (0.3, 0.9) value
+	hsv[2] = 0.4f + 0.35f * hsv[2]; // (0.4, 0.75) value
+
+	// get rid of yellow shades
+	while (30.0f <= hsv[0] && hsv[0] <= 70.0f) 
 	{
 		float x = (static_cast<float>(str[i % str.size()]) - 65.0f) / 25.0f; // assumes A = 65
 		if (x < 0 || x > 1) break;
@@ -424,9 +428,6 @@ inline D2D1_COLOR_F Randomizer(std::wstring str)
 		i++;
 	}
 
-	hsv[1] = 0.3f + 0.6f * hsv[1]; // (0.3, 0.9) value
-	hsv[2] = 0.4f + 0.4f * hsv[2]; // (0.4, 0.8) value
-	OutputMessage(L"%s: %f %f %f\n", str.c_str(), hsv[0], hsv[1], hsv[2]);
 	return Colors::HSVtoRGB(hsv);
 }
 
@@ -467,7 +468,7 @@ void Parthenos::LoadPieChart()
 		data.push_back(value);
 		short_labels.push_back(ticker);
 		long_labels.push_back(MakeLongLabel(ticker, value, 100.0 * value / sum));
-		colors.push_back(Randomizer(ticker)); // TODO
+		colors.push_back(Randomizer(ticker));
 	}
 
 	// Cash

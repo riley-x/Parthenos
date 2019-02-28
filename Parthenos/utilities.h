@@ -64,7 +64,8 @@ inline std::wstring toMonthWString_Short(date_t date)
 }
 
 ///////////////////////////////////////////////////////////
-// --- Misc --- 
+// --- Layout --- 
+
 inline bool inRect(D2D1_POINT_2F cursor, D2D1_RECT_F rect)
 {
 	return cursor.x >= rect.left &&
@@ -93,6 +94,15 @@ inline bool equalRect(D2D1_RECT_F r1, D2D1_RECT_F r2)
 {
 	return r1.left == r2.left && r1.top == r2.top && r1.right == r2.right && r1.bottom == r2.bottom;
 }
+
+inline bool inRadius(D2D1_POINT_2F p, float r)
+{
+	return (p.x * p.x + p.y * p.y) < (r * r);
+}
+
+///////////////////////////////////////////////////////////
+// --- Misc --- 
+
 
 template <class T> void SafeRelease(T **ppT)
 {
@@ -160,6 +170,7 @@ std::vector<T2> FilterByKeyMatch(std::vector<T1> keys, std::vector<T2> vals, std
 	return out;
 }
 
+///////////////////////////////////////////////////////////
 namespace Colors
 {
 	const D2D1_COLOR_F HIGHLIGHT		= D2D1::ColorF(0.3f, 0.3f, 0.3f, 1.0f);
@@ -183,6 +194,7 @@ namespace Colors
 	D2D1_COLOR_F HSVtoRGB(float hsv[3]);
 }
 
+///////////////////////////////////////////////////////////
 namespace Timers
 {
 	const int n_timers = 1;
@@ -198,6 +210,7 @@ namespace Timers
 	const UINT CARET_TIME = 750; // 0.75 seconds
 }
 
+///////////////////////////////////////////////////////////
 namespace Cursor
 {
 	extern bool isSet; // refresh each WM_MOUSEMOVE

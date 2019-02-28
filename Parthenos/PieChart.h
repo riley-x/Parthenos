@@ -9,18 +9,13 @@ class PieChart : public AppItem
 public:
 	
 	// Constructor/Destructor
-	//PieChart(HWND hwnd, D2Objects const & d2);
 	using AppItem::AppItem;
 	~PieChart();
 
 	// AppItem overrides
 	void SetSize(D2D1_RECT_F dipRect); // This creates the text layouts and wedge geometries
 	void Paint(D2D1_RECT_F updateRect);
-	///bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled);
-	//bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled);
-	//void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam);
-	//void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam);
-	///void ProcessCTPMessages();
+	bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled);
 
 	// Interface
 
