@@ -662,12 +662,14 @@ LRESULT Parthenos::OnPaint()
 
 LRESULT Parthenos::OnSize(WPARAM wParam)
 {
-	m_sizeChanged = true;
-
-	if (wParam == SIZE_MAXIMIZED)
+	if (wParam == SIZE_MINIMIZED)
+		return 0;
+	else if (wParam == SIZE_MAXIMIZED)
 		m_titleBar->SetMaximized(true);
 	else if (wParam == SIZE_RESTORED)
 		m_titleBar->SetMaximized(false);
+	
+	m_sizeChanged = true;
 	if (m_d2.pRenderTarget != NULL)
 	{
 		RECT rc;

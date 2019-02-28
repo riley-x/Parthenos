@@ -8,7 +8,7 @@ MenuBar::MenuBar(HWND hwnd, D2Objects const & d2, Parthenos * parent,
 {
 	DropMenuButton *temp = new DropMenuButton(hwnd, d2, this, false);
 	temp->SetText(m_texts[0], m_widths[0], height);
-	temp->SetItems({ L"Recalculate Transactions" });
+	temp->SetItems({ L"TODO", L"HIII" });
 	m_buttons.push_back(temp);
 
 	accounts.push_back(L"All");
@@ -19,7 +19,7 @@ MenuBar::MenuBar(HWND hwnd, D2Objects const & d2, Parthenos * parent,
 
 	temp = new DropMenuButton(hwnd, d2, this, false);
 	temp->SetText(m_texts[2], m_widths[2], height);
-	temp->SetItems({ L"Add..." });
+	temp->SetItems({ L"Add...", L"Recalculate All" });
 	m_buttons.push_back(temp);
 }
 
@@ -119,7 +119,7 @@ void MenuBar::ProcessCTPMessages()
 			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_ACCOUNT);
 		else if (msg.msg == L"Add...") // Transaction->Add...
 			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_ADDTRANSACTION);
-		else if (msg.msg == L"Recalculate Transactions") // File->Recalculate
+		else if (msg.msg == L"Recalculate All") // Transaction->Recalculate
 			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_CALCHOLDINGS);
 	}
 	if (!m_messages.empty()) m_messages.clear();

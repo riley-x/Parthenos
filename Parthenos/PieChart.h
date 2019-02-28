@@ -19,12 +19,10 @@ public:
 
 	// Interface
 
-	// Extra entry at beginning of long labels for default center text
-	// Call before SetSize
+	// Extra entry at beginning of long labels for default center text. Call before SetSize.
 	void Load(std::vector<double> const & data, std::vector<D2D1_COLOR_F> const & colors,
 		std::vector<std::wstring> const & shortLabels, std::vector<std::wstring> const & longLabels); 
 	inline void Refresh() { CreateTextLayouts(); }
-
 
 private:
 
