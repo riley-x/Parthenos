@@ -144,8 +144,8 @@ void Axes::Candlestick(OHLC const * ohlc, int n)
 
 	// get min/max of data to scale data appropriately
 	// set x values to [0, n-1)
-	double xmin = 0;
-	double xmax = n - 1;
+	double xmin = -0.5; // extra pad
+	double xmax = n - 0.5;
 	double low_min = ohlc[0].low;
 	double high_max = ohlc[0].high;
 	for (int i = 0; i < n; i++)
@@ -199,9 +199,9 @@ void Axes::Bar(std::pair<double, D2D1_COLOR_F> const * data, int n)
 {
 	m_drawxLabels = false; // no x labels
 
-	// get min/max of data to scale data appropriately
-	double xmin = 0;
-	double xmax = n; // assign x values to 0.5, 1.5, ...
+	// get min/max of data to scale data appropriately. x values [0,n)
+	double xmin = -0.5; // extra padding
+	double xmax = n - 0.5;
 	double ymin = data[0].first;
 	double ymax = data[0].first;
 	for (int i = 0; i < n; i++)
@@ -496,7 +496,7 @@ void BarGraph::Make()
 	float boxHalfWidth = 0.4f * x_diff / m_n;
 	for (int i = 0; i < m_n; i++)
 	{
-		float x = m_axes->XtoDIP(static_cast<double>(i) + 0.5);
+		float x = m_axes->XtoDIP(static_cast<double>(i));
 		float y1, y2;
 		if (data[i].first < 0)
 		{

@@ -12,6 +12,12 @@ enum class apiSource { iex, alpha };
 
 enum class iexLSource { real, delayed, close, prevclose };
 
+typedef struct TimeSeries_struct
+{
+	date_t date;
+	double prices;
+} TimeSeries;
+
 typedef struct OHLC_struct 
 {
 	double open;

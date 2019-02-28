@@ -19,7 +19,7 @@ inline std::wstring MakeLongLabel(std::wstring const & ticker, double val, doubl
 // --- Interface functions ---
 
 Parthenos::Parthenos(PCWSTR szClassName)
-	: BorderlessWindow(szClassName), m_accounts({ L"Robinhood", L"Arista" })
+	: BorderlessWindow(szClassName), m_accountNames({ L"Robinhood", L"Arista" })
 {
 	// Read Holdings
 	FileIO holdingsFile;
@@ -32,7 +32,31 @@ Parthenos::Parthenos(PCWSTR szClassName)
 	m_tickers = GetTickers(holdings); // all tickers
 	m_stats = GetBatchQuoteStats(m_tickers);
 
+	m_accounts.resize(m_accountNames.size() + 1);
+	for (size_t i = 0; i < m_accountNames.size(); i++)
+		m_accounts[i].name = m_accountNames[i];
+	m_accounts.back().name = L"All Accounts";
+	
 	CalculatePositions(holdings);
+	CalculateReturns();
+
+	//// Calculate history of portfolio
+	//bool exists = FileExists((ROOTDIR + L"port.hist").c_str()); // Check before create file
+	//if (!exists)
+	//{
+	//	std::vector<TimeSeries> portHist = CalculatePortfolioHistory();
+	//	m_portHistoryDates.reserve(portHist.size());
+	//	m_portHistoryPrices.reserve(portHist.size());
+	//	for (auto const & x : portHist)
+	//	{
+	//		m_portHistoryDates.push_back(x.date);
+	//		m_portHistoryPrices.push_back(x.prices);
+	//	}
+	//}
+	//else
+	//{
+
+	//}
 }
 
 Parthenos::~Parthenos()
@@ -188,9 +212,9 @@ void Parthenos::PreShow()
 
 int Parthenos::AccountToIndex(std::wstring account)
 {
-	for (size_t i = 0; i < m_accounts.size(); i++)
+	for (size_t i = 0; i < m_accountNames.size(); i++)
 	{
-		if (m_accounts[i] == account) return static_cast<int>(i);
+		if (m_accountNames[i] == account) return static_cast<int>(i);
 	}
 	return -1; // also means "All"
 }
@@ -266,23 +290,22 @@ void Parthenos::ProcessCTPMessages()
 		case CTPMessage::MENUBAR_ACCOUNT:
 		{
 			int account = AccountToIndex(msg.msg);
-			if (account < 0) account = m_positions.size() - 1; // last entry is 'all'
+			if (account < 0) account = m_accounts.size() - 1; // last entry is 'all'
 			if (account == m_currAccount) break;
 
 			m_currAccount = account;
-			std::vector<std::wstring> tickers = GetTickers(m_positions[account]);
+			std::vector<std::wstring> tickers = GetTickers(m_accounts[account].positions);
 			
-			m_portfolioList->Load(tickers, m_positions[account], FilterByKeyMatch(m_tickers, m_stats, tickers));
+			m_portfolioList->Load(tickers, m_accounts[account].positions, FilterByKeyMatch(m_tickers, m_stats, tickers));
 			m_portfolioList->Refresh();
 			
 			LoadPieChart();
 			m_pieChart->Refresh();
 			
-			CalculateReturns();
 			m_returnsAxes->Clear();
 			m_returnsPercAxes->Clear();
-			m_returnsAxes->Bar(m_returnsBarData.data(), m_returnsBarData.size());
-			m_returnsPercAxes->Bar(m_returnsPercBarData.data(), m_returnsPercBarData.size());
+			m_returnsAxes->Bar(m_accounts[m_currAccount].returnsBarData.data(), m_accounts[m_currAccount].returnsBarData.size());
+			m_returnsPercAxes->Bar(m_accounts[m_currAccount].returnsPercBarData.data(), m_accounts[m_currAccount].returnsPercBarData.size());
 
 			::InvalidateRect(m_hwnd, NULL, FALSE);
 			break;
@@ -292,7 +315,7 @@ void Parthenos::ProcessCTPMessages()
 			BOOL ok = m_addTWin->Create(m_hInstance);
 			if (!ok) OutputError(L"Create AddTransaction window failed");
 			m_addTWin->SetParent(this, m_hwnd);
-			m_addTWin->SetAccounts(m_accounts);
+			m_addTWin->SetAccounts(m_accountNames);
 			m_addTWin->PreShow();
 			ShowWindow(m_addTWin->Window(), SW_SHOW);
 			break;
@@ -452,12 +475,12 @@ void Parthenos::AddTransaction(Transaction t)
 	// Update data
 	m_tickers = GetTickers(holdings);
 	m_stats = GetBatchQuoteStats(m_tickers);
-	m_positions[t.account] = HoldingsToPositions(holdings, t.account, GetCurrentDate(), GetMarketPrices(m_stats));
-	m_positions.back() = HoldingsToPositions(holdings, -1, GetCurrentDate(), GetMarketPrices(m_stats)); // all accounts
+	m_accounts[t.account].positions = HoldingsToPositions(holdings, t.account, GetCurrentDate(), GetMarketPrices(m_stats));
+	m_accounts.back().positions = HoldingsToPositions(holdings, -1, GetCurrentDate(), GetMarketPrices(m_stats)); // all accounts
 
 	// Update watchlist
-	std::vector<std::wstring> tickers = GetTickers(m_positions[t.account]);
-	m_portfolioList->Load(tickers, m_positions[t.account], FilterByKeyMatch(m_tickers, m_stats, tickers));
+	std::vector<std::wstring> tickers = GetTickers(m_accounts[t.account].positions);
+	m_portfolioList->Load(tickers, m_accounts[t.account].positions, FilterByKeyMatch(m_tickers, m_stats, tickers));
 	m_portfolioList->Refresh();
 }
 
@@ -488,46 +511,48 @@ NestedHoldings Parthenos::CalculateHoldings() const
 // Holdings -> Positions
 void Parthenos::CalculatePositions(NestedHoldings const & holdings)
 {
-	m_positions.clear();
 	date_t date = GetCurrentDate();
-	for (size_t i = 0; i < m_accounts.size(); i++)
+	for (size_t i = 0; i < m_accountNames.size(); i++)
 	{
 		std::vector<Position> positions = HoldingsToPositions(
 			holdings, static_cast<char>(i), date, GetMarketPrices(m_stats));
-		m_positions.push_back(positions);
+		m_accounts[i].positions = positions;
 	}
 	std::vector<Position> positions = HoldingsToPositions(
 		holdings, -1, date, GetMarketPrices(m_stats)); // all accounts
-	m_positions.push_back(positions);
+	m_accounts.back().positions = positions;
 }
 
 void Parthenos::CalculateReturns()
 {
-	m_returnsBarData.clear();
-	m_returnsPercBarData.clear();
-	m_returnsBarData.reserve(m_positions[m_currAccount].size() - 1); // minus cash
-	m_returnsPercBarData.reserve(m_positions[m_currAccount].size() - 1); // minus cash
-
-	// sort by decreasing equity
-	std::vector<size_t> inds = sort_indexes(m_positions[m_currAccount],
-		[](Position const & p1, Position const & p2) {return p1.n * p1.marketPrice > p2.n * p2.marketPrice; });
-	
-	for (size_t i : inds)
+	for (Account & acc : m_accounts)
 	{
-		Position const & p = m_positions[m_currAccount][i];
-		if (p.ticker == L"CASH") continue;
-		double returns = p.realized_held + p.realized_unheld + p.unrealized;
-		double perc = (p.n == 0) ? 0.0 : (p.realized_held + p.unrealized) / (p.avgCost * p.n) * 100.0;
-		m_returnsBarData.push_back({ returns, Colors::Randomizer(p.ticker) });
-		if (perc != 0.0) m_returnsPercBarData.push_back({ perc, Colors::Randomizer(p.ticker) });
+		acc.returnsBarData.clear();
+		acc.returnsPercBarData.clear();
+		acc.returnsBarData.reserve(acc.positions.size() - 1); // minus cash
+		acc.returnsPercBarData.reserve(acc.positions.size() - 1); // minus cash
+
+		// sort by decreasing equity
+		std::vector<size_t> inds = sort_indexes(acc.positions,
+			[](Position const & p1, Position const & p2) {return p1.n * p1.marketPrice > p2.n * p2.marketPrice; });
+
+		for (size_t i : inds)
+		{
+			Position const & p = acc.positions[i];
+			if (p.ticker == L"CASH") continue;
+			double returns = p.realized_held + p.realized_unheld + p.unrealized;
+			double perc = (p.n == 0) ? 0.0 : (p.realized_held + p.unrealized) / (p.avgCost * p.n) * 100.0;
+			acc.returnsBarData.push_back({ returns, Colors::Randomizer(p.ticker) });
+			if (perc != 0.0) acc.returnsPercBarData.push_back({ perc, Colors::Randomizer(p.ticker) });
+		}
 	}
 }
 
 
 void Parthenos::LoadPieChart()
 {
-	std::vector<double> market_values = GetMarketValues(m_positions[m_currAccount]);
-	std::vector<std::wstring> tickers = GetTickers(m_positions[m_currAccount]);
+	std::vector<double> market_values = GetMarketValues(m_accounts[m_currAccount].positions);
+	std::vector<std::wstring> tickers = GetTickers(m_accounts[m_currAccount].positions);
 
 	std::vector<double> data; 
 	std::vector<std::wstring> short_labels;
@@ -540,14 +565,12 @@ void Parthenos::LoadPieChart()
 	colors.reserve(tickers.size() + 1);
 
 	double sum = std::accumulate(market_values.begin(), market_values.end(), 0.0);
-	std::pair<double, double> cash = GetCash(m_positions[m_currAccount]);
+	std::pair<double, double> cash = GetCash(m_accounts[m_currAccount].positions);
 	sum += cash.first;
 
 	// Default long label
 	wchar_t buffer[100];
-	std::wstring account = (m_currAccount == m_positions.size() - 1) ? 
-		L"All Accounts" : m_accounts[m_currAccount].c_str();
-	swprintf_s(buffer, _countof(buffer), L"%s\n%s", account.c_str(), FormatDollar(sum).c_str());
+	swprintf_s(buffer, _countof(buffer), L"%s\n%s", m_accounts[m_currAccount].name.c_str(), FormatDollar(sum).c_str());
 	long_labels.push_back(std::wstring(buffer));
 
 	// Sort by market value
@@ -630,8 +653,9 @@ LRESULT Parthenos::OnCreate()
 	m_chart = new Chart(m_hwnd, m_d2);
 	m_watchlist = new Watchlist(m_hwnd, m_d2, this);
 	m_portfolioList = new Watchlist(m_hwnd, m_d2, this, false);
-	m_menuBar = new MenuBar(m_hwnd, m_d2, this, m_accounts, m_menuBarBottom - m_titleBarBottom);
+	m_menuBar = new MenuBar(m_hwnd, m_d2, this, m_accountNames, m_menuBarBottom - m_titleBarBottom);
 	m_pieChart = new PieChart(m_hwnd, m_d2);
+	m_portHistoryAxes = new Axes(m_hwnd, m_d2);
 	m_returnsAxes = new Axes(m_hwnd, m_d2);
 	m_returnsPercAxes = new Axes(m_hwnd, m_d2);
 
@@ -641,6 +665,7 @@ LRESULT Parthenos::OnCreate()
 	m_allItems.push_back(m_portfolioList);
 	m_allItems.push_back(m_menuBar);
 	m_allItems.push_back(m_pieChart);
+	m_allItems.push_back(m_portHistoryAxes);
 	m_allItems.push_back(m_returnsAxes);
 	m_allItems.push_back(m_returnsPercAxes);
 	m_activeItems.push_back(m_titleBar);
@@ -652,7 +677,7 @@ LRESULT Parthenos::OnCreate()
 
 	m_titleBar->SetTabs({ L"Portfolio", L"Returns", L"Chart" });
 
-	std::vector<std::wstring> tickers = GetTickers(m_positions[m_currAccount]);
+	std::vector<std::wstring> tickers = GetTickers(m_accounts[m_currAccount].positions);
 	std::vector<std::pair<Quote, Stats>> stats = FilterByKeyMatch(m_tickers, m_stats, tickers);
 	std::vector<Column> portColumns = {
 		{60.0f, Column::Ticker, L""},
@@ -669,15 +694,17 @@ LRESULT Parthenos::OnCreate()
 	m_watchlist->SetColumns(); // use defaults
 	m_portfolioList->SetColumns(portColumns);
 
-	m_watchlist->Load(tickers, m_positions[m_currAccount], stats);
-	m_portfolioList->Load(tickers, m_positions[m_currAccount], stats);
+	m_watchlist->Load(tickers, m_accounts[m_currAccount].positions, stats);
+	m_portfolioList->Load(tickers, m_accounts[m_currAccount].positions, stats);
 	LoadPieChart();
 
+	//m_portHistoryAxes->SetXAxisPos(GetCash(m_accounts[m_currAccount].positions).second);
+	//m_portHistoryAxes->Line(m_portHistoryDates.data(), m_portHistoryPrices.data(), m_portHistoryPrices.size());
 	CalculateReturns();
 	m_returnsAxes->SetXAxisPos(0.0f);
 	m_returnsPercAxes->SetXAxisPos(0.0f);
-	m_returnsAxes->Bar(m_returnsBarData.data(), m_returnsBarData.size());
-	m_returnsPercAxes->Bar(m_returnsPercBarData.data(), m_returnsPercBarData.size());
+	m_returnsAxes->Bar(m_accounts[m_currAccount].returnsBarData.data(), m_accounts[m_currAccount].returnsBarData.size());
+	m_returnsPercAxes->Bar(m_accounts[m_currAccount].returnsPercBarData.data(), m_accounts[m_currAccount].returnsPercBarData.size());
 
 	return 0;
 }
