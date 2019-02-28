@@ -11,6 +11,8 @@ PieChart::~PieChart()
 void PieChart::SetSize(D2D1_RECT_F dipRect)
 {
 	if (equalRect(m_dipRect, dipRect)) return;
+	if (dipRect.right - dipRect.left < 200.0f ||
+		dipRect.bottom - dipRect.top < 200.0f) return;
 
 	m_dipRect = dipRect;
 	m_pixRect = DPIScale::DipsToPixels(dipRect);

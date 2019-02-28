@@ -24,6 +24,8 @@ class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver
 	Watchlist				*m_portfolioList;
 	MenuBar					*m_menuBar;
 	PieChart				*m_pieChart;
+	Axes					*m_returnsAxes;
+	Axes					*m_returnsPercAxes;
 
 	// 'Child' windows
 	AddTransactionWindow	*m_addTWin = nullptr;
@@ -39,6 +41,8 @@ class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver
 	std::vector<std::vector<Position>>		m_positions; // same order as m_accounts; extra entry at end for 'All'
 	std::vector<std::wstring>				m_tickers; // tickers in all accounts
 	std::vector<std::pair<Quote, Stats>>	m_stats; // in same order as m_tickers
+	std::vector<std::pair<double, D2D1_COLOR_F>> m_returnsBarData; // in equity order of current account
+	std::vector<std::pair<double, D2D1_COLOR_F>> m_returnsPercBarData; // in equity order of current account
 
 	// Layout
 	float const	m_titleBarHeight		= 30.0f;
@@ -71,6 +75,7 @@ class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver
 	void AddTransaction(Transaction t);
 	NestedHoldings CalculateHoldings() const;
 	void CalculatePositions(NestedHoldings const & holdings);
+	void CalculateReturns();
 	void LoadPieChart();
 
 	// Deleted

@@ -192,6 +192,7 @@ namespace Colors
 	const D2D1_COLOR_F GREEN			= D2D1::ColorF(0x008040);
 
 	D2D1_COLOR_F HSVtoRGB(float hsv[3]);
+	D2D1_COLOR_F Randomizer(std::wstring str);
 }
 
 ///////////////////////////////////////////////////////////

@@ -23,14 +23,15 @@ class Graph
 {
 protected:
 	Axes *m_axes;
-	void const *m_data;
-	int m_n;
+	void const *m_data; // NOT owned by Axes nor Graph. Recast for each derived class
+	int m_n; // length of data array
 public:
 	Graph(Axes *axes, void const *data, int n) : m_axes(axes), m_data(data), m_n(n) {};
-	virtual void Make() = 0;
+	virtual void Make() = 0; // Calculate the D2 DIP objects to paint from given data
 	virtual void Paint(D2Objects const & d2) = 0;
 };
 
+// m_data = double* to y values (assumes linear spacing)
 class LineGraph : public Graph
 {
 public:
@@ -45,20 +46,29 @@ private:
 	ID2D1StrokeStyle * m_pStyle = NULL;
 };
 
-
+// m_data = OHLC*
 class CandlestickGraph : public Graph
 {
 public:
 	using Graph::Graph;
 	void Make();
 	void Paint(D2Objects const & d2);
-
-	float m_boxHalfWidth = nanf("");
 private:
 	std::vector<Line_t> m_lines; // low-high lines
 	std::vector<Line_t> m_no_change; // when open==close
 	std::vector<D2D1_RECT_F> m_up_rects; // green boxes
 	std::vector<D2D1_RECT_F> m_down_rects; // red boxes
+};
+
+// m_data = std::pair<double, D2D1_COLOR_F>* to (y value, color) pairs
+class BarGraph : public Graph
+{
+public:
+	using Graph::Graph;
+	void Make();
+	void Paint(D2Objects const & d2);
+private:
+	std::vector<D2D1_RECT_F> m_bars;
 };
 
 class Axes : public AppItem
@@ -70,7 +80,6 @@ public:
 	void Make();
 	void SetSize(D2D1_RECT_F dipRect);
 	void Paint(D2D1_RECT_F updateRect);
-	void SetLabelSize(float ylabelWidth, float labelHeight);
 
 	// Data pointers to these functions should remain valid until the next Clear() call
 	void Candlestick(OHLC const * ohlc, int n);
@@ -78,6 +87,7 @@ public:
 		D2D1_COLOR_F color = D2D1::ColorF(0.8f, 0.0f, 0.5f, 1.0f), 
 		float stroke_width = 1.0f,
 		ID2D1StrokeStyle * pStyle = NULL);
+	void Bar(std::pair<double, D2D1_COLOR_F> const * data, int n);
 
 	inline float XtoDIP(double val) const
 	{
@@ -95,6 +105,12 @@ public:
 		return data_ymin + ((val - m_dataRect.bottom) / m_rect_ydiff) * m_data_ydiff;
 	}
 
+	inline void SetXAxisPos(float y) { m_xAxisPos = y; }
+	inline void SetLabelSize(float ylabelWidth, float labelHeight) {
+		m_ylabelWidth = ylabelWidth;
+		m_labelHeight = labelHeight;
+	}
+	inline void SetXLabels() { m_drawxLabels = false; } // no labels == no draw
 	inline float GetDataRectXDiff() const { return m_rect_xdiff; }
 	inline D2D1_RECT_F GetAxesRect() const { return m_axesRect; }
 
@@ -104,18 +120,20 @@ private:
 	float m_labelHeight = 16.0f; // height of tick labels in DIPs.
 	float m_dataPad		= 20.0f; // padding between datapoints and border
 	float m_labelPad	= 2.0f;
+	float m_xAxisPos	= std::nanf(""); // y position. defaults to draw at m_axesRect.bottom
 
 	// Flags and state variables
 	bool m_ismade		= true;  // check to make sure everything is made
-	bool m_rescaled		= false;
-	size_t m_imade		= 0;	 // stores an index into m_graphObjects. Objects < i already made
+	bool m_rescaled		= false; // data ranges changed, so need to call Rescale()
+	bool m_drawxLabels	= true;  // set before SetSize()
+	size_t m_imade		= 0;	 // stores an index into m_graphObjects. Objects < i are already made
 	double m_dataRange[4] = { nan(""), nan(""), nan(""), nan("") }; // Numerical range of data: x_min, x_max, y_min, y_max
 	double m_data_xdiff;
 	double m_data_ydiff;
 
 	// Rects and location
-	std::vector<std::tuple<float, date_t, std::wstring>> m_xTicks; // DIP, date pair, label
-	std::vector<std::tuple<float, double, std::wstring>> m_yTicks; // DIP, value pair, label
+	std::vector<std::tuple<float, date_t, std::wstring>> m_xTicks; // DIP, date, label
+	std::vector<std::tuple<float, double, std::wstring>> m_yTicks; // DIP, value, label
 	std::vector<date_t> m_dates; // actual date values (plotted as x = [0, n-1))
 	D2D1_RECT_F m_axesRect; // rect for the actual axes
 	D2D1_RECT_F m_dataRect; // rect for drawable space for data points
@@ -123,7 +141,6 @@ private:
 	float m_rect_ydiff;		// m_dataRect.top - m_dataRect.bottom, flip so origin is bottom-left
 
 	// Graphing objects
-	std::vector<Line_t> m_axes_lines;
 	std::vector<Line_t> m_grid_lines[2]; // x, y
 	std::vector<Graph*> m_graphObjects; // THESE NEED TO BE REMADE WHEN RENDER TARGET CHANGES
 
@@ -144,11 +161,12 @@ private:
 		}
 		return false;
 	}
-	inline bool setDataRange(double vals[4])
+	inline bool setDataRange(double xmin, double xmax, double ymin, double ymax)
 	{
 		bool out = false;
+		double vals[4] = { xmin, xmax, ymin, ymax };
 		for (int i = 0; i < 4; i++)
-			out = out || setDataRange(static_cast<dataRange>(i), vals[i]);
+			out = setDataRange(static_cast<dataRange>(i), vals[i]) || out;
 		return out;
 	}
 

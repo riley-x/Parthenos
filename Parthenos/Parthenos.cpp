@@ -222,7 +222,8 @@ void Parthenos::ProcessCTPMessages()
 			}
 			else if (msg.msg == L"Returns")
 			{
-
+				m_activeItems.push_back(m_returnsAxes);
+				m_activeItems.push_back(m_returnsPercAxes);
 			}
 			else if (msg.msg == L"Chart")
 			{
@@ -267,10 +268,18 @@ void Parthenos::ProcessCTPMessages()
 
 			m_currAccount = account;
 			std::vector<std::wstring> tickers = GetTickers(m_positions[account]);
+			
 			m_portfolioList->Load(tickers, m_positions[account], FilterByKeyMatch(m_tickers, m_stats, tickers));
 			m_portfolioList->Refresh();
+			
 			LoadPieChart();
 			m_pieChart->Refresh();
+			
+			CalculateReturns();
+			m_returnsAxes->Clear();
+			m_returnsPercAxes->Clear();
+			m_returnsAxes->Bar(m_returnsBarData.data(), m_returnsBarData.size());
+			m_returnsPercAxes->Bar(m_returnsPercBarData.data(), m_returnsPercBarData.size());
 
 			::InvalidateRect(m_hwnd, NULL, FALSE);
 			break;
@@ -357,6 +366,24 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 			dipRect.bottom
 		);
 	}
+	else if (item == m_returnsAxes)
+	{
+		return D2D1::RectF(
+			dipRect.right / 2.0f,
+			m_titleBarBottom,
+			dipRect.right,
+			(dipRect.bottom + m_titleBarBottom) / 2.0f
+		);
+	}
+	else if (item == m_returnsPercAxes)
+	{
+		return D2D1::RectF(
+			dipRect.right / 2.0f,
+			(dipRect.bottom + m_titleBarBottom) / 2.0f,
+			dipRect.right,
+			dipRect.bottom
+		);
+	}
 	else
 	{
 		OutputMessage(L"CalculateItemRect: unknown item\n");
@@ -438,36 +465,28 @@ void Parthenos::CalculatePositions(NestedHoldings const & holdings)
 	m_positions.push_back(positions);
 }
 
-
-inline D2D1_COLOR_F Randomizer(std::wstring str)
+void Parthenos::CalculateReturns()
 {
-	str = str + str;
-	float hsv[3] = { 60.0f, 0.5f, 0.5f };
+	m_returnsBarData.clear();
+	m_returnsPercBarData.clear();
+	m_returnsBarData.reserve(m_positions[m_currAccount].size() - 1); // minus cash
+	m_returnsPercBarData.reserve(m_positions[m_currAccount].size() - 1); // minus cash
 
-	for (size_t i = 0; i < str.size(); i++)
+	// sort by decreasing equity
+	std::vector<size_t> inds = sort_indexes(m_positions[m_currAccount],
+		[](Position const & p1, Position const & p2) {return p1.n * p1.marketPrice > p2.n * p2.marketPrice; });
+	
+	for (size_t i : inds)
 	{
-		float x = (static_cast<float>(str[i]) - 65.0f) / 25.0f; // assumes A = 65
-		if (x < 0 || x > 1) break;
-		hsv[0] += x * 240;
-		if (i % 3 > 0) hsv[i % 3] = (hsv[i % 3] + 5 * x) / 6.0f;
+		Position const & p = m_positions[m_currAccount][i];
+		if (p.ticker == L"CASH") continue;
+		double returns = p.realized_held + p.realized_unheld + p.unrealized;
+		double perc = (p.n == 0) ? 0.0 : (p.realized_held + p.unrealized) / (p.avgCost * p.n) * 100.0;
+		m_returnsBarData.push_back({ returns, Colors::Randomizer(p.ticker) });
+		if (perc != 0.0) m_returnsPercBarData.push_back({ perc, Colors::Randomizer(p.ticker) });
 	}
-	size_t i = 0;
-	hsv[0] = hsv[0] - 360.0f * floor(hsv[0] / 360.0f);
-	hsv[1] = 0.3f + 0.6f * hsv[1]; // (0.3, 0.9) value
-	hsv[2] = 0.4f + 0.35f * hsv[2]; // (0.4, 0.75) value
-
-	// get rid of yellow shades
-	while (30.0f <= hsv[0] && hsv[0] <= 70.0f) 
-	{
-		float x = (static_cast<float>(str[i % str.size()]) - 65.0f) / 25.0f; // assumes A = 65
-		if (x < 0 || x > 1) break;
-		hsv[0] += x * 320.0f;
-		hsv[0] = hsv[0] - 360.0f * floor(hsv[0] / 360.0f);
-		i++;
-	}
-
-	return Colors::HSVtoRGB(hsv);
 }
+
 
 void Parthenos::LoadPieChart()
 {
@@ -506,7 +525,7 @@ void Parthenos::LoadPieChart()
 		data.push_back(value);
 		short_labels.push_back(ticker);
 		long_labels.push_back(MakeLongLabel(ticker, value, 100.0 * value / sum));
-		colors.push_back(Randomizer(ticker));
+		colors.push_back(Colors::Randomizer(ticker));
 	}
 
 	// Cash
@@ -575,6 +594,8 @@ LRESULT Parthenos::OnCreate()
 	m_portfolioList = new Watchlist(m_hwnd, m_d2, this, false);
 	m_menuBar = new MenuBar(m_hwnd, m_d2, this, m_accounts, m_menuBarBottom - m_titleBarBottom);
 	m_pieChart = new PieChart(m_hwnd, m_d2);
+	m_returnsAxes = new Axes(m_hwnd, m_d2);
+	m_returnsPercAxes = new Axes(m_hwnd, m_d2);
 
 	m_allItems.push_back(m_titleBar);
 	m_allItems.push_back(m_chart);
@@ -582,6 +603,8 @@ LRESULT Parthenos::OnCreate()
 	m_allItems.push_back(m_portfolioList);
 	m_allItems.push_back(m_menuBar);
 	m_allItems.push_back(m_pieChart);
+	m_allItems.push_back(m_returnsAxes);
+	m_allItems.push_back(m_returnsPercAxes);
 	m_activeItems.push_back(m_titleBar);
 	m_activeItems.push_back(m_chart);
 	m_activeItems.push_back(m_watchlist);
@@ -611,6 +634,12 @@ LRESULT Parthenos::OnCreate()
 	m_watchlist->Load(tickers, m_positions[m_currAccount], stats);
 	m_portfolioList->Load(tickers, m_positions[m_currAccount], stats);
 	LoadPieChart();
+
+	CalculateReturns();
+	m_returnsAxes->SetXAxisPos(0.0f);
+	m_returnsPercAxes->SetXAxisPos(0.0f);
+	m_returnsAxes->Bar(m_returnsBarData.data(), m_returnsBarData.size());
+	m_returnsPercAxes->Bar(m_returnsPercBarData.data(), m_returnsPercBarData.size());
 
 	return 0;
 }

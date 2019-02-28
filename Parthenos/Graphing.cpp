@@ -31,12 +31,6 @@ void Axes::Make()
 	m_ismade = true;
 }
 
-void Axes::SetLabelSize(float ylabelWidth, float labelHeight)
-{
-	m_ylabelWidth = ylabelWidth;
-	m_labelHeight = labelHeight;
-}
-
 // May want to call clear before this
 void Axes::SetSize(D2D1_RECT_F dipRect)
 {
@@ -50,15 +44,7 @@ void Axes::SetSize(D2D1_RECT_F dipRect)
 	m_axesRect.left = dipRect.left;
 	m_axesRect.top = dipRect.top;
 	m_axesRect.right = dipRect.right - m_ylabelWidth - pad;
-	m_axesRect.bottom = dipRect.bottom - m_labelHeight - pad;
-
-	Line_t xline = { D2D1::Point2F(m_axesRect.left,  m_axesRect.bottom),
-					 D2D1::Point2F(m_axesRect.right, m_axesRect.bottom) };
-	Line_t yline = { D2D1::Point2F(m_axesRect.right, m_axesRect.bottom),
-					 D2D1::Point2F(m_axesRect.right, m_axesRect.top) };
-	m_axes_lines.clear();
-	m_axes_lines.push_back(xline);
-	m_axes_lines.push_back(yline);
+	m_axesRect.bottom = (m_drawxLabels) ? dipRect.bottom - m_labelHeight - pad : dipRect.bottom;
 
 	m_dataRect.left = m_axesRect.left + m_dataPad;
 	m_dataRect.top = m_axesRect.top + m_dataPad;
@@ -88,30 +74,26 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 		m_d2.pRenderTarget->DrawLine(line.start, line.end, m_d2.pBrush, 0.8f, m_d2.pDashedStyle);
 	}
 
-	// Axes
-	m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
-	for (auto line : m_axes_lines)
-	{
-		m_d2.pRenderTarget->DrawLine(line.start, line.end, m_d2.pBrush);
-	}
-
 	// Labels
 	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
-	for (auto tick : m_xTicks)
+	if (m_drawxLabels)
 	{
-		float loc = std::get<0>(tick);
-		std::wstring label = std::get<2>(tick);
+		for (auto tick : m_xTicks)
+		{
+			float loc = std::get<0>(tick);
+			std::wstring label = std::get<2>(tick);
 
-		m_d2.pRenderTarget->DrawText(
-			label.c_str(),
-			label.size(),
-			m_d2.pTextFormats[D2Objects::Segoe10],
-			D2D1::RectF(loc, 
-				m_axesRect.bottom + m_labelPad, 
-				loc + 4.0f * m_labelHeight, 
-				m_axesRect.bottom + m_labelPad + 2.0f * m_labelHeight),
-			m_d2.pBrush
-		);
+			m_d2.pRenderTarget->DrawText(
+				label.c_str(),
+				label.size(),
+				m_d2.pTextFormats[D2Objects::Segoe10],
+				D2D1::RectF(loc,
+					m_axesRect.bottom + m_labelPad,
+					loc + 4.0f * m_labelHeight,
+					m_axesRect.bottom + m_labelPad + 2.0f * m_labelHeight),
+				m_d2.pBrush
+			);
+		}
 	}
 	for (auto tick : m_yTicks)
 	{
@@ -133,6 +115,18 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 	// Graphs
 	for (auto graph : m_graphObjects)
 		graph->Paint(m_d2);
+
+	// Axes
+	m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
+	float xaxis_dip_pos;
+	if (std::isnan(m_xAxisPos)) xaxis_dip_pos = m_axesRect.bottom;
+	else xaxis_dip_pos = DPIScale::SnapToPixelY(YtoDIP(m_xAxisPos)) - DPIScale::hpy();
+	Line_t xaxis = { D2D1::Point2F(m_axesRect.left,  xaxis_dip_pos),
+					 D2D1::Point2F(m_axesRect.right, xaxis_dip_pos) };
+	Line_t yaxis = { D2D1::Point2F(m_axesRect.right, m_axesRect.bottom),
+					 D2D1::Point2F(m_axesRect.right, m_axesRect.top) };
+	m_d2.pRenderTarget->DrawLine(xaxis.start, xaxis.end, m_d2.pBrush, DPIScale::py());
+	m_d2.pRenderTarget->DrawLine(yaxis.start, yaxis.end, m_d2.pBrush, DPIScale::px());
 }
 
 void Axes::Candlestick(OHLC const * ohlc, int n)
@@ -201,6 +195,29 @@ void Axes::Line(date_t const * dates, double const * ydata, int n,
 	m_ismade = false;
 }
 
+void Axes::Bar(std::pair<double, D2D1_COLOR_F> const * data, int n)
+{
+	m_drawxLabels = false; // no x labels
+
+	// get min/max of data to scale data appropriately
+	double xmin = 0;
+	double xmax = n; // assign x values to 0.5, 1.5, ...
+	double ymin = data[0].first;
+	double ymax = data[0].first;
+	for (int i = 0; i < n; i++)
+	{
+		if (data[i].first < ymin) ymin = data[i].first;
+		else if (data[i].first > ymax) ymax = data[i].first;
+	}
+
+	m_rescaled = setDataRange(xmin, xmax, ymin, ymax) || m_rescaled;
+
+	auto graph = new BarGraph(this, data, n);
+	m_graphObjects.push_back(graph);
+	m_ismade = false;
+}
+
+// Call on data range changing. Recalculates the ticks.
 void Axes::Rescale()
 {
 	m_data_xdiff = m_dataRange[static_cast<int>(dataRange::xmax)]
@@ -208,7 +225,7 @@ void Axes::Rescale()
 	m_data_ydiff = m_dataRange[static_cast<int>(dataRange::ymax)]
 		- m_dataRange[static_cast<int>(dataRange::ymin)];
 
-	CalculateXTicks();
+	if (m_drawxLabels) CalculateXTicks();
 	CalculateYTicks();
 
 	m_imade = 0; // remake everything
@@ -411,11 +428,8 @@ void CandlestickGraph::Make()
 	m_up_rects.reserve(m_n/2);
 	m_down_rects.reserve(m_n/2);
 
-	if (isnan(m_boxHalfWidth))
-	{
-		float x_diff = m_axes->GetDataRectXDiff();
-		m_boxHalfWidth = min(15.0f, 0.4f * x_diff / m_n);
-	}
+	float x_diff = m_axes->GetDataRectXDiff();
+	float boxHalfWidth = min(15.0f, 0.4f * x_diff / m_n);
 
 	for (int i = 0; i < m_n; i++)
 	{
@@ -427,9 +441,9 @@ void CandlestickGraph::Make()
 		m_lines[i] = { start, end };
 
 		D2D1_RECT_F temp = D2D1::RectF(
-			x - m_boxHalfWidth,
+			x - boxHalfWidth,
 			0,
-			x + m_boxHalfWidth,
+			x + boxHalfWidth,
 			0
 		);
 		if (ohlc[i].close > ohlc[i].open)
@@ -446,8 +460,8 @@ void CandlestickGraph::Make()
 		}
 		else
 		{
-			D2D1_POINT_2F start = D2D1::Point2F(x - m_boxHalfWidth, y2);
-			D2D1_POINT_2F end = D2D1::Point2F(x + m_boxHalfWidth, y2);
+			D2D1_POINT_2F start = D2D1::Point2F(x - boxHalfWidth, y2);
+			D2D1_POINT_2F end = D2D1::Point2F(x + boxHalfWidth, y2);
 			m_no_change.push_back({ start,end });
 		}
 	}
@@ -472,3 +486,44 @@ void CandlestickGraph::Paint(D2Objects const & d2)
 
 }
 
+void BarGraph::Make()
+{
+	std::pair<double, D2D1_COLOR_F> const * data = reinterpret_cast<std::pair<double, D2D1_COLOR_F> const *>(m_data);
+	
+	m_bars.resize(m_n);
+
+	float x_diff = m_axes->GetDataRectXDiff();
+	float boxHalfWidth = 0.4f * x_diff / m_n;
+	for (int i = 0; i < m_n; i++)
+	{
+		float x = m_axes->XtoDIP(static_cast<double>(i) + 0.5);
+		float y1, y2;
+		if (data[i].first < 0)
+		{
+			y1 = m_axes->YtoDIP(data[i].first);
+			y2 = m_axes->YtoDIP(0);
+		}
+		else
+		{
+			y1 = m_axes->YtoDIP(0);
+			y2 = m_axes->YtoDIP(data[i].first);
+		}
+
+		m_bars[i] = D2D1::RectF(
+			x - boxHalfWidth,
+			y2,
+			x + boxHalfWidth,
+			y1
+		);
+	}
+}
+
+void BarGraph::Paint(D2Objects const & d2)
+{
+	std::pair<double, D2D1_COLOR_F> const * data = reinterpret_cast<std::pair<double, D2D1_COLOR_F> const *>(m_data);
+	for (int i = 0; i < m_n; i++)
+	{
+		d2.pBrush->SetColor(data[i].second);
+		d2.pRenderTarget->FillRectangle(m_bars[i], d2.pBrush);
+	}
+}
