@@ -69,6 +69,8 @@ class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver
 	void ProcessCTPMessages();
 	D2D1_RECT_F CalculateItemRect(AppItem* item, D2D1_RECT_F const & dipRect);
 	void AddTransaction(Transaction t);
+	NestedHoldings CalculateHoldings() const;
+	void CalculatePositions(NestedHoldings const & holdings);
 	void LoadPieChart();
 
 	// Deleted

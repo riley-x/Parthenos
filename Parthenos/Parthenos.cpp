@@ -32,17 +32,7 @@ Parthenos::Parthenos(PCWSTR szClassName)
 	m_tickers = GetTickers(holdings); // all tickers
 	m_stats = GetBatchQuoteStats(m_tickers);
 
-	// Holdings -> Positions
-	date_t date = GetCurrentDate();
-	for (size_t i = 0; i < m_accounts.size(); i++)
-	{
-		std::vector<Position> positions = HoldingsToPositions(
-			holdings, static_cast<char>(i), date, GetMarketPrices(m_stats));
-		m_positions.push_back(positions);
-	}
-	std::vector<Position> positions = HoldingsToPositions(
-		holdings, -1, date, GetMarketPrices(m_stats)); // all accounts
-	m_positions.push_back(positions);
+	CalculatePositions(holdings);
 }
 
 Parthenos::~Parthenos()
@@ -262,6 +252,13 @@ void Parthenos::ProcessCTPMessages()
 			}
 			break;
 		}
+		case CTPMessage::MENUBAR_CALCHOLDINGS:
+		{
+			NestedHoldings holdings = CalculateHoldings();
+			for (auto const & x : holdings) PrintTickerHoldings(x);
+			CalculatePositions(holdings);
+			break;
+		}
 		case CTPMessage::MENUBAR_ACCOUNT:
 		{
 			int account = AccountToIndex(msg.msg);
@@ -382,7 +379,7 @@ void Parthenos::AddTransaction(Transaction t)
 	holdingsFile.Init(ROOTDIR + L"port.hold");
 	holdingsFile.Open();
 	std::vector<Holdings> flattenedHoldings = holdingsFile.Read<Holdings>();
-	std::vector<std::vector<Holdings>> holdings = FlattenedHoldingsToTickers(flattenedHoldings);
+	NestedHoldings holdings = FlattenedHoldingsToTickers(flattenedHoldings);
 	AddTransactionToHoldings(holdings, t);
 	std::vector<Holdings> out;
 	for (auto const & x : holdings) out.insert(out.end(), x.begin(), x.end());
@@ -400,6 +397,47 @@ void Parthenos::AddTransaction(Transaction t)
 	m_portfolioList->Load(tickers, m_positions[t.account], FilterByKeyMatch(m_tickers, m_stats, tickers));
 	m_portfolioList->Refresh();
 }
+
+NestedHoldings Parthenos::CalculateHoldings() const
+{
+	// Read transaction history
+	FileIO transFile;
+	transFile.Init(ROOTDIR + L"hist.trans");
+	transFile.Open(GENERIC_READ);
+	std::vector<Transaction> trans = transFile.Read<Transaction>();;
+	transFile.Close();
+
+	// Transaction -> Holdings
+	NestedHoldings holdings = FullTransactionsToHoldings(trans);
+	std::vector<Holdings> out;
+	for (auto const & x : holdings) out.insert(out.end(), x.begin(), x.end());
+
+	// Write
+	FileIO holdingsFile;
+	holdingsFile.Init(ROOTDIR + L"port.hold");
+	holdingsFile.Open();
+	holdingsFile.Write(out.data(), sizeof(Holdings) * out.size());
+	holdingsFile.Close();
+
+	return holdings;
+}
+
+// Holdings -> Positions
+void Parthenos::CalculatePositions(NestedHoldings const & holdings)
+{
+	m_positions.clear();
+	date_t date = GetCurrentDate();
+	for (size_t i = 0; i < m_accounts.size(); i++)
+	{
+		std::vector<Position> positions = HoldingsToPositions(
+			holdings, static_cast<char>(i), date, GetMarketPrices(m_stats));
+		m_positions.push_back(positions);
+	}
+	std::vector<Position> positions = HoldingsToPositions(
+		holdings, -1, date, GetMarketPrices(m_stats)); // all accounts
+	m_positions.push_back(positions);
+}
+
 
 inline D2D1_COLOR_F Randomizer(std::wstring str)
 {

@@ -238,6 +238,7 @@ std::vector<Position> HoldingsToPositions(NestedHoldings const & holdings,
 	char account, date_t date, std::vector<double> prices)
 {
 	std::vector<Position> out;
+	double net_transactions = 0.0f;
 
 	// Loop over tickers
 	size_t i = 0; // index into prices, discounting cash
@@ -300,6 +301,7 @@ std::vector<Position> HoldingsToPositions(NestedHoldings const & holdings,
 				double unrealized = (temp.marketPrice - lot.price) * lot.n;
 				temp.unrealized += unrealized;
 				temp.APY += GetWeightedAPY(unrealized + lot.realized, lot.date, date);
+				net_transactions += -lot.n * lot.price;
 			}
 
 			sumWeights += temp.avgCost; // this is total cost right now
@@ -352,7 +354,13 @@ std::vector<Position> HoldingsToPositions(NestedHoldings const & holdings,
 		if (temp.n > 0) temp.avgCost = temp.avgCost / temp.n;
 		if (sumWeights > 0) temp.APY = temp.APY / sumWeights;
 		out.push_back(temp);
+
+		net_transactions += temp.realized_held;
+		net_transactions += temp.realized_unheld;
 	} // end loop over tickers
+
+	// update cash with transaction total
+	for (auto & x : out) if (x.ticker == L"CASH") x.realized_unheld = net_transactions;
 	return out;
 }
 
@@ -939,7 +947,7 @@ void AddTransactionToTickerHoldings(std::vector<Holdings> & h, Transaction const
 				rounding_error -= lot->n * t.price;
 			}
 			if (nshares != 0) OutputMessage(L"Shares did not equal dividend payout\n");
-			if (abs(rounding_error) >= 0.009) header->sumReal += rounding_error; // give extra to header
+			header->sumReal += rounding_error; // give extra to header (includes partial cents)
 			break;
 		}
 		case TransactionType::Fee: // Incorporated into t.value on a sale already

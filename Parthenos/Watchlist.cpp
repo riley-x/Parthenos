@@ -657,7 +657,7 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const 
 				if (position) data = position->avgCost;
 				break;
 			case Column::Equity:
-				if (position) data = position->avgCost * position->n;
+				if (position) data = quote.latestPrice * position->n;
 				break;
 			case Column::Realized:
 				if (position) data = position->realized_held + position->realized_unheld;

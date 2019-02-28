@@ -281,7 +281,7 @@ typedef struct Position_struct
 	double avgCost;			// of shares
 	double marketPrice;		// for CASH, cash from transfers
 	double realized_held;	// == sum_lots ( lot.realized ), shares only. For CASH, cash from interest
-	double realized_unheld; // == head.sumReal + proceeds of any open option positions
+	double realized_unheld; // == head.sumReal + proceeds of any open option positions. For CASH, cash from transactions
 	double unrealized;
 	double APY;
 	std::wstring ticker;
@@ -378,19 +378,10 @@ inline std::vector<double> GetMarketValues(std::vector<Position> const & positio
 // (Free cash, total transfers)
 inline std::pair<double, double> GetCash(std::vector<Position> const & positions)
 {
-	double free_cash = 0;
-	double transfers;
 	for (auto const & x : positions)
 	{
 		if (x.ticker == L"CASH")
-		{
-			transfers = x.marketPrice;
-			free_cash += x.marketPrice + x.realized_held;
-		}
-		else
-		{
-			free_cash += -x.n * x.avgCost + x.realized_held + x.realized_unheld;
-		}
+			return { x.marketPrice + x.realized_held + x.realized_unheld, x.marketPrice };
 	}
-	return { free_cash, transfers };
+	return { 0, 0 };
 }
