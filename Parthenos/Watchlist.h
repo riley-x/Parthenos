@@ -174,7 +174,6 @@ private:
 	// Drawing
 	std::vector<float>	m_vLines;
 	std::vector<float>	m_hLines;
-	float				m_rightBorder;
 	float				m_headerBorder;
 
 	// Helpers

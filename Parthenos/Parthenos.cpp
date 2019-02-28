@@ -172,6 +172,7 @@ void Parthenos::PreShow()
 	BOOL bErr = GetClientRect(m_hwnd, &rc);
 	if (bErr == 0) OutputError(L"GetClientRect failed");
 	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
+	CalculateDividingLines(dipRect);
 
 	for (auto item : m_allItems)
 	{
@@ -219,28 +220,30 @@ void Parthenos::ProcessCTPMessages()
 				m_activeItems.push_back(m_portfolioList);
 				m_activeItems.push_back(m_menuBar);
 				m_activeItems.push_back(m_pieChart);
+				m_tab = TPortfolio;
 			}
 			else if (msg.msg == L"Returns")
 			{
 				m_activeItems.push_back(m_returnsAxes);
 				m_activeItems.push_back(m_returnsPercAxes);
+				m_tab = TReturns;
 			}
 			else if (msg.msg == L"Chart")
 			{
 				m_activeItems.push_back(m_chart);
 				m_activeItems.push_back(m_watchlist);
+				m_tab = TChart;
 			}
+
+			RECT rc;
+			GetClientRect(m_hwnd, &rc);
+			D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
 			if (m_sizeChanged)
 			{
-				RECT rc;
-				GetClientRect(m_hwnd, &rc);
-				D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
-
 				for (auto item : m_allItems)
-				{
 					item->SetSize(CalculateItemRect(item, dipRect));
-				}
 			}
+			CalculateDividingLines(dipRect);
 			::InvalidateRect(m_hwnd, NULL, false);
 			break;
 		}
@@ -324,7 +327,7 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 	else if (item == m_chart)
 	{
 		return D2D1::RectF(
-			DPIScale::SnapToPixelX(m_watchlistWidth),
+			m_watchlistRight,
 			m_titleBarBottom,
 			dipRect.right,
 			dipRect.bottom
@@ -335,7 +338,7 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 		return D2D1::RectF(
 			0.0f,
 			m_titleBarBottom,
-			DPIScale::SnapToPixelX(m_watchlistWidth),
+			m_watchlistRight,
 			dipRect.bottom
 		);
 	}
@@ -344,7 +347,7 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 		return D2D1::RectF(
 			0.0f,
 			m_menuBarBottom,
-			DPIScale::SnapToPixelX(m_portfolioListWidth),
+			m_portfolioListRight,
 			DPIScale::SnapToPixelY((dipRect.bottom + m_titleBarHeight + m_menuBarHeight) / 2.0f)
 		);
 	}
@@ -353,14 +356,14 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 		return D2D1::RectF(
 			0.0f,
 			m_titleBarBottom,
-			DPIScale::SnapToPixelX(m_portfolioListWidth),
+			m_portfolioListRight,
 			m_menuBarBottom
 		);
 	}
 	else if (item == m_pieChart)
 	{
 		return D2D1::RectF(
-			DPIScale::SnapToPixelX(m_portfolioListWidth),
+			m_portfolioListRight,
 			m_titleBarBottom,
 			dipRect.right,
 			dipRect.bottom
@@ -388,6 +391,39 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 	{
 		OutputMessage(L"CalculateItemRect: unknown item\n");
 		return D2D1::RectF(0.0f, 0.0f, 0.0f, 0.0f);
+	}
+}
+
+void Parthenos::CalculateDividingLines(D2D1_RECT_F dipRect)
+{
+	m_dividingLines.clear();
+	switch (m_tab)
+	{
+	case TPortfolio:
+		m_dividingLines.push_back({
+			D2D1::Point2F(m_portfolioListRight - DPIScale::hpx(), m_titleBarBottom),
+			D2D1::Point2F(m_portfolioListRight - DPIScale::hpx(), dipRect.bottom)
+		});
+		break;
+	case TReturns:
+	{
+		m_dividingLines.push_back({
+			D2D1::Point2F(dipRect.right / 2.0f - DPIScale::hpx(), m_titleBarBottom),
+			D2D1::Point2F(dipRect.right / 2.0f - DPIScale::hpx(), dipRect.bottom)
+		});
+		//float returnsSplit = DPIScale::SnapToPixelY((dipRect.bottom + m_titleBarBottom) / 2.0f) - DPIScale::hpy();
+		//m_dividingLines.push_back({
+		//	D2D1::Point2F(dipRect.right / 2.0f, returnsSplit),
+		//	D2D1::Point2F(dipRect.right, returnsSplit)
+		//});
+		break;
+	}
+	case TChart:
+		m_dividingLines.push_back({
+			D2D1::Point2F(m_watchlistRight - DPIScale::hpx(), m_titleBarBottom),
+			D2D1::Point2F(m_watchlistRight - DPIScale::hpx(), dipRect.bottom)
+		});
+		break;
 	}
 }
 
@@ -587,6 +623,8 @@ LRESULT Parthenos::OnCreate()
 	// Calculate layouts
 	m_titleBarBottom = DPIScale::SnapToPixelY(m_titleBarHeight);
 	m_menuBarBottom = DPIScale::SnapToPixelY(m_titleBarHeight + m_menuBarHeight);
+	m_watchlistRight = DPIScale::SnapToPixelX(m_watchlistWidth);
+	m_portfolioListRight = DPIScale::SnapToPixelX(m_portfolioListWidth);
 
 	m_titleBar = new TitleBar(m_hwnd, m_d2, this);
 	m_chart = new Chart(m_hwnd, m_d2);
@@ -678,6 +716,12 @@ LRESULT Parthenos::OnPaint()
 		for (auto item : m_activeItems)
 			item->Paint(dipRect);
 
+		for (Line_t const & l : m_dividingLines)
+		{
+			m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
+			m_d2.pRenderTarget->DrawLine(l.start, l.end, m_d2.pBrush, 1.0f, m_d2.pHairlineStyle);
+		}
+
 		hr = m_d2.pRenderTarget->EndDraw();
 		if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
 		{
@@ -708,7 +752,7 @@ LRESULT Parthenos::OnSize(WPARAM wParam)
 		m_d2.pRenderTarget->Resize(size);
 
 		D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
-
+		CalculateDividingLines(dipRect);
 
 		for (auto item : m_activeItems)
 		{

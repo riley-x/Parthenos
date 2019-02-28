@@ -49,6 +49,22 @@ HRESULT D2Objects::CreateDeviceIndependentResources()
 
 		hr = pFactory->CreateStrokeStyle(strokeStyleProperties, NULL, 0, &pFixedTransformStyle);
 	}
+	// Create hairline style
+	if (SUCCEEDED(hr))
+	{
+		D2D1_STROKE_STYLE_PROPERTIES1 strokeStyleProperties = D2D1::StrokeStyleProperties1(
+			D2D1_CAP_STYLE_FLAT,				// The start cap.
+			D2D1_CAP_STYLE_FLAT,				// The end cap.
+			D2D1_CAP_STYLE_FLAT,				// The dash cap.
+			D2D1_LINE_JOIN_MITER,				// The line join.
+			10.0f,								// The miter limit.
+			D2D1_DASH_STYLE_SOLID,				// The dash style.
+			0.0f,								// The dash offset.
+			D2D1_STROKE_TRANSFORM_TYPE_HAIRLINE	// The transform type.
+		);
+
+		hr = pFactory->CreateStrokeStyle(strokeStyleProperties, NULL, 0, &pHairlineStyle);
+	}
 	// Create a DirectWrite factory
 	if (SUCCEEDED(hr))
 	{
@@ -254,6 +270,7 @@ void D2Objects::DiscardDeviceIndependentResources()
 	SafeRelease(&pIWICFactory);
 	SafeRelease(&pDashedStyle);
 	SafeRelease(&pFixedTransformStyle);
+	SafeRelease(&pHairlineStyle);
 
 	for (int i = 0; i < nIcons; i++)
 	{

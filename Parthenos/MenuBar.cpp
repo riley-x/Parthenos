@@ -47,15 +47,6 @@ void MenuBar::Paint(D2D1_RECT_F updateRect)
 			}
 			m_buttons[i]->Paint(updateRect);
 		}
-
-		// Right dividing lines
-		m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
-		m_d2.pRenderTarget->DrawLine(
-			D2D1::Point2F(m_rBorder, m_dipRect.top),
-			D2D1::Point2F(m_rBorder, m_dipRect.bottom),
-			m_d2.pBrush,
-			DPIScale::px()
-		);
 	}
 	for (int i = 0; i < m_nButtons; i++)
 	{
@@ -73,7 +64,6 @@ void MenuBar::SetSize(D2D1_RECT_F dipRect)
 
 	m_dipRect = dipRect;
 	m_pixRect = DPIScale::DipsToPixels(dipRect);
-	m_rBorder = m_dipRect.right - DPIScale::hpx();
 
 	if (!same_left || !same_top)
 	{

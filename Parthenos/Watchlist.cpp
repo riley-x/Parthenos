@@ -13,6 +13,17 @@ Watchlist::~Watchlist()
 	for (auto layout : m_pTextLayouts) SafeRelease(&layout);
 }
 
+// TODO don't need to re-calculate layouts each set size, i.e. making the table larger?
+void Watchlist::SetSize(D2D1_RECT_F dipRect)
+{
+	if (equalRect(m_dipRect, dipRect)) return;
+	m_dipRect = dipRect;
+	m_pixRect = DPIScale::DipsToPixels(m_dipRect);
+
+	m_headerBorder = DPIScale::SnapToPixelY(m_dipRect.top + m_headerHeight) - DPIScale::hpy();
+
+	CreateTextLayouts();
+}
 
 void Watchlist::Paint(D2D1_RECT_F updateRect)
 {
@@ -63,17 +74,11 @@ void Watchlist::Paint(D2D1_RECT_F updateRect)
 		);
 	}
 
-	// Header and right dividing lines
+	// Header dividing line
 	m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
 	m_d2.pRenderTarget->DrawLine(
-		D2D1::Point2F(m_rightBorder, m_dipRect.top),
-		D2D1::Point2F(m_rightBorder, m_dipRect.bottom),
-		m_d2.pBrush,
-		DPIScale::px()
-	);
-	m_d2.pRenderTarget->DrawLine(
 		D2D1::Point2F(m_dipRect.left, m_headerBorder),
-		D2D1::Point2F(m_rightBorder, m_headerBorder),
+		D2D1::Point2F(m_dipRect.right, m_headerBorder),
 		m_d2.pBrush,
 		DPIScale::py()
 	);
@@ -91,19 +96,6 @@ void Watchlist::Paint(D2D1_RECT_F updateRect)
 		);
 	}
 
-}
-
-// TODO don't need to re-calculate layouts each set size, i.e. making the table larger?
-void Watchlist::SetSize(D2D1_RECT_F dipRect)
-{
-	if (equalRect(m_dipRect, dipRect)) return;
-	m_dipRect = dipRect;
-	m_pixRect = DPIScale::DipsToPixels(m_dipRect);
-
-	m_rightBorder = m_dipRect.right - DPIScale::hpx();
-	m_headerBorder = DPIScale::SnapToPixelY(m_dipRect.top + m_headerHeight) - DPIScale::hpy();
-
-	CreateTextLayouts();
 }
 
 bool Watchlist::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)

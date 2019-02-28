@@ -47,13 +47,18 @@ class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver
 	// Layout
 	float const	m_titleBarHeight		= 30.0f;
 	float const	m_menuBarHeight			= 17.0f;
-	float		m_titleBarBottom; // snap to pixel boundry
-	float		m_menuBarBottom;
 	float const	m_watchlistWidth		= 350.0f;
 	float const	m_portfolioListWidth	= 600.0f;
+	float		m_titleBarBottom; // snapped to pixel boundry
+	float		m_menuBarBottom;
+	float		m_watchlistRight;
+	float		m_portfolioListRight;
+	std::vector<Line_t> m_dividingLines;
 
-	// Flags
+	// Flags and state
 	bool m_sizeChanged = false; // For tab changes
+	enum Tabs { TPortfolio, TReturns, TChart };
+	Tabs m_tab = TChart;
 
 	// Message responses
 	LRESULT	OnCreate();
@@ -72,6 +77,7 @@ class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver
 	int AccountToIndex(std::wstring account);
 	void ProcessCTPMessages();
 	D2D1_RECT_F CalculateItemRect(AppItem* item, D2D1_RECT_F const & dipRect);
+	void CalculateDividingLines(D2D1_RECT_F dipRect);
 	void AddTransaction(Transaction t);
 	NestedHoldings CalculateHoldings() const;
 	void CalculatePositions(NestedHoldings const & holdings);

@@ -30,9 +30,6 @@ private:
 	const std::wstring  m_texts[m_nButtons] = { L"File", L"Account", L"Transactions" };
 	const float			m_widths[m_nButtons] = { 30.0f, 60.0f, 80.0f };
 
-	// Drawing
-	float m_rBorder;
-
 	// Deleted
 	MenuBar(const MenuBar&) = delete; // non construction-copyable
 	MenuBar& operator=(const MenuBar&) = delete; // non copyable
