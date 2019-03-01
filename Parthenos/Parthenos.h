@@ -34,7 +34,7 @@ class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver
 	Watchlist				*m_portfolioList;
 	MenuBar					*m_menuBar;
 	PieChart				*m_pieChart;
-	Axes					*m_portHistoryAxes;
+	Axes					*m_eqHistoryAxes;
 	Axes					*m_returnsAxes;
 	Axes					*m_returnsPercAxes;
 
@@ -94,6 +94,7 @@ class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver
 	NestedHoldings CalculateHoldings() const;
 	void CalculatePositions(NestedHoldings const & holdings);
 	void CalculateReturns();
+	void CalculateHistories();
 	void LoadPieChart();
 
 	// Deleted

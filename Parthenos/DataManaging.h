@@ -279,6 +279,8 @@ typedef union Holdings_union
 
 typedef std::vector<std::vector<Holdings>> NestedHoldings;
 
+
+// Current position for a stock at a given day
 typedef struct Position_struct
 {
 	int n;					
@@ -310,28 +312,36 @@ typedef struct Position_struct
 
 
 
-inline double GetWeightedAPY(double gain, date_t start_date, date_t end_date)
-{
-	time_t time_held = DateToTime(end_date) - DateToTime(start_date);
-	if (time_held <= 0) return gain * 365.0; // assume 1 day
-	return gain * 365.0 * 86400.0 / time_held;
-}
-inline double GetAPY(double gain, double cost_in, date_t start_date, date_t end_date)
-{
-	time_t time_held = DateToTime(end_date) - DateToTime(start_date);
-	if (time_held <= 0) return (gain / cost_in) * 365.0; // assume 1 day
-	return (gain / cost_in) * 365.0 * 86400.0 / time_held;
-}
 
 std::vector<Transaction> CSVtoTransactions(std::wstring filepath);
+std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Transaction> const & trans);
 void AddTransactionToHoldings(NestedHoldings & holdings, Transaction const & transaction);
 NestedHoldings FullTransactionsToHoldings(std::vector<Transaction> const & transactions);
 NestedHoldings FlattenedHoldingsToTickers(std::vector<Holdings> const & holdings);
 std::vector<Position> HoldingsToPositions(NestedHoldings const & holdings,
 	char account, date_t date, std::vector<double> prices);
 bool Positions_Compare(const Position a, std::wstring const & ticker);
-
 void PrintTickerHoldings(std::vector<Holdings> const & h);
+
+
+inline double GetIntrinsicValue(Option const & opt, double latest)
+{
+	switch (opt.type)
+	{
+	case TransactionType::PutShort:
+		return (latest < opt.strike) ? opt.n * (latest - opt.strike) : 0.0;
+	case TransactionType::PutLong:
+		return (latest < opt.strike) ? opt.n * (opt.strike - latest) : 0.0;
+	case TransactionType::CallShort:
+		return (latest > opt.strike) ? opt.n * (opt.strike - latest) : 0.0;
+	case TransactionType::CallLong:
+		return (latest > opt.strike) ? opt.n * (latest - opt.strike) : 0.0;
+	default:
+		return 0.0;
+	}
+}
+
+
 inline void PrintFlattenedHoldings(std::vector<Holdings> const & h)
 {
 	auto holdings = FlattenedHoldingsToTickers(h);

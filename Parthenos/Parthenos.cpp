@@ -21,6 +21,7 @@ inline std::wstring MakeLongLabel(std::wstring const & ticker, double val, doubl
 Parthenos::Parthenos(PCWSTR szClassName)
 	: BorderlessWindow(szClassName), m_accountNames({ L"Robinhood", L"Arista" })
 {
+
 	// Read Holdings
 	FileIO holdingsFile;
 	holdingsFile.Init(ROOTDIR + L"port.hold");
@@ -39,24 +40,8 @@ Parthenos::Parthenos(PCWSTR szClassName)
 	
 	CalculatePositions(holdings);
 	CalculateReturns();
+	CalculateHistories();
 
-	//// Calculate history of portfolio
-	//bool exists = FileExists((ROOTDIR + L"port.hist").c_str()); // Check before create file
-	//if (!exists)
-	//{
-	//	std::vector<TimeSeries> portHist = CalculatePortfolioHistory();
-	//	m_portHistoryDates.reserve(portHist.size());
-	//	m_portHistoryPrices.reserve(portHist.size());
-	//	for (auto const & x : portHist)
-	//	{
-	//		m_portHistoryDates.push_back(x.date);
-	//		m_portHistoryPrices.push_back(x.prices);
-	//	}
-	//}
-	//else
-	//{
-
-	//}
 }
 
 Parthenos::~Parthenos()
@@ -548,6 +533,54 @@ void Parthenos::CalculateReturns()
 	}
 }
 
+// Calculate historical performance
+void Parthenos::CalculateHistories()
+{
+	for (size_t i = 0; i < m_accountNames.size(); i++)
+	{
+		Account & acc = m_accounts[i];
+		bool exists = FileExists((ROOTDIR + acc.name + L".hist").c_str());
+
+		//FileIO histFile;
+		//histFile.Init(ROOTDIR + acc.name + L".hist");
+		//histFile.Open();
+		//
+		if (!exists)
+		{
+			// Read transaction history
+			FileIO transFile;
+			transFile.Init(ROOTDIR + L"hist.trans");
+			transFile.Open(GENERIC_READ);
+			std::vector<Transaction> trans = transFile.Read<Transaction>();;
+			transFile.Close();
+
+			// Calculate full equity history
+			std::vector<TimeSeries> portHist = CalculateFullEquityHistory((char)i, trans);
+
+			for (auto const & x : portHist)
+				OutputMessage(L"%s: %.2lf\n", DateToWString(x.date).c_str(), x.prices);
+
+			//// Add to account for plotting
+			//acc.histDate.reserve(portHist.size());
+			//acc.histEquity.reserve(portHist.size());
+			//for (auto const & x : portHist)
+			//{
+			//	acc.histDate.push_back(x.date);
+			//	acc.histEquity.push_back(x.prices);
+			//}
+
+			//// Write to file
+			//histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
+		}
+		else
+		{
+			// Read and update
+		}
+		//histFile.Close();
+		OutputMessage(L"\n\n");
+	}
+}
+
 
 void Parthenos::LoadPieChart()
 {
@@ -655,7 +688,7 @@ LRESULT Parthenos::OnCreate()
 	m_portfolioList = new Watchlist(m_hwnd, m_d2, this, false);
 	m_menuBar = new MenuBar(m_hwnd, m_d2, this, m_accountNames, m_menuBarBottom - m_titleBarBottom);
 	m_pieChart = new PieChart(m_hwnd, m_d2);
-	m_portHistoryAxes = new Axes(m_hwnd, m_d2);
+	//m_eqHistoryAxes = new Axes(m_hwnd, m_d2);
 	m_returnsAxes = new Axes(m_hwnd, m_d2);
 	m_returnsPercAxes = new Axes(m_hwnd, m_d2);
 
@@ -665,7 +698,7 @@ LRESULT Parthenos::OnCreate()
 	m_allItems.push_back(m_portfolioList);
 	m_allItems.push_back(m_menuBar);
 	m_allItems.push_back(m_pieChart);
-	m_allItems.push_back(m_portHistoryAxes);
+	//m_allItems.push_back(m_eqHistoryAxes);
 	m_allItems.push_back(m_returnsAxes);
 	m_allItems.push_back(m_returnsPercAxes);
 	m_activeItems.push_back(m_titleBar);
