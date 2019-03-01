@@ -218,7 +218,7 @@ void HelperAddTransaction(std::vector<EquityHistoryHelper> & helper, Transaction
 		EquityHistoryHelper temp;
 		temp.ticker = tticker;
 		temp.n = 0;
-		temp.ohlc = GetOHLC(tticker, apiSource::iex, 1000);
+		temp.ohlc = GetOHLC(tticker, apiSource::alpha, 1000);
 		temp.iDate = FindDateOHLC(temp.ohlc, curr_date);
 		helper.push_back(temp);
 		it = helper.end() - 1;
@@ -262,7 +262,7 @@ std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Tra
 	std::vector<EquityHistoryHelper> helper;
 	EquityHistoryHelper temp;
 	temp.ticker = L"VOO"; // use VOO to keep track of trading days
-	temp.ohlc = GetOHLC(L"VOO", apiSource::iex, 1000);
+	temp.ohlc = GetOHLC(L"VOO", apiSource::alpha, 1000);
 	temp.iDate = FindDateOHLC(temp.ohlc, curr_date);
 	helper.push_back(temp);
 

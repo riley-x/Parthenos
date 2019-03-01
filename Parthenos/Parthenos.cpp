@@ -41,7 +41,6 @@ Parthenos::Parthenos(PCWSTR szClassName)
 	CalculatePositions(holdings);
 	CalculateReturns();
 	CalculateHistories();
-
 }
 
 Parthenos::~Parthenos()
@@ -541,10 +540,10 @@ void Parthenos::CalculateHistories()
 		Account & acc = m_accounts[i];
 		bool exists = FileExists((ROOTDIR + acc.name + L".hist").c_str());
 
-		//FileIO histFile;
-		//histFile.Init(ROOTDIR + acc.name + L".hist");
-		//histFile.Open();
-		//
+		FileIO histFile;
+		histFile.Init(ROOTDIR + acc.name + L".hist");
+		histFile.Open();
+		
 		if (!exists)
 		{
 			// Read transaction history
@@ -557,9 +556,6 @@ void Parthenos::CalculateHistories()
 			// Calculate full equity history
 			std::vector<TimeSeries> portHist = CalculateFullEquityHistory((char)i, trans);
 
-			for (auto const & x : portHist)
-				OutputMessage(L"%s: %.2lf\n", DateToWString(x.date).c_str(), x.prices);
-
 			//// Add to account for plotting
 			//acc.histDate.reserve(portHist.size());
 			//acc.histEquity.reserve(portHist.size());
@@ -569,15 +565,14 @@ void Parthenos::CalculateHistories()
 			//	acc.histEquity.push_back(x.prices);
 			//}
 
-			//// Write to file
-			//histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
+			// Write to file
+			histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
 		}
 		else
 		{
 			// Read and update
 		}
-		//histFile.Close();
-		OutputMessage(L"\n\n");
+		histFile.Close();
 	}
 }
 
