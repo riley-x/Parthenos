@@ -202,8 +202,8 @@ void Axes::Bar(std::pair<double, D2D1_COLOR_F> const * data, int n)
 	// get min/max of data to scale data appropriately. x values [0,n)
 	double xmin = -0.5; // extra padding
 	double xmax = n - 0.5;
-	double ymin = data[0].first;
-	double ymax = data[0].first;
+	double ymin = 0;
+	double ymax = 0;
 	for (int i = 0; i < n; i++)
 	{
 		if (data[i].first < ymin) ymin = data[i].first;

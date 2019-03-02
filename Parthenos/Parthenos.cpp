@@ -263,7 +263,7 @@ void Parthenos::CalculateReturns()
 			double returns = p.realized_held + p.realized_unheld + p.unrealized;
 			double perc = (p.n == 0) ? 0.0 : (p.realized_held + p.unrealized) / (p.avgCost * p.n) * 100.0;
 			acc.returnsBarData.push_back({ returns, Colors::Randomizer(p.ticker) });
-			if (perc != 0.0) acc.returnsPercBarData.push_back({ perc, Colors::Randomizer(p.ticker) });
+			acc.returnsPercBarData.push_back({ perc, Colors::Randomizer(p.ticker) });
 		}
 	}
 }

@@ -54,14 +54,11 @@ public:
 	inline bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled) { return m_ticker.OnMouseMove(cursor, wParam, handeled); }
 	inline bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 	{
-		if (handeled) return false;
-		bool out = false;
-		
-		if (m_editableTickers) out = m_ticker.OnLButtonDown(cursor, handeled) || out;
-		if (!out && inRect(cursor, m_dipRect)) m_LButtonDown = true;
+		if (m_editableTickers) handeled = m_ticker.OnLButtonDown(cursor, handeled) || handeled;
+		if (!handeled && inRect(cursor, m_dipRect)) m_LButtonDown = true;
 		
 		ProcessCTPMessages();
-		return out;
+		return handeled;
 	}
 	inline void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam) { return m_ticker.OnLButtonDblclk(cursor, wParam); }
 	void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam);
