@@ -482,7 +482,8 @@ namespace EquityHistoryHelper
 
 }
 
-// Does not include transactions
+// This will almost always crash because Alpha only allows 5 api calls per minute.
+// Does not include transactions.
 std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Transaction> const & trans)
 {
 	std::vector<TimeSeries> out;
@@ -549,6 +550,8 @@ std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Tra
 	return out;
 }
 
+// This will almost always crash because Alpha only allows 5 api calls per minute.
+// Could use thread that sleeps, or try IEX but then need check for ex-dividend.
 void UpdateEquityHistory(std::vector<TimeSeries>& hist, std::vector<Position> const & positions)
 {
 	if (hist.empty() || positions.empty()) return OutputMessage(L"UpdateEquityHistory passed empty vector(s)\n");

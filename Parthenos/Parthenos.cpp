@@ -299,13 +299,8 @@ void Parthenos::CalculateHistories()
 		}
 		else // ASSUMES THAT HOLDINGS HAVEN'T CHANGED SINCE LAST UPDATE (add transactions will invalidate history)
 		{
-			// Read equity history
 			portHist = histFile.Read<TimeSeries>();
-
 			UpdateEquityHistory(portHist, acc.positions); 
-			// This will almost always crash because Alpha only allows 5 api calls per minute.
-			// Could use thread that sleeps, or try IEX but then need check for ex-dividend
-
 			histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
 		}
 		histFile.Close();
@@ -319,8 +314,43 @@ void Parthenos::CalculateHistories()
 			acc.histDate.push_back(x.date);
 			acc.histEquity.push_back(x.prices + cash_in);
 		}
+	}
 
-		for (auto const & x : portHist) OutputMessage(L"%s: %lf\n", DateToWString(x.date).c_str(), x.prices);
+	// Sum all accounts for "All".
+	Account & accAll = m_accounts.back();
+	std::vector<size_t> iAccDate(m_accounts.size() - 1);
+	std::vector<double> cashIn(m_accounts.size() - 1);
+	size_t maxSize = 0;
+	size_t iAccMax;
+	for (size_t i = 0; i < m_accounts.size() - 1; i++)
+	{
+		cashIn[i] = GetCash(m_accounts[i].positions).second;
+		if (m_accounts[i].histDate.size() > maxSize)
+		{
+			maxSize = m_accounts[i].histDate.size();
+			iAccMax = i;
+		}
+	}
+	double totCashIn = std::accumulate(cashIn.begin(), cashIn.end(), 0.0);
+
+	accAll.histDate.reserve(maxSize);
+	accAll.histEquity.reserve(maxSize);
+	while (iAccDate[iAccMax] < m_accounts[iAccMax].histDate.size())
+	{
+		date_t date = m_accounts[iAccMax].histDate[iAccDate[iAccMax]];
+		double val = 0;
+		for (size_t iAcc = 0; iAcc < m_accounts.size() - 1; iAcc++)
+		{
+			Account & acc = m_accounts[iAcc];
+			size_t iDate = iAccDate[iAcc];
+			if (acc.histDate[iDate] == date)
+			{
+				val += acc.histEquity[iDate] - cashIn[iAcc];
+				iAccDate[iAcc]++;
+			}
+		}
+		accAll.histDate.push_back(date);
+		accAll.histEquity.push_back(val + totCashIn);
 	}
 }
 
@@ -369,7 +399,7 @@ void Parthenos::AddTransaction(Transaction t)
 	histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
 	histFile.Close();
 
-	// Update hist data and chart
+	// Update hist data (TODO update all history too?)
 	m_accounts[t.account].histDate.clear();
 	m_accounts[t.account].histEquity.clear();
 	double cash_in = GetCash(m_accounts[t.account].positions).second;
@@ -379,7 +409,9 @@ void Parthenos::AddTransaction(Transaction t)
 		m_accounts[t.account].histEquity.push_back(x.prices + cash_in);
 	}
 
-	UpdatePortfolioPlotters(t.account);
+	// Update plots
+	if (m_currAccount == t.account || m_currAccount == m_accounts.size() - 1)
+		UpdatePortfolioPlotters(m_currAccount);
 }
 
 
@@ -595,10 +627,10 @@ void Parthenos::CalculateDividingLines(D2D1_RECT_F dipRect)
 		break;
 	case TReturns:
 	{
-		m_dividingLines.push_back({
-			D2D1::Point2F(dipRect.right / 2.0f - DPIScale::hpx(), m_titleBarBottom),
-			D2D1::Point2F(dipRect.right / 2.0f - DPIScale::hpx(), dipRect.bottom)
-			});
+		//m_dividingLines.push_back({
+		//	D2D1::Point2F(dipRect.right / 2.0f - DPIScale::hpx(), m_titleBarBottom),
+		//	D2D1::Point2F(dipRect.right / 2.0f - DPIScale::hpx(), dipRect.bottom)
+		//	});
 		//float returnsSplit = DPIScale::SnapToPixelY((dipRect.bottom + m_titleBarBottom) / 2.0f) - DPIScale::hpy();
 		//m_dividingLines.push_back({
 		//	D2D1::Point2F(dipRect.right / 2.0f, returnsSplit),
@@ -682,6 +714,7 @@ void Parthenos::UpdatePortfolioPlotters(char account)
 	LoadPieChart();
 	m_pieChart->Refresh();
 
+	m_eqHistoryAxes->SetXAxisPos((float)m_accounts[m_currAccount].histEquity[0]);
 	m_eqHistoryAxes->Clear();
 	m_eqHistoryAxes->Line(m_accounts[account].histDate.data(),
 		m_accounts[account].histEquity.data(),
