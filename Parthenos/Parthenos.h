@@ -93,6 +93,7 @@ class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver
 	void CalculateReturns();
 	void CalculateHistories();
 	void LoadPieChart();
+	void UpdatePortfolioPlotters(char account);
 
 	// Deleted
 	Parthenos(const Parthenos&) = delete; // non construction-copyable

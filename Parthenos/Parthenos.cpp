@@ -280,27 +280,7 @@ void Parthenos::ProcessCTPMessages()
 			if (account == m_currAccount) break;
 
 			m_currAccount = account;
-			std::vector<std::wstring> tickers = GetTickers(m_accounts[account].positions);
-			
-			m_portfolioList->Load(tickers, m_accounts[account].positions, FilterByKeyMatch(m_tickers, m_stats, tickers));
-			m_portfolioList->Refresh();
-			
-			LoadPieChart();
-			m_pieChart->Refresh();
-			
-			m_eqHistoryAxes->Clear();
-			m_eqHistoryAxes->Line(m_accounts[account].histDate.data(),
-				m_accounts[account].histEquity.data(),
-				m_accounts[account].histDate.size(),
-				Colors::ALMOST_WHITE
-			);
-
-			m_returnsAxes->Clear();
-			m_returnsPercAxes->Clear();
-			m_returnsAxes->Bar(m_accounts[account].returnsBarData.data(), m_accounts[account].returnsBarData.size());
-			m_returnsPercAxes->Bar(m_accounts[account].returnsPercBarData.data(), m_accounts[account].returnsPercBarData.size());
-
-			::InvalidateRect(m_hwnd, NULL, FALSE);
+			UpdatePortfolioPlotters(account);
 			break;
 		}
 		case CTPMessage::MENUBAR_ADDTRANSACTION:
@@ -507,22 +487,8 @@ void Parthenos::AddTransaction(Transaction t)
 		m_accounts[t.account].histDate.push_back(x.date);
 		m_accounts[t.account].histEquity.push_back(x.prices + cash_in);
 	}
-	if (m_currAccount == t.account)
-	{
-		m_eqHistoryAxes->Clear();
-		m_eqHistoryAxes->Line(m_accounts[t.account].histDate.data(),
-			m_accounts[t.account].histEquity.data(),
-			m_accounts[t.account].histDate.size(),
-			Colors::ALMOST_WHITE
-		);
-	}
 
-	// Update watchlist
-	std::vector<std::wstring> tickers = GetTickers(m_accounts[t.account].positions);
-	m_portfolioList->Load(tickers, m_accounts[t.account].positions, FilterByKeyMatch(m_tickers, m_stats, tickers));
-	m_portfolioList->Refresh();
-
-	::InvalidateRect(m_hwnd, NULL, FALSE);
+	UpdatePortfolioPlotters(t.account);
 }
 
 NestedHoldings Parthenos::CalculateHoldings() const
@@ -639,9 +605,10 @@ void Parthenos::CalculateHistories()
 			acc.histDate.push_back(x.date);
 			acc.histEquity.push_back(x.prices + cash_in);
 		}
+
+		for (auto const & x : portHist) OutputMessage(L"%s: %lf\n", DateToWString(x.date).c_str(), x.prices);
 	}
 }
-
 
 void Parthenos::LoadPieChart()
 {
@@ -688,6 +655,34 @@ void Parthenos::LoadPieChart()
 	colors.push_back(Colors::GREEN);
 
 	m_pieChart->Load(data, colors, short_labels, long_labels);
+}
+
+// Updates all items that track the current account portfolio. 
+// i.e. call this when the account changes or a transaction is added.
+void Parthenos::UpdatePortfolioPlotters(char account)
+{
+	if (m_currAccount != account) return;
+	std::vector<std::wstring> tickers = GetTickers(m_accounts[account].positions);
+
+	m_portfolioList->Load(tickers, m_accounts[account].positions, FilterByKeyMatch(m_tickers, m_stats, tickers));
+	m_portfolioList->Refresh();
+
+	LoadPieChart();
+	m_pieChart->Refresh();
+
+	m_eqHistoryAxes->Clear();
+	m_eqHistoryAxes->Line(m_accounts[account].histDate.data(),
+		m_accounts[account].histEquity.data(),
+		m_accounts[account].histDate.size(),
+		Colors::ALMOST_WHITE
+	);
+
+	m_returnsAxes->Clear();
+	m_returnsPercAxes->Clear();
+	m_returnsAxes->Bar(m_accounts[account].returnsBarData.data(), m_accounts[account].returnsBarData.size());
+	m_returnsPercAxes->Bar(m_accounts[account].returnsPercBarData.data(), m_accounts[account].returnsPercBarData.size());
+
+	::InvalidateRect(m_hwnd, NULL, FALSE);
 }
 
 inline std::wstring MakeLongLabel(std::wstring const & ticker, double val, double percent)
