@@ -121,13 +121,13 @@ inline std::wstring FormatDollar(double x)
 	std::wstring out(buffer);
 
 	int insertPosition = out.length() - 6;
-	while (insertPosition > 0) {
+	int leftmostPos = (x < 0) ? 1 : 0;
+	while (insertPosition > leftmostPos) {
 		out.insert(insertPosition, L",");
 		insertPosition -= 3;
 	}
 
-	insertPosition = (x < 0) ? 1 : 0;
-	out.insert(insertPosition, L"$");
+	out.insert(leftmostPos, L"$");
 	return out;
 }
 
@@ -175,10 +175,10 @@ namespace Colors
 {
 	const D2D1_COLOR_F HIGHLIGHT		= D2D1::ColorF(0.3f, 0.3f, 0.3f, 1.0f);
 	const D2D1_COLOR_F MAIN_BACKGROUND	= D2D1::ColorF(0.2f, 0.2f, 0.2f, 1.0f);
-	const D2D1_COLOR_F WATCH_BACKGROUND = D2D1::ColorF(0.16f, 0.16f, 0.16f, 1.0f);
+	const D2D1_COLOR_F WATCH_BACKGROUND = D2D1::ColorF(0.17f, 0.17f, 0.17f, 1.0f);
 	const D2D1_COLOR_F AXES_BACKGROUND	= D2D1::ColorF(0.15f, 0.15f, 0.15f, 1.0f);
 	const D2D1_COLOR_F TITLE_BACKGROUND = D2D1::ColorF(0.13f, 0.13f, 0.135f, 1.0f);
-	const D2D1_COLOR_F MENU_BACKGROUND	= D2D1::ColorF(0.1f, 0.1f, 0.1f, 1.0f);
+	const D2D1_COLOR_F MENU_BACKGROUND	= D2D1::ColorF(0.12f, 0.12f, 0.12f, 1.0f);
 
 	const D2D1_COLOR_F BRIGHT_LINE		= D2D1::ColorF(0.8f, 0.8f, 0.8f, 1.0f);
 	const D2D1_COLOR_F MEDIUM_LINE		= D2D1::ColorF(0.5f, 0.5f, 0.5f, 1.0f);

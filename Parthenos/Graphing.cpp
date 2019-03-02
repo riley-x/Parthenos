@@ -39,10 +39,11 @@ void Axes::SetSize(D2D1_RECT_F dipRect)
 	m_rescaled = true;
 
 	m_dipRect = dipRect;
+	m_pixRect = DPIScale::DipsToPixels(dipRect);
 
 	float pad = 14.0;
 	m_axesRect.left = dipRect.left;
-	m_axesRect.top = dipRect.top;
+	m_axesRect.top = dipRect.top + m_titlePad;
 	m_axesRect.right = dipRect.right - m_ylabelWidth - pad;
 	m_axesRect.bottom = (m_drawxLabels) ? dipRect.bottom - m_labelHeight - pad : dipRect.bottom;
 
@@ -74,8 +75,22 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 		m_d2.pRenderTarget->DrawLine(line.start, line.end, m_d2.pBrush, 0.8f, m_d2.pDashedStyle);
 	}
 
-	// Labels
+	// Title
 	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
+	if (!m_title.empty())
+	{
+		m_d2.pTextFormats[m_titleFormat]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+			m_d2.pRenderTarget->DrawTextW(
+			m_title.c_str(),
+			m_title.size(),
+			m_d2.pTextFormats[m_titleFormat],
+			D2D1::RectF(m_dipRect.left, m_dipRect.top, m_dipRect.right, m_axesRect.top),
+			m_d2.pBrush
+		);
+		m_d2.pTextFormats[m_titleFormat]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+	}
+
+	// Labels
 	if (m_drawxLabels)
 	{
 		for (auto tick : m_xTicks)
@@ -118,15 +133,26 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 
 	// Axes
 	m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
-	float xaxis_dip_pos;
-	if (std::isnan(m_xAxisPos)) xaxis_dip_pos = m_axesRect.bottom;
-	else xaxis_dip_pos = DPIScale::SnapToPixelY(YtoDIP(m_xAxisPos)) - DPIScale::hpy();
-	Line_t xaxis = { D2D1::Point2F(m_axesRect.left,  xaxis_dip_pos),
-					 D2D1::Point2F(m_axesRect.right, xaxis_dip_pos) };
-	Line_t yaxis = { D2D1::Point2F(m_axesRect.right, m_axesRect.bottom),
-					 D2D1::Point2F(m_axesRect.right, m_axesRect.top) };
-	m_d2.pRenderTarget->DrawLine(xaxis.start, xaxis.end, m_d2.pBrush, DPIScale::py());
-	m_d2.pRenderTarget->DrawLine(yaxis.start, yaxis.end, m_d2.pBrush, DPIScale::px());
+	if (!std::isnan(m_xAxisPos))
+	{
+		float xaxis_dip_pos;
+		if (m_xAxisPos == -std::numeric_limits<float>::infinity()) xaxis_dip_pos = m_axesRect.bottom;
+		else xaxis_dip_pos = DPIScale::SnapToPixelY(YtoDIP(m_xAxisPos)) - DPIScale::hpy();
+
+		Line_t xaxis = { D2D1::Point2F(m_axesRect.left,  xaxis_dip_pos),
+						 D2D1::Point2F(m_axesRect.right, xaxis_dip_pos) };
+		m_d2.pRenderTarget->DrawLine(xaxis.start, xaxis.end, m_d2.pBrush, DPIScale::py());
+	}
+	if (!std::isnan(m_yAxisPos))
+	{
+		float yaxis_dip_pos;
+		if (m_xAxisPos == std::numeric_limits<float>::infinity()) yaxis_dip_pos = m_axesRect.right;
+		else yaxis_dip_pos = DPIScale::SnapToPixelY(XtoDIP(m_yAxisPos)) - DPIScale::hpx();
+
+		Line_t yaxis = { D2D1::Point2F(m_axesRect.right, m_axesRect.bottom),
+						 D2D1::Point2F(m_axesRect.right, m_axesRect.top) };
+		m_d2.pRenderTarget->DrawLine(yaxis.start, yaxis.end, m_d2.pBrush, DPIScale::px());
+	}
 }
 
 void Axes::Candlestick(OHLC const * ohlc, int n)
@@ -195,9 +221,9 @@ void Axes::Line(date_t const * dates, double const * ydata, int n,
 	m_ismade = false;
 }
 
-void Axes::Bar(std::pair<double, D2D1_COLOR_F> const * data, int n)
+void Axes::Bar(std::pair<double, D2D1_COLOR_F> const * data, int n, std::vector<std::wstring> const & labels)
 {
-	m_drawxLabels = false; // no x labels
+	m_drawxLabels = false;
 
 	// get min/max of data to scale data appropriately. x values [0,n)
 	double xmin = -0.5; // extra padding
@@ -213,8 +239,16 @@ void Axes::Bar(std::pair<double, D2D1_COLOR_F> const * data, int n)
 	m_rescaled = setDataRange(xmin, xmax, ymin, ymax) || m_rescaled;
 
 	auto graph = new BarGraph(this, data, n);
+	graph->SetLabels(labels);
 	m_graphObjects.push_back(graph);
 	m_ismade = false;
+}
+
+void Axes::SetTitle(std::wstring const & title, D2Objects::Formats format)
+{
+	m_title = title;
+	m_titlePad = FontSize(format) * 2.0f; // could check for number of lines here
+	m_titleFormat = format;
 }
 
 // Call on data range changing. Recalculates the ticks.
@@ -491,13 +525,14 @@ void BarGraph::Make()
 	std::pair<double, D2D1_COLOR_F> const * data = reinterpret_cast<std::pair<double, D2D1_COLOR_F> const *>(m_data);
 	
 	m_bars.resize(m_n);
+	m_labelLayouts.resize(min(m_labels.size(), (size_t)m_n));
 
 	float x_diff = m_axes->GetDataRectXDiff();
 	float boxHalfWidth = 0.4f * x_diff / m_n;
 	for (int i = 0; i < m_n; i++)
 	{
 		float x = m_axes->XtoDIP(static_cast<double>(i));
-		float y1, y2;
+		float y1, y2; // y1 = bottom, y2 = top
 		if (data[i].first < 0)
 		{
 			y1 = m_axes->YtoDIP(data[i].first);
@@ -515,6 +550,16 @@ void BarGraph::Make()
 			x + boxHalfWidth,
 			y1
 		);
+
+		if ((size_t)i < m_labels.size())
+		{
+			m_labelLayouts[i] = D2D1::RectF(
+				x - boxHalfWidth,
+				y2 - m_axes->GetDataPad(), // label always above bar
+				x+ boxHalfWidth,
+				y2
+			);
+		}
 	}
 }
 
@@ -526,4 +571,18 @@ void BarGraph::Paint(D2Objects const & d2)
 		d2.pBrush->SetColor(data[i].second);
 		d2.pRenderTarget->FillRectangle(m_bars[i], d2.pBrush);
 	}
+
+	d2.pBrush->SetColor(Colors::MAIN_TEXT);
+	d2.pTextFormats[D2Objects::Formats::Segoe12]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+	for (size_t i = 0; i < m_labelLayouts.size(); i++)
+	{
+		d2.pRenderTarget->DrawText(
+			m_labels[i].c_str(),
+			m_labels[i].size(),
+			d2.pTextFormats[D2Objects::Formats::Segoe12],
+			m_labelLayouts[i],
+			d2.pBrush
+		);
+	}
+	d2.pTextFormats[D2Objects::Formats::Segoe12]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
 }

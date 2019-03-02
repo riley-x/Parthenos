@@ -77,48 +77,37 @@ HRESULT D2Objects::CreateDeviceIndependentResources()
 	// Create text formats
 	for (int i = 0; i < nFormats; i++)
 	{
+		IDWriteTextFormat **ppTextFormat = &pTextFormats[i];
 		if (SUCCEEDED(hr))
 		{
-			IDWriteTextFormat **ppTextFormat = &pTextFormats[i];
+			hr = pDWriteFactory->CreateTextFormat(
+				L"Segoe UI",
+				NULL,
+				DWRITE_FONT_WEIGHT_NORMAL,
+				DWRITE_FONT_STYLE_NORMAL,
+				DWRITE_FONT_STRETCH_NORMAL,
+				FontSize(static_cast<D2Objects::Formats>(i)),
+				L"", //locale
+				ppTextFormat
+			);
+		}
+		// Set default alignment
+		if (SUCCEEDED(hr))
+		{
 			if (i == Segoe10)
 			{
-				hr = pDWriteFactory->CreateTextFormat(
-					L"Segoe UI",
-					NULL,
-					DWRITE_FONT_WEIGHT_NORMAL,
-					DWRITE_FONT_STYLE_NORMAL,
-					DWRITE_FONT_STRETCH_NORMAL,
-					10.0f, // font size. this can't be changed dynamically?
-					L"", //locale
-					ppTextFormat
-				);
-
-				// Set default alignment
-				if (SUCCEEDED(hr))
-				{
-					(*ppTextFormat)->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
-					(*ppTextFormat)->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
-				}
+				(*ppTextFormat)->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+				(*ppTextFormat)->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
+			}
+			else if (i == Segoe18)
+			{
+				(*ppTextFormat)->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+				(*ppTextFormat)->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
 			}
 			else
 			{
-				hr = pDWriteFactory->CreateTextFormat(
-					L"Segoe UI",
-					NULL,
-					DWRITE_FONT_WEIGHT_NORMAL,
-					DWRITE_FONT_STYLE_NORMAL,
-					DWRITE_FONT_STRETCH_NORMAL,
-					FontSize(static_cast<D2Objects::Formats>(i)),
-					L"", //locale
-					ppTextFormat
-				);
-
-				// Set default alignment
-				if (SUCCEEDED(hr))
-				{
-					(*ppTextFormat)->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
-					(*ppTextFormat)->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
-				}
+				(*ppTextFormat)->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+				(*ppTextFormat)->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
 			}
 		}
 	}

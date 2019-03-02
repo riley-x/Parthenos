@@ -43,7 +43,7 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 
 	if (updateRect.top <= m_menuRect.bottom) {
 		// Background of menu
-		m_d2.pBrush->SetColor(Colors::MAIN_BACKGROUND);
+		m_d2.pBrush->SetColor(Colors::AXES_BACKGROUND);
 		m_d2.pRenderTarget->FillRectangle(m_menuRect, m_d2.pBrush);
 
 		// Ticker box

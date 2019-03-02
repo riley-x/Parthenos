@@ -22,7 +22,9 @@ void PopupMenu::SetSize(D2D1_RECT_F dipRect)
 
 void PopupMenu::Paint(D2D1_RECT_F updateRect)
 {
-	if (!m_active || !overlapRect(m_dipRect, updateRect)) return;
+	if (!m_active) return;
+	// if (!overlapRect(m_dipRect, updateRect)) return;
+	// If whatever the popupmenu is overlapping repaints, then it will cover the popup.
 	
 	// Fill
 	m_d2.pBrush->SetColor(Colors::MENU_BACKGROUND);

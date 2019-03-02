@@ -67,8 +67,12 @@ public:
 	using Graph::Graph;
 	void Make();
 	void Paint(D2Objects const & d2);
+
+	inline void SetLabels(std::vector<std::wstring> const & labels) { m_labels = labels; }
 private:
 	std::vector<D2D1_RECT_F> m_bars;
+	std::vector<std::wstring> m_labels;
+	std::vector<D2D1_RECT_F> m_labelLayouts;
 };
 
 class Axes : public AppItem
@@ -87,7 +91,8 @@ public:
 		D2D1_COLOR_F color = D2D1::ColorF(0.8f, 0.0f, 0.5f, 1.0f), 
 		float stroke_width = 1.0f,
 		ID2D1StrokeStyle * pStyle = NULL);
-	void Bar(std::pair<double, D2D1_COLOR_F> const * data, int n);
+	void Bar(std::pair<double, D2D1_COLOR_F> const * data, int n, 
+		std::vector<std::wstring> const & labels = {});
 
 	inline float XtoDIP(double val) const
 	{
@@ -105,14 +110,19 @@ public:
 		return data_ymin + ((val - m_dataRect.bottom) / m_rect_ydiff) * m_data_ydiff;
 	}
 
-	inline void SetXAxisPos(float y) { m_xAxisPos = y; }
-	inline void SetLabelSize(float ylabelWidth, float labelHeight) {
+	inline void SetLabelSize(float ylabelWidth, float labelHeight) 
+	{
 		m_ylabelWidth = ylabelWidth;
 		m_labelHeight = labelHeight;
 	}
+	inline void SetXAxisPos(float y) { m_xAxisPos = y; }
+	inline void SetYAxisPos(float x) { m_yAxisPos = x; }
 	inline void SetXLabels() { m_drawxLabels = false; } // no labels == no draw
+	void SetTitle(std::wstring const & title, D2Objects::Formats format = D2Objects::Formats::Segoe18);
+	
 	inline float GetDataRectXDiff() const { return m_rect_xdiff; }
 	inline D2D1_RECT_F GetAxesRect() const { return m_axesRect; }
+	inline float GetDataPad() const { return m_dataPad; }
 
 private:
 	// Parameters
@@ -120,7 +130,9 @@ private:
 	float m_labelHeight = 16.0f; // height of tick labels in DIPs.
 	float m_dataPad		= 20.0f; // padding between datapoints and border
 	float m_labelPad	= 2.0f;
-	float m_xAxisPos	= std::nanf(""); // y position. defaults to draw at m_axesRect.bottom
+	float m_titlePad	= 0.0f; // offset between dipRect.top and axesRect.top
+	float m_xAxisPos	= -std::numeric_limits<float>::infinity(); // y position. -inf to draw at m_axesRect.bottom
+	float m_yAxisPos	= std::numeric_limits<float>::infinity(); // y position. +inf to draw at m_axesRect.right
 
 	// Flags and state variables
 	bool m_ismade		= true;  // check to make sure everything is made
@@ -140,7 +152,9 @@ private:
 	float m_rect_xdiff;		// m_dataRect.right - m_dataRect.left
 	float m_rect_ydiff;		// m_dataRect.top - m_dataRect.bottom, flip so origin is bottom-left
 
-	// Graphing objects
+	// Drawing
+	std::wstring m_title;
+	D2Objects::Formats m_titleFormat;
 	std::vector<Line_t> m_grid_lines[2]; // x, y
 	std::vector<Graph*> m_graphObjects; // THESE NEED TO BE REMADE WHEN RENDER TARGET CHANGES
 

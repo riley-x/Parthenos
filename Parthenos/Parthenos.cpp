@@ -263,7 +263,8 @@ void Parthenos::CalculateReturns()
 			double returns = p.realized_held + p.realized_unheld + p.unrealized;
 			double perc = (p.n == 0) ? 0.0 : (p.realized_held + p.unrealized) / (p.avgCost * p.n) * 100.0;
 			acc.returnsBarData.push_back({ returns, Colors::Randomizer(p.ticker) });
-			acc.returnsPercBarData.push_back({ perc, Colors::Randomizer(p.ticker) });
+			if (perc != 0) acc.returnsPercBarData.push_back({ perc, Colors::Randomizer(p.ticker) });
+			acc.tickers.push_back(p.ticker);
 		}
 	}
 }
@@ -566,7 +567,7 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 		return D2D1::RectF(
 			0.0f,
 			m_titleBarBottom,
-			(m_tab == Tabs::TPortfolio) ? m_portfolioListRight : dipRect.right / 2.0f - 10.0f,
+			dipRect.right,
 			m_menuBarBottom
 		);
 	}
@@ -574,7 +575,7 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 	{
 		return D2D1::RectF(
 			m_portfolioListRight,
-			m_titleBarBottom,
+			m_menuBarBottom,
 			dipRect.right,
 			dipRect.bottom
 		);
@@ -584,7 +585,7 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 		return D2D1::RectF(
 			dipRect.left,
 			m_menuBarBottom,
-			dipRect.right / 2.0f - 10.0f,
+			dipRect.right / 2.0f,
 			dipRect.bottom
 		);
 	}
@@ -592,16 +593,16 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 	{
 		return D2D1::RectF(
 			dipRect.right / 2.0f,
-			m_titleBarBottom,
+			m_menuBarBottom,
 			dipRect.right,
-			(dipRect.bottom + m_titleBarBottom) / 2.0f
+			(dipRect.bottom + m_menuBarBottom) / 2.0f
 		);
 	}
 	else if (item == m_returnsPercAxes)
 	{
 		return D2D1::RectF(
 			dipRect.right / 2.0f,
-			(dipRect.bottom + m_titleBarBottom) / 2.0f,
+			(dipRect.bottom + m_menuBarBottom) / 2.0f,
 			dipRect.right,
 			dipRect.bottom
 		);
@@ -620,18 +621,18 @@ void Parthenos::CalculateDividingLines(D2D1_RECT_F dipRect)
 	{
 	case TPortfolio:
 		m_dividingLines.push_back({
-			D2D1::Point2F(m_portfolioListRight - DPIScale::hpx(), m_titleBarBottom),
+			D2D1::Point2F(m_portfolioListRight - DPIScale::hpx(), m_menuBarBottom),
 			D2D1::Point2F(m_portfolioListRight - DPIScale::hpx(), dipRect.bottom)
 			});
 		break;
 	case TReturns:
 	{
+		//m_dividingLines.push_back({
+		//	D2D1::Point2F(dipRect.right / 2.0f - 10.0f, m_titleBarBottom),
+		//	D2D1::Point2F(dipRect.right / 2.0f - 10.0f, dipRect.bottom)
+		//});
 		m_dividingLines.push_back({
-			D2D1::Point2F(dipRect.right / 2.0f - 10.0f, m_titleBarBottom),
-			D2D1::Point2F(dipRect.right / 2.0f - 10.0f, dipRect.bottom)
-		});
-		m_dividingLines.push_back({
-			D2D1::Point2F(dipRect.right / 2.0f - DPIScale::hpx(), m_titleBarBottom),
+			D2D1::Point2F(dipRect.right / 2.0f - DPIScale::hpx(), m_menuBarBottom),
 			D2D1::Point2F(dipRect.right / 2.0f - DPIScale::hpx(), dipRect.bottom)
 		});
 		//float returnsSplit = DPIScale::SnapToPixelY((dipRect.bottom + m_titleBarBottom) / 2.0f) - DPIScale::hpy();
@@ -706,17 +707,22 @@ void Parthenos::LoadPieChart()
 
 // Updates all items that track the current account portfolio. 
 // i.e. call this when the account changes or a transaction is added.
-void Parthenos::UpdatePortfolioPlotters(char account)
+void Parthenos::UpdatePortfolioPlotters(char account, bool init)
 {
 	if (m_currAccount != account) return;
 	std::vector<std::wstring> tickers = GetTickers(m_accounts[account].positions);
 
 	m_portfolioList->Load(tickers, m_accounts[account].positions, FilterByKeyMatch(m_tickers, m_stats, tickers));
-	m_portfolioList->Refresh();
+	if (!init) m_portfolioList->Refresh();
 
 	LoadPieChart();
-	m_pieChart->Refresh();
+	if (!init) m_pieChart->Refresh();
 
+	wchar_t buffer[100];
+	double returns = m_accounts[m_currAccount].histEquity.back() - m_accounts[m_currAccount].histEquity.front();
+	swprintf_s(buffer, _countof(buffer), L"%s: %s (%.2lf%%)", m_accounts[m_currAccount].name.c_str(), 
+		FormatDollar(returns).c_str(), returns / m_accounts[m_currAccount].histEquity.back() * 100.0);
+	m_eqHistoryAxes->SetTitle(buffer);
 	m_eqHistoryAxes->SetXAxisPos((float)m_accounts[m_currAccount].histEquity[0]);
 	m_eqHistoryAxes->Clear();
 	m_eqHistoryAxes->Line(m_accounts[account].histDate.data(),
@@ -727,8 +733,16 @@ void Parthenos::UpdatePortfolioPlotters(char account)
 
 	m_returnsAxes->Clear();
 	m_returnsPercAxes->Clear();
-	m_returnsAxes->Bar(m_accounts[account].returnsBarData.data(), m_accounts[account].returnsBarData.size());
-	m_returnsPercAxes->Bar(m_accounts[account].returnsPercBarData.data(), m_accounts[account].returnsPercBarData.size());
+	m_returnsAxes->Bar(
+		m_accounts[account].returnsBarData.data(), 
+		m_accounts[account].returnsBarData.size(), 
+		m_accounts[account].tickers
+	);
+	m_returnsPercAxes->Bar(
+		m_accounts[account].returnsPercBarData.data(),
+		m_accounts[account].returnsPercBarData.size(),
+		m_accounts[account].tickers
+	);
 
 	::InvalidateRect(m_hwnd, NULL, FALSE);
 }
@@ -809,6 +823,9 @@ LRESULT Parthenos::OnCreate()
 
 	std::vector<std::wstring> tickers = GetTickers(m_accounts[m_currAccount].positions);
 	std::vector<std::pair<Quote, Stats>> stats = FilterByKeyMatch(m_tickers, m_stats, tickers);
+	m_watchlist->SetColumns(); // use defaults
+	m_watchlist->Load(tickers, m_accounts[m_currAccount].positions, stats);
+	
 	std::vector<Column> portColumns = {
 		{60.0f, Column::Ticker, L""},
 		{60.0f, Column::Last, L"%.2lf"},
@@ -821,23 +838,15 @@ LRESULT Parthenos::OnCreate()
 		{60.0f, Column::APY, L"%.2lf"},
 		{60.0f, Column::ExDiv, L""},
 	};
-	m_watchlist->SetColumns(); // use defaults
 	m_portfolioList->SetColumns(portColumns);
-
-	m_watchlist->Load(tickers, m_accounts[m_currAccount].positions, stats);
-	m_portfolioList->Load(tickers, m_accounts[m_currAccount].positions, stats);
-	LoadPieChart();
-
-	m_eqHistoryAxes->SetXAxisPos((float)m_accounts[m_currAccount].histEquity[0]);
-	m_eqHistoryAxes->Line(m_accounts[m_currAccount].histDate.data(),
-		m_accounts[m_currAccount].histEquity.data(),
-		m_accounts[m_currAccount].histDate.size(),
-		Colors::ALMOST_WHITE
-	);
+	
 	m_returnsAxes->SetXAxisPos(0.0f);
+	m_returnsAxes->SetYAxisPos(std::nanf(""));
 	m_returnsPercAxes->SetXAxisPos(0.0f);
-	m_returnsAxes->Bar(m_accounts[m_currAccount].returnsBarData.data(), m_accounts[m_currAccount].returnsBarData.size());
-	m_returnsPercAxes->Bar(m_accounts[m_currAccount].returnsPercBarData.data(), m_accounts[m_currAccount].returnsPercBarData.size());
+	m_returnsPercAxes->SetYAxisPos(std::nanf(""));
+	m_eqHistoryAxes->SetYAxisPos(std::nanf(""));
+
+	UpdatePortfolioPlotters(m_currAccount, true);
 
 	return 0;
 }

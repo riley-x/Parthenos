@@ -21,6 +21,7 @@ typedef struct Account_struct
 	std::vector<double> histEquity;
 	std::vector<std::pair<double, D2D1_COLOR_F>> returnsBarData; // in equity order
 	std::vector<std::pair<double, D2D1_COLOR_F>> returnsPercBarData; // in equity order
+	std::vector<std::wstring> tickers; // in equity order
 } Account;
 
 class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver
@@ -67,7 +68,7 @@ private:
 
 	// Layout
 	float const	m_titleBarHeight		= 30.0f;
-	float const	m_menuBarHeight			= 17.0f;
+	float const	m_menuBarHeight			= 20.0f;
 	float const	m_watchlistWidth		= 350.0f;
 	float const	m_portfolioListWidth	= 600.0f;
 	float		m_titleBarBottom; // snapped to pixel boundry
@@ -94,7 +95,7 @@ private:
 	D2D1_RECT_F CalculateItemRect(AppItem* item, D2D1_RECT_F const & dipRect);
 	void CalculateDividingLines(D2D1_RECT_F dipRect);
 	void LoadPieChart();
-	void UpdatePortfolioPlotters(char account);
+	void UpdatePortfolioPlotters(char account, bool init = false);
 
 	// Message responses
 	LRESULT	OnCreate();

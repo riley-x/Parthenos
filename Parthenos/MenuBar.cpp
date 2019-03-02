@@ -33,7 +33,7 @@ void MenuBar::Paint(D2D1_RECT_F updateRect)
 	if (overlapRect(m_dipRect, updateRect))
 	{
 		// Background
-		m_d2.pBrush->SetColor(Colors::MAIN_BACKGROUND);
+		m_d2.pBrush->SetColor(Colors::TITLE_BACKGROUND);
 		m_d2.pRenderTarget->FillRectangle(m_dipRect, m_d2.pBrush);
 
 		// Buttons
@@ -42,7 +42,7 @@ void MenuBar::Paint(D2D1_RECT_F updateRect)
 			if (m_buttons[i]->IsActive())
 			{
 				D2D1_RECT_F rect = m_buttons[i]->GetDIPRect();
-				m_d2.pBrush->SetColor(Colors::MENU_BACKGROUND);
+				m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
 				m_d2.pRenderTarget->FillRectangle(rect, m_d2.pBrush);
 			}
 			m_buttons[i]->Paint(updateRect);
