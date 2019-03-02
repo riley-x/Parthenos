@@ -14,9 +14,9 @@ const std::wstring STATSFILTERS(L"beta,week52high,week52low,dividendRate,dividen
 ///////////////////////////////////////////////////////////
 // --- Forward declarations ---
 
-Quote parseFilteredQuote(std::string const & json);
+Quote parseFilteredQuote(std::string const & json, std::wstring const & ticker);
 Stats parseFilteredStats(std::string const & json);
-std::pair<Quote, Stats> parseQuoteStats(std::string const & json);
+std::pair<Quote, Stats> parseQuoteStats(std::string const & json, std::wstring const & ticker);
 std::vector<OHLC> GetOHLC_IEX(std::wstring ticker, size_t last_n, date_t & lastCloseDate);
 std::vector<OHLC> GetOHLC_Alpha(std::wstring ticker, size_t last_n, date_t & lastCloseDate);
 std::vector<OHLC> parseIEXChart(std::string json, date_t latest_date = 0);
@@ -62,7 +62,7 @@ Quote GetQuote(std::wstring ticker)
 	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/" + ticker + L"/quote",
 		L"filter=" + QUOTEFILTERS);
 	
-	return parseFilteredQuote(json);
+	return parseFilteredQuote(json, ticker);
 }
 
 // Queries IEX for key stats.
@@ -82,7 +82,7 @@ std::pair<Quote, Stats> GetQuoteStats(std::wstring ticker)
 	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/" + ticker + L"/batch",
 		L"types=quote,stats&filter=" + QUOTEFILTERS + L"," + STATSFILTERS);
 
-	return parseQuoteStats(json);
+	return parseQuoteStats(json, ticker);
 }
 
 std::vector<std::pair<Quote, Stats>> GetBatchQuoteStats(std::vector<std::wstring> tickers)
@@ -106,7 +106,7 @@ std::vector<std::pair<Quote, Stats>> GetBatchQuoteStats(std::vector<std::wstring
 	{
 		start = json.find("{", end);
 		end = json.find("}}", start) + 2;
-		out.push_back(parseQuoteStats(json.substr(start, end - start)));
+		out.push_back(parseQuoteStats(json.substr(start, end - start), tickers[i]));
 	}
 
 	return out;
@@ -483,6 +483,8 @@ namespace EquityHistoryHelper
 }
 
 // This will almost always crash because Alpha only allows 5 api calls per minute.
+// Could launch a separate thread that sleeps for a minute
+//
 // Does not include transactions.
 std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Transaction> const & trans)
 {
@@ -550,9 +552,7 @@ std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Tra
 	return out;
 }
 
-// This will almost always crash because Alpha only allows 5 api calls per minute.
-// Could use thread that sleeps, or try IEX but then need check for ex-dividend.
-void UpdateEquityHistory(std::vector<TimeSeries>& hist, std::vector<Position> const & positions)
+void UpdateEquityHistory(std::vector<TimeSeries>& hist, std::vector<Position> const & positions, QStats const & qstats)
 {
 	if (hist.empty() || positions.empty()) return OutputMessage(L"UpdateEquityHistory passed empty vector(s)\n");
 
@@ -570,11 +570,20 @@ void UpdateEquityHistory(std::vector<TimeSeries>& hist, std::vector<Position> co
 				cash = p.realized_held + p.realized_unheld;
 				continue;
 			}
+			apiSource source = apiSource::alpha;
+			auto it = FindQStat(qstats, p.ticker);
+			if (it != qstats.end())
+			{
+				if (lastCloseDate == 0) lastCloseDate = GetDate(it->first.closeTime);
+				if (currDate > it->second.exDividendDate) source = apiSource::iex;
+				// this is a bit too strict since exDivDate could be in the future, but would have to check
+				// ex div history instead
+			}
 
 			EquityHistoryHelper::TickerHelper temp;
 			temp.ticker = p.ticker;
 			temp.n = p.n;
-			temp.ohlc = GetOHLC(p.ticker, apiSource::alpha, 1000, lastCloseDate); // lastCloseDate is updated by reference
+			temp.ohlc = GetOHLC(p.ticker, source, 1000, lastCloseDate); // lastCloseDate is updated by reference
 			temp.iDate = FindDateOHLC(temp.ohlc, currDate) + 1; // start with next new day
 			temp.opts = p.options;
 			helper.push_back(temp);
@@ -597,11 +606,10 @@ void UpdateEquityHistory(std::vector<TimeSeries>& hist, std::vector<Position> co
 }
 
 
-
 ///////////////////////////////////////////////////////////
 // --- Stock Information Helper Functions ---
 
-Quote parseFilteredQuote(std::string const & json)
+Quote parseFilteredQuote(std::string const & json, std::wstring const & ticker)
 {
 	Quote quote;
 	char buffer[50] = { 0 };
@@ -635,6 +643,8 @@ Quote parseFilteredQuote(std::string const & json)
 
 	quote.latestUpdate /= 1000; // remove milliseconds
 	quote.closeTime /= 1000;
+	quote.ticker = ticker;
+	std::transform(quote.ticker.begin(), quote.ticker.end(), quote.ticker.begin(), ::toupper);
 	return quote;
 }
 
@@ -672,11 +682,11 @@ Stats parseFilteredStats(std::string const & json)
 	return stats;
 }
 
-std::pair<Quote, Stats> parseQuoteStats(std::string const & json)
+std::pair<Quote, Stats> parseQuoteStats(std::string const & json, std::wstring const & ticker)
 {
 	size_t start = json.find("{", 1); // skip first opening {
 	size_t end = json.find("}", start) + 1; // include closing }
-	Quote quote = parseFilteredQuote(json.substr(start, end - start));
+	Quote quote = parseFilteredQuote(json.substr(start, end - start), ticker);
 
 	start = json.find("{", end);
 	end = json.find("}", start) + 1;

@@ -22,7 +22,6 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 Parthenos::Parthenos(PCWSTR szClassName)
 	: BorderlessWindow(szClassName), m_accountNames({ L"Robinhood", L"Arista" })
 {
-
 	// Read Holdings
 	FileIO holdingsFile;
 	holdingsFile.Init(ROOTDIR + L"port.hold");
@@ -300,7 +299,7 @@ void Parthenos::CalculateHistories()
 		else // ASSUMES THAT HOLDINGS HAVEN'T CHANGED SINCE LAST UPDATE (add transactions will invalidate history)
 		{
 			portHist = histFile.Read<TimeSeries>();
-			UpdateEquityHistory(portHist, acc.positions); 
+			UpdateEquityHistory(portHist, acc.positions, m_stats); 
 			histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
 		}
 		histFile.Close();
@@ -393,7 +392,7 @@ void Parthenos::AddTransaction(Transaction t)
 		[](TimeSeries const & ts, date_t date) {return ts.date < date; }
 	);
 	portHist.erase(it, portHist.end());
-	UpdateEquityHistory(portHist, m_accounts[t.account].positions);
+	UpdateEquityHistory(portHist, m_accounts[t.account].positions, m_stats);
 
 	// Write equity history
 	histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
@@ -567,7 +566,7 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 		return D2D1::RectF(
 			0.0f,
 			m_titleBarBottom,
-			m_portfolioListRight,
+			(m_tab == Tabs::TPortfolio) ? m_portfolioListRight : dipRect.right / 2.0f - 10.0f,
 			m_menuBarBottom
 		);
 	}
@@ -627,10 +626,14 @@ void Parthenos::CalculateDividingLines(D2D1_RECT_F dipRect)
 		break;
 	case TReturns:
 	{
-		//m_dividingLines.push_back({
-		//	D2D1::Point2F(dipRect.right / 2.0f - DPIScale::hpx(), m_titleBarBottom),
-		//	D2D1::Point2F(dipRect.right / 2.0f - DPIScale::hpx(), dipRect.bottom)
-		//	});
+		m_dividingLines.push_back({
+			D2D1::Point2F(dipRect.right / 2.0f - 10.0f, m_titleBarBottom),
+			D2D1::Point2F(dipRect.right / 2.0f - 10.0f, dipRect.bottom)
+		});
+		m_dividingLines.push_back({
+			D2D1::Point2F(dipRect.right / 2.0f - DPIScale::hpx(), m_titleBarBottom),
+			D2D1::Point2F(dipRect.right / 2.0f - DPIScale::hpx(), dipRect.bottom)
+		});
 		//float returnsSplit = DPIScale::SnapToPixelY((dipRect.bottom + m_titleBarBottom) / 2.0f) - DPIScale::hpy();
 		//m_dividingLines.push_back({
 		//	D2D1::Point2F(dipRect.right / 2.0f, returnsSplit),

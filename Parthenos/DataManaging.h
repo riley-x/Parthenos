@@ -52,10 +52,12 @@ typedef struct Quote_struct
 	double changePercent;
 	time_t latestUpdate;
 	time_t closeTime;
+	std::wstring ticker;
 
 	inline std::wstring to_wstring() const
 	{
-		return L"Date: "			+ TimeToWString(latestUpdate)
+		return ticker + L": "
+			+ L", Date: "			+ TimeToWString(latestUpdate)
 			+ L", Open: "			+ std::to_wstring(open)
 			+ L", Close: "			+ std::to_wstring(close)
 			+ L", latestPrice: "	+ std::to_wstring(latestPrice)
@@ -94,11 +96,13 @@ typedef struct Stats_struct
 	}
 } Stats;
 
+typedef std::vector<std::pair<Quote, Stats>> QStats;
+
 double GetPrice(std::wstring ticker);
 Quote GetQuote(std::wstring ticker);
 Stats GetStats(std::wstring ticker);
 std::pair<Quote, Stats> GetQuoteStats(std::wstring ticker);
-std::vector<std::pair<Quote, Stats>> GetBatchQuoteStats(std::vector<std::wstring> tickers);
+QStats GetBatchQuoteStats(std::vector<std::wstring> tickers);
 std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source = apiSource::iex, size_t last_n = 0);
 std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source , size_t last_n, date_t & lastCloseDate);
 
@@ -108,7 +112,7 @@ inline bool OHLC_Compare(const OHLC & a, const OHLC & b)
 	return a.date < b.date;
 }
 
-inline std::vector<double> GetMarketPrices(std::vector<std::pair<Quote, Stats>> qstats)
+inline std::vector<double> GetMarketPrices(QStats const & qstats)
 {
 	std::vector<double> out;
 	out.reserve(qstats.size());
@@ -116,6 +120,15 @@ inline std::vector<double> GetMarketPrices(std::vector<std::pair<Quote, Stats>> 
 	return out;
 }
 
+// Assumes 'qstats' is ordered by ticker
+inline QStats::const_iterator FindQStat(QStats const & qstats, std::wstring ticker)
+{
+	QStats::const_iterator it = std::lower_bound(qstats.begin(), qstats.end(), ticker,
+		[](std::pair<Quote, Stats> const & qs, std::wstring const & ticker)
+		{ return qs.first.ticker < ticker; }
+	);
+	return it;
+}
 
 ///////////////////////////////////////////////////////////
 namespace PortfolioObjects
@@ -292,6 +305,12 @@ typedef union Holdings_union
 	Option option;
 } Holdings;
 
+// A vector sorted by tickers. Each ticker has a std::vector<Holdings> with the following elements:
+//		[0]: A TickerInfo struct with the ticker and the number of accounts
+// For each account:
+//		[1]: A HoldingsHeader struct with the number of stock lots and option lots
+//		[2]: The stock lots
+//		[3]: The option lots
 typedef std::vector<std::vector<Holdings>> NestedHoldings;
 
 void AddTransactionToHoldings(NestedHoldings & holdings, Transaction const & transaction);
@@ -425,4 +444,4 @@ inline std::pair<double, double> GetCash(std::vector<Position> const & positions
 // --- Equity history ---
 
 std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Transaction> const & trans);
-void UpdateEquityHistory(std::vector<TimeSeries> & hist, std::vector<Position> const & positions);
+void UpdateEquityHistory(std::vector<TimeSeries> & hist, std::vector<Position> const & positions, QStats const & qstats);
