@@ -101,6 +101,7 @@ Stats GetStats(std::wstring ticker);
 std::pair<Quote, Stats> GetQuoteStats(std::wstring ticker);
 std::vector<std::pair<Quote, Stats>> GetBatchQuoteStats(std::vector<std::wstring> tickers);
 std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source = apiSource::iex, size_t last_n = 0);
+std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source , size_t last_n, date_t & lastCloseDate);
 bool OHLC_Compare(const OHLC & a, const OHLC & b);
 
 inline std::vector<double> GetMarketPrices(std::vector<std::pair<Quote, Stats>> qstats)
@@ -289,10 +290,11 @@ typedef struct Position_struct
 	double avgCost;			// of shares
 	double marketPrice;		// for CASH, cash from transfers
 	double realized_held;	// == sum_lots ( lot.realized ), shares only. For CASH, cash from interest
-	double realized_unheld; // == head.sumReal + proceeds of any open option positions. For CASH, cash from transactions
+	double realized_unheld; // == head.sumReal + proceeds of any open option positions. For CASH, net cash from transactions
 	double unrealized;
 	double APY;
 	std::wstring ticker;
+	std::vector<Option> options; // p/l already included in above, but useful to keep around
 
 	inline std::wstring to_wstring() const
 	{
@@ -309,19 +311,6 @@ typedef struct Position_struct
 			+ L"\n";
 	}
 } Position;
-
-
-
-
-std::vector<Transaction> CSVtoTransactions(std::wstring filepath);
-std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Transaction> const & trans);
-void AddTransactionToHoldings(NestedHoldings & holdings, Transaction const & transaction);
-NestedHoldings FullTransactionsToHoldings(std::vector<Transaction> const & transactions);
-NestedHoldings FlattenedHoldingsToTickers(std::vector<Holdings> const & holdings);
-std::vector<Position> HoldingsToPositions(NestedHoldings const & holdings,
-	char account, date_t date, std::vector<double> prices);
-bool Positions_Compare(const Position a, std::wstring const & ticker);
-void PrintTickerHoldings(std::vector<Holdings> const & h);
 
 
 inline double GetIntrinsicValue(Option const & opt, double latest)
@@ -341,6 +330,19 @@ inline double GetIntrinsicValue(Option const & opt, double latest)
 	}
 }
 
+// --- CSV to transactions ---
+std::vector<Transaction> CSVtoTransactions(std::wstring filepath);
+
+// --- Equity history ---
+std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Transaction> const & trans);
+void UpdateEquityHistory(std::vector<TimeSeries> & hist, std::vector<Position> const & positions);
+
+// --- Holdings ---
+void AddTransactionToHoldings(NestedHoldings & holdings, Transaction const & transaction);
+NestedHoldings FullTransactionsToHoldings(std::vector<Transaction> const & transactions);
+NestedHoldings FlattenedHoldingsToTickers(std::vector<Holdings> const & holdings);
+void PrintTickerHoldings(std::vector<Holdings> const & h);
+
 
 inline void PrintFlattenedHoldings(std::vector<Holdings> const & h)
 {
@@ -350,6 +352,7 @@ inline void PrintFlattenedHoldings(std::vector<Holdings> const & h)
 		PrintTickerHoldings(i);
 	}
 }
+
 
 inline std::vector<std::wstring> GetTickers(NestedHoldings const & holdings, bool cash = false)
 {
@@ -363,6 +366,12 @@ inline std::vector<std::wstring> GetTickers(NestedHoldings const & holdings, boo
 	}
 	return out;
 }
+
+// --- Positions ---
+std::vector<Position> HoldingsToPositions(NestedHoldings const & holdings,
+	char account, date_t date, std::vector<double> prices);
+bool Positions_Compare(const Position a, std::wstring const & ticker);
+
 
 inline std::vector<std::wstring> GetTickers(std::vector<Position> const & positions, bool cash = false)
 {

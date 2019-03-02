@@ -52,9 +52,6 @@ class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver
 	std::vector<Account>					m_accounts; // same order as m_accountNames; extra entry at end for 'All'
 	std::vector<std::wstring>				m_tickers; // tickers in all accounts
 	std::vector<std::pair<Quote, Stats>>	m_stats; // in same order as m_tickers
-	//std::vector<std::vector<Position>>		m_positions; 
-	//std::vector<std::pair<double, D2D1_COLOR_F>> m_returnsBarData; // in equity order of current account
-	//std::vector<std::pair<double, D2D1_COLOR_F>> m_returnsPercBarData; // in equity order of current account
 
 	// Layout
 	float const	m_titleBarHeight		= 30.0f;

@@ -232,6 +232,8 @@ void Parthenos::ProcessCTPMessages()
 			}
 			else if (msg.msg == L"Returns")
 			{
+				m_activeItems.push_back(m_eqHistoryAxes);
+				m_activeItems.push_back(m_menuBar);
 				m_activeItems.push_back(m_returnsAxes);
 				m_activeItems.push_back(m_returnsPercAxes);
 				m_tab = TReturns;
@@ -286,10 +288,17 @@ void Parthenos::ProcessCTPMessages()
 			LoadPieChart();
 			m_pieChart->Refresh();
 			
+			m_eqHistoryAxes->Clear();
+			m_eqHistoryAxes->Line(m_accounts[account].histDate.data(),
+				m_accounts[account].histEquity.data(),
+				m_accounts[account].histDate.size(),
+				Colors::ALMOST_WHITE
+			);
+
 			m_returnsAxes->Clear();
 			m_returnsPercAxes->Clear();
-			m_returnsAxes->Bar(m_accounts[m_currAccount].returnsBarData.data(), m_accounts[m_currAccount].returnsBarData.size());
-			m_returnsPercAxes->Bar(m_accounts[m_currAccount].returnsPercBarData.data(), m_accounts[m_currAccount].returnsPercBarData.size());
+			m_returnsAxes->Bar(m_accounts[account].returnsBarData.data(), m_accounts[account].returnsBarData.size());
+			m_returnsPercAxes->Bar(m_accounts[account].returnsPercBarData.data(), m_accounts[account].returnsPercBarData.size());
 
 			::InvalidateRect(m_hwnd, NULL, FALSE);
 			break;
@@ -373,6 +382,15 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 			m_portfolioListRight,
 			m_titleBarBottom,
 			dipRect.right,
+			dipRect.bottom
+		);
+	}
+	else if (item == m_eqHistoryAxes)
+	{
+		return D2D1::RectF(
+			dipRect.left,
+			m_menuBarBottom,
+			dipRect.right / 2.0f - 10.0f,
 			dipRect.bottom
 		);
 	}
@@ -462,10 +480,49 @@ void Parthenos::AddTransaction(Transaction t)
 	m_accounts[t.account].positions = HoldingsToPositions(holdings, t.account, GetCurrentDate(), GetMarketPrices(m_stats));
 	m_accounts.back().positions = HoldingsToPositions(holdings, -1, GetCurrentDate(), GetMarketPrices(m_stats)); // all accounts
 
+	// Read equity history
+	FileIO histFile;
+	histFile.Init(ROOTDIR + m_accountNames[t.account] + L".hist");
+	histFile.Open();
+	std::vector<TimeSeries> portHist;
+	portHist = histFile.Read<TimeSeries>();
+
+	// Update equity history
+	auto it = std::lower_bound(portHist.begin(), portHist.end(), t.date,
+		[](TimeSeries const & ts, date_t date) {return ts.date < date; }
+	);
+	portHist.erase(it, portHist.end());
+	UpdateEquityHistory(portHist, m_accounts[t.account].positions);
+
+	// Write equity history
+	histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
+	histFile.Close();
+
+	// Update hist data and chart
+	m_accounts[t.account].histDate.clear();
+	m_accounts[t.account].histEquity.clear();
+	double cash_in = GetCash(m_accounts[t.account].positions).second;
+	for (auto const & x : portHist)
+	{
+		m_accounts[t.account].histDate.push_back(x.date);
+		m_accounts[t.account].histEquity.push_back(x.prices + cash_in);
+	}
+	if (m_currAccount == t.account)
+	{
+		m_eqHistoryAxes->Clear();
+		m_eqHistoryAxes->Line(m_accounts[t.account].histDate.data(),
+			m_accounts[t.account].histEquity.data(),
+			m_accounts[t.account].histDate.size(),
+			Colors::ALMOST_WHITE
+		);
+	}
+
 	// Update watchlist
 	std::vector<std::wstring> tickers = GetTickers(m_accounts[t.account].positions);
 	m_portfolioList->Load(tickers, m_accounts[t.account].positions, FilterByKeyMatch(m_tickers, m_stats, tickers));
 	m_portfolioList->Refresh();
+
+	::InvalidateRect(m_hwnd, NULL, FALSE);
 }
 
 NestedHoldings Parthenos::CalculateHoldings() const
@@ -543,7 +600,8 @@ void Parthenos::CalculateHistories()
 		FileIO histFile;
 		histFile.Init(ROOTDIR + acc.name + L".hist");
 		histFile.Open();
-		
+		std::vector<TimeSeries> portHist;
+
 		if (!exists)
 		{
 			// Read transaction history
@@ -554,25 +612,33 @@ void Parthenos::CalculateHistories()
 			transFile.Close();
 
 			// Calculate full equity history
-			std::vector<TimeSeries> portHist = CalculateFullEquityHistory((char)i, trans);
-
-			//// Add to account for plotting
-			//acc.histDate.reserve(portHist.size());
-			//acc.histEquity.reserve(portHist.size());
-			//for (auto const & x : portHist)
-			//{
-			//	acc.histDate.push_back(x.date);
-			//	acc.histEquity.push_back(x.prices);
-			//}
+			portHist = CalculateFullEquityHistory((char)i, trans);
 
 			// Write to file
 			histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
 		}
-		else
+		else // ASSUMES THAT HOLDINGS HAVEN'T CHANGED SINCE LAST UPDATE (add transactions will invalidate history)
 		{
-			// Read and update
+			// Read equity history
+			portHist = histFile.Read<TimeSeries>();
+
+			UpdateEquityHistory(portHist, acc.positions); 
+			// This will almost always crash because Alpha only allows 5 api calls per minute.
+			// Could use thread that sleeps, or try IEX but then need check for ex-dividend
+
+			histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
 		}
 		histFile.Close();
+
+		// Add to account for plotting
+		acc.histDate.reserve(portHist.size());
+		acc.histEquity.reserve(portHist.size());
+		double cash_in = GetCash(acc.positions).second;
+		for (auto const & x : portHist)
+		{
+			acc.histDate.push_back(x.date);
+			acc.histEquity.push_back(x.prices + cash_in);
+		}
 	}
 }
 
@@ -683,7 +749,7 @@ LRESULT Parthenos::OnCreate()
 	m_portfolioList = new Watchlist(m_hwnd, m_d2, this, false);
 	m_menuBar = new MenuBar(m_hwnd, m_d2, this, m_accountNames, m_menuBarBottom - m_titleBarBottom);
 	m_pieChart = new PieChart(m_hwnd, m_d2);
-	//m_eqHistoryAxes = new Axes(m_hwnd, m_d2);
+	m_eqHistoryAxes = new Axes(m_hwnd, m_d2);
 	m_returnsAxes = new Axes(m_hwnd, m_d2);
 	m_returnsPercAxes = new Axes(m_hwnd, m_d2);
 
@@ -693,7 +759,7 @@ LRESULT Parthenos::OnCreate()
 	m_allItems.push_back(m_portfolioList);
 	m_allItems.push_back(m_menuBar);
 	m_allItems.push_back(m_pieChart);
-	//m_allItems.push_back(m_eqHistoryAxes);
+	m_allItems.push_back(m_eqHistoryAxes);
 	m_allItems.push_back(m_returnsAxes);
 	m_allItems.push_back(m_returnsPercAxes);
 	m_activeItems.push_back(m_titleBar);
@@ -726,9 +792,12 @@ LRESULT Parthenos::OnCreate()
 	m_portfolioList->Load(tickers, m_accounts[m_currAccount].positions, stats);
 	LoadPieChart();
 
-	//m_portHistoryAxes->SetXAxisPos(GetCash(m_accounts[m_currAccount].positions).second);
-	//m_portHistoryAxes->Line(m_portHistoryDates.data(), m_portHistoryPrices.data(), m_portHistoryPrices.size());
-	CalculateReturns();
+	m_eqHistoryAxes->SetXAxisPos((float)m_accounts[m_currAccount].histEquity[0]);
+	m_eqHistoryAxes->Line(m_accounts[m_currAccount].histDate.data(),
+		m_accounts[m_currAccount].histEquity.data(),
+		m_accounts[m_currAccount].histDate.size(),
+		Colors::ALMOST_WHITE
+	);
 	m_returnsAxes->SetXAxisPos(0.0f);
 	m_returnsPercAxes->SetXAxisPos(0.0f);
 	m_returnsAxes->Bar(m_accounts[m_currAccount].returnsBarData.data(), m_accounts[m_currAccount].returnsBarData.size());
