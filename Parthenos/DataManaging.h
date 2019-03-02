@@ -6,7 +6,7 @@
 const std::wstring ROOTDIR(L"C:/Users/Riley/Documents/Finances/Parthenos/"); // C:/Users/Riley/Documents/Finances/Parthenos/
 
 ///////////////////////////////////////////////////////////
-// --- OHLC ---
+// --- Stock Information ---
 
 enum class apiSource { iex, alpha };
 
@@ -71,7 +71,6 @@ typedef struct Quote_struct
 	}
 } Quote;
 
-
 typedef struct Stats_struct 
 {
 	date_t exDividendDate;
@@ -102,7 +101,12 @@ std::pair<Quote, Stats> GetQuoteStats(std::wstring ticker);
 std::vector<std::pair<Quote, Stats>> GetBatchQuoteStats(std::vector<std::wstring> tickers);
 std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source = apiSource::iex, size_t last_n = 0);
 std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source , size_t last_n, date_t & lastCloseDate);
-bool OHLC_Compare(const OHLC & a, const OHLC & b);
+
+// returns a.date < b.date
+inline bool OHLC_Compare(const OHLC & a, const OHLC & b)
+{
+	return a.date < b.date;
+}
 
 inline std::vector<double> GetMarketPrices(std::vector<std::pair<Quote, Stats>> qstats)
 {
@@ -112,23 +116,32 @@ inline std::vector<double> GetMarketPrices(std::vector<std::pair<Quote, Stats>> 
 	return out;
 }
 
+
 ///////////////////////////////////////////////////////////
-// --- Portfolio ---
+namespace PortfolioObjects
+{
+	const size_t maxTickerLen = 11;
+}
+
+///////////////////////////////////////////////////////////
+// --- Transactions ---
 
 enum class TransactionType : char { Transfer, Stock, Dividend, Interest, Fee, PutShort, PutLong, CallShort, CallLong };
+
 std::vector<std::wstring> const TRANSACTIONTYPE_STRINGS = { L"Transfer", L"Stock", L"Dividend", L"Interest", L"Fee",
 	L"Short Put", L"Long Put", L"Short Call", L"Long Call" };
+
 inline std::wstring to_wstring(TransactionType t)
 {
 	return TRANSACTIONTYPE_STRINGS[static_cast<char>(t)];
 }
+
 inline TransactionType TransactionStringToEnum(std::wstring const & s)
 {
 	auto it = std::find(TRANSACTIONTYPE_STRINGS.begin(), TRANSACTIONTYPE_STRINGS.end(), s);
 	if (it == TRANSACTIONTYPE_STRINGS.end()) throw std::invalid_argument("Bad transaction");
 	return static_cast<TransactionType>(it - TRANSACTIONTYPE_STRINGS.begin());
 }
-
 
 inline bool isOption(TransactionType type)
 {
@@ -156,12 +169,7 @@ inline bool isShort(TransactionType type)
 	}
 }
 
-namespace PortfolioObjects
-{
-	const size_t maxTickerLen = 11;
-}
-
-typedef struct Transaction_struct 
+typedef struct Transaction_struct
 {
 	char account;				// 1
 	TransactionType type;		// 2
@@ -176,18 +184,24 @@ typedef struct Transaction_struct
 
 	inline std::wstring to_wstring() const
 	{
-		return L"Account: "		+ std::to_wstring(static_cast<int>(account))
-			+ L", Type: "		+ std::to_wstring(static_cast<int>(type))
-			+ L", Ticker: "		+ std::wstring(ticker)
-			+ L", n: "			+ std::to_wstring(n)
-			+ L", Date: "		+ DateToWString(date)
+		return L"Account: " + std::to_wstring(static_cast<int>(account))
+			+ L", Type: " + std::to_wstring(static_cast<int>(type))
+			+ L", Ticker: " + std::wstring(ticker)
+			+ L", n: " + std::to_wstring(n)
+			+ L", Date: " + DateToWString(date)
 			+ L", Expiration: " + DateToWString(expiration)
-			+ L", Value: "		+ std::to_wstring(value)
-			+ L", Price: "		+ std::to_wstring(price)
-			+ L", Strike: "		+ std::to_wstring(strike)
+			+ L", Value: " + std::to_wstring(value)
+			+ L", Price: " + std::to_wstring(price)
+			+ L", Strike: " + std::to_wstring(strike)
 			+ L"\n";
 	}
 } Transaction;
+
+std::vector<Transaction> CSVtoTransactions(std::wstring filepath);
+
+
+///////////////////////////////////////////////////////////
+// --- Holdings ---
 
 // Store sell lots in addition to buy lots to properly wait for dividends
 typedef struct TaxLot_struct 
@@ -280,6 +294,53 @@ typedef union Holdings_union
 
 typedef std::vector<std::vector<Holdings>> NestedHoldings;
 
+void AddTransactionToHoldings(NestedHoldings & holdings, Transaction const & transaction);
+NestedHoldings FullTransactionsToHoldings(std::vector<Transaction> const & transactions);
+NestedHoldings FlattenedHoldingsToTickers(std::vector<Holdings> const & holdings);
+void PrintTickerHoldings(std::vector<Holdings> const & h);
+
+inline void PrintFlattenedHoldings(std::vector<Holdings> const & h)
+{
+	auto holdings = FlattenedHoldingsToTickers(h);
+	for (auto const & i : holdings)
+	{
+		PrintTickerHoldings(i);
+	}
+}
+
+inline std::vector<std::wstring> GetTickers(NestedHoldings const & holdings, bool cash = false)
+{
+	std::vector<std::wstring> out;
+	out.reserve(holdings.size());
+	for (auto const & x : holdings)
+	{
+		std::wstring ticker(x[0].tickerInfo.ticker);
+		if (!cash && ticker == L"CASH") continue;
+		out.push_back(ticker);
+	}
+	return out;
+}
+
+inline double GetIntrinsicValue(Option const & opt, double latest)
+{
+	switch (opt.type)
+	{
+	case TransactionType::PutShort:
+		return (latest < opt.strike) ? opt.n * (latest - opt.strike) : 0.0;
+	case TransactionType::PutLong:
+		return (latest < opt.strike) ? opt.n * (opt.strike - latest) : 0.0;
+	case TransactionType::CallShort:
+		return (latest > opt.strike) ? opt.n * (opt.strike - latest) : 0.0;
+	case TransactionType::CallLong:
+		return (latest > opt.strike) ? opt.n * (latest - opt.strike) : 0.0;
+	default:
+		return 0.0;
+	}
+}
+
+
+///////////////////////////////////////////////////////////
+// --- Positions ---
 
 // Current position for a stock at a given day
 typedef struct Position_struct
@@ -312,66 +373,14 @@ typedef struct Position_struct
 	}
 } Position;
 
-
-inline double GetIntrinsicValue(Option const & opt, double latest)
-{
-	switch (opt.type)
-	{
-	case TransactionType::PutShort:
-		return (latest < opt.strike) ? opt.n * (latest - opt.strike) : 0.0;
-	case TransactionType::PutLong:
-		return (latest < opt.strike) ? opt.n * (opt.strike - latest) : 0.0;
-	case TransactionType::CallShort:
-		return (latest > opt.strike) ? opt.n * (opt.strike - latest) : 0.0;
-	case TransactionType::CallLong:
-		return (latest > opt.strike) ? opt.n * (latest - opt.strike) : 0.0;
-	default:
-		return 0.0;
-	}
-}
-
-// --- CSV to transactions ---
-std::vector<Transaction> CSVtoTransactions(std::wstring filepath);
-
-// --- Equity history ---
-std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Transaction> const & trans);
-void UpdateEquityHistory(std::vector<TimeSeries> & hist, std::vector<Position> const & positions);
-
-// --- Holdings ---
-void AddTransactionToHoldings(NestedHoldings & holdings, Transaction const & transaction);
-NestedHoldings FullTransactionsToHoldings(std::vector<Transaction> const & transactions);
-NestedHoldings FlattenedHoldingsToTickers(std::vector<Holdings> const & holdings);
-void PrintTickerHoldings(std::vector<Holdings> const & h);
-
-
-inline void PrintFlattenedHoldings(std::vector<Holdings> const & h)
-{
-	auto holdings = FlattenedHoldingsToTickers(h);
-	for (auto const & i : holdings)
-	{
-		PrintTickerHoldings(i);
-	}
-}
-
-
-inline std::vector<std::wstring> GetTickers(NestedHoldings const & holdings, bool cash = false)
-{
-	std::vector<std::wstring> out;
-	out.reserve(holdings.size());
-	for (auto const & x : holdings)
-	{
-		std::wstring ticker(x[0].tickerInfo.ticker);
-		if (!cash && ticker == L"CASH") continue;
-		out.push_back(ticker);
-	}
-	return out;
-}
-
-// --- Positions ---
 std::vector<Position> HoldingsToPositions(NestedHoldings const & holdings,
 	char account, date_t date, std::vector<double> prices);
-bool Positions_Compare(const Position a, std::wstring const & ticker);
 
+// returns a.front().ticker < ticker
+inline bool Positions_Compare(const Position a, std::wstring const & ticker)
+{
+	return std::wstring(a.ticker) < ticker;
+}
 
 inline std::vector<std::wstring> GetTickers(std::vector<Position> const & positions, bool cash = false)
 {
@@ -410,3 +419,10 @@ inline std::pair<double, double> GetCash(std::vector<Position> const & positions
 	}
 	return { 0, 0 };
 }
+
+
+///////////////////////////////////////////////////////////
+// --- Equity history ---
+
+std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Transaction> const & trans);
+void UpdateEquityHistory(std::vector<TimeSeries> & hist, std::vector<Position> const & positions);

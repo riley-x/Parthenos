@@ -10,10 +10,11 @@
 
 #include <windowsx.h>
 
+///////////////////////////////////////////////////////////
+// --- Forward declarations ---
 
-// Forward declarations
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
-inline std::wstring MakeLongLabel(std::wstring const & ticker, double val, double percent);
+
 
 ///////////////////////////////////////////////////////////
 // --- Interface functions ---
@@ -191,8 +192,9 @@ void Parthenos::PreShow()
 	m_chart->Draw(L"AAPL");
 }
 
+
 ///////////////////////////////////////////////////////////
-// --- Helper functions ---
+// --- Data Management ---
 
 int Parthenos::AccountToIndex(std::wstring account)
 {
@@ -202,6 +204,187 @@ int Parthenos::AccountToIndex(std::wstring account)
 	}
 	return -1; // also means "All"
 }
+
+NestedHoldings Parthenos::CalculateHoldings() const
+{
+	// Read transaction history
+	FileIO transFile;
+	transFile.Init(ROOTDIR + L"hist.trans");
+	transFile.Open(GENERIC_READ);
+	std::vector<Transaction> trans = transFile.Read<Transaction>();;
+	transFile.Close();
+
+	// Transaction -> Holdings
+	NestedHoldings holdings = FullTransactionsToHoldings(trans);
+	std::vector<Holdings> out;
+	for (auto const & x : holdings) out.insert(out.end(), x.begin(), x.end());
+
+	// Write
+	FileIO holdingsFile;
+	holdingsFile.Init(ROOTDIR + L"port.hold");
+	holdingsFile.Open();
+	holdingsFile.Write(out.data(), sizeof(Holdings) * out.size());
+	holdingsFile.Close();
+
+	return holdings;
+}
+
+// Holdings -> Positions
+void Parthenos::CalculatePositions(NestedHoldings const & holdings)
+{
+	date_t date = GetCurrentDate();
+	for (size_t i = 0; i < m_accountNames.size(); i++)
+	{
+		std::vector<Position> positions = HoldingsToPositions(
+			holdings, static_cast<char>(i), date, GetMarketPrices(m_stats));
+		m_accounts[i].positions = positions;
+	}
+	std::vector<Position> positions = HoldingsToPositions(
+		holdings, -1, date, GetMarketPrices(m_stats)); // all accounts
+	m_accounts.back().positions = positions;
+}
+
+void Parthenos::CalculateReturns()
+{
+	for (Account & acc : m_accounts)
+	{
+		acc.returnsBarData.clear();
+		acc.returnsPercBarData.clear();
+		acc.returnsBarData.reserve(acc.positions.size() - 1); // minus cash
+		acc.returnsPercBarData.reserve(acc.positions.size() - 1); // minus cash
+
+		// sort by decreasing equity
+		std::vector<size_t> inds = sort_indexes(acc.positions,
+			[](Position const & p1, Position const & p2) {return p1.n * p1.marketPrice > p2.n * p2.marketPrice; });
+
+		for (size_t i : inds)
+		{
+			Position const & p = acc.positions[i];
+			if (p.ticker == L"CASH") continue;
+			double returns = p.realized_held + p.realized_unheld + p.unrealized;
+			double perc = (p.n == 0) ? 0.0 : (p.realized_held + p.unrealized) / (p.avgCost * p.n) * 100.0;
+			acc.returnsBarData.push_back({ returns, Colors::Randomizer(p.ticker) });
+			if (perc != 0.0) acc.returnsPercBarData.push_back({ perc, Colors::Randomizer(p.ticker) });
+		}
+	}
+}
+
+// Calculate historical performance
+void Parthenos::CalculateHistories()
+{
+	for (size_t i = 0; i < m_accountNames.size(); i++)
+	{
+		Account & acc = m_accounts[i];
+		bool exists = FileExists((ROOTDIR + acc.name + L".hist").c_str());
+
+		FileIO histFile;
+		histFile.Init(ROOTDIR + acc.name + L".hist");
+		histFile.Open();
+		std::vector<TimeSeries> portHist;
+
+		if (!exists)
+		{
+			// Read transaction history
+			FileIO transFile;
+			transFile.Init(ROOTDIR + L"hist.trans");
+			transFile.Open(GENERIC_READ);
+			std::vector<Transaction> trans = transFile.Read<Transaction>();;
+			transFile.Close();
+
+			// Calculate full equity history
+			portHist = CalculateFullEquityHistory((char)i, trans);
+
+			// Write to file
+			histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
+		}
+		else // ASSUMES THAT HOLDINGS HAVEN'T CHANGED SINCE LAST UPDATE (add transactions will invalidate history)
+		{
+			// Read equity history
+			portHist = histFile.Read<TimeSeries>();
+
+			UpdateEquityHistory(portHist, acc.positions); 
+			// This will almost always crash because Alpha only allows 5 api calls per minute.
+			// Could use thread that sleeps, or try IEX but then need check for ex-dividend
+
+			histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
+		}
+		histFile.Close();
+
+		// Add to account for plotting
+		acc.histDate.reserve(portHist.size());
+		acc.histEquity.reserve(portHist.size());
+		double cash_in = GetCash(acc.positions).second;
+		for (auto const & x : portHist)
+		{
+			acc.histDate.push_back(x.date);
+			acc.histEquity.push_back(x.prices + cash_in);
+		}
+
+		for (auto const & x : portHist) OutputMessage(L"%s: %lf\n", DateToWString(x.date).c_str(), x.prices);
+	}
+}
+
+void Parthenos::AddTransaction(Transaction t)
+{
+	// Update transaction history
+	FileIO transFile;
+	transFile.Init(ROOTDIR + L"hist.trans");
+	transFile.Open();
+	transFile.Append(&t, sizeof(Transaction));
+	transFile.Close();
+
+	// Update holdings
+	FileIO holdingsFile;
+	holdingsFile.Init(ROOTDIR + L"port.hold");
+	holdingsFile.Open();
+	std::vector<Holdings> flattenedHoldings = holdingsFile.Read<Holdings>();
+	NestedHoldings holdings = FlattenedHoldingsToTickers(flattenedHoldings);
+	AddTransactionToHoldings(holdings, t);
+	std::vector<Holdings> out;
+	for (auto const & x : holdings) out.insert(out.end(), x.begin(), x.end());
+	holdingsFile.Write(out.data(), sizeof(Holdings) * out.size());
+	holdingsFile.Close();
+
+	// Update data
+	m_tickers = GetTickers(holdings);
+	m_stats = GetBatchQuoteStats(m_tickers);
+	m_accounts[t.account].positions = HoldingsToPositions(holdings, t.account, GetCurrentDate(), GetMarketPrices(m_stats));
+	m_accounts.back().positions = HoldingsToPositions(holdings, -1, GetCurrentDate(), GetMarketPrices(m_stats)); // all accounts
+
+	// Read equity history
+	FileIO histFile;
+	histFile.Init(ROOTDIR + m_accountNames[t.account] + L".hist");
+	histFile.Open();
+	std::vector<TimeSeries> portHist;
+	portHist = histFile.Read<TimeSeries>();
+
+	// Update equity history
+	auto it = std::lower_bound(portHist.begin(), portHist.end(), t.date,
+		[](TimeSeries const & ts, date_t date) {return ts.date < date; }
+	);
+	portHist.erase(it, portHist.end());
+	UpdateEquityHistory(portHist, m_accounts[t.account].positions);
+
+	// Write equity history
+	histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
+	histFile.Close();
+
+	// Update hist data and chart
+	m_accounts[t.account].histDate.clear();
+	m_accounts[t.account].histEquity.clear();
+	double cash_in = GetCash(m_accounts[t.account].positions).second;
+	for (auto const & x : portHist)
+	{
+		m_accounts[t.account].histDate.push_back(x.date);
+		m_accounts[t.account].histEquity.push_back(x.prices + cash_in);
+	}
+
+	UpdatePortfolioPlotters(t.account);
+}
+
+
+///////////////////////////////////////////////////////////
+// --- Child Management ---
 
 void Parthenos::ProcessCTPMessages()
 {
@@ -408,14 +591,14 @@ void Parthenos::CalculateDividingLines(D2D1_RECT_F dipRect)
 		m_dividingLines.push_back({
 			D2D1::Point2F(m_portfolioListRight - DPIScale::hpx(), m_titleBarBottom),
 			D2D1::Point2F(m_portfolioListRight - DPIScale::hpx(), dipRect.bottom)
-		});
+			});
 		break;
 	case TReturns:
 	{
 		m_dividingLines.push_back({
 			D2D1::Point2F(dipRect.right / 2.0f - DPIScale::hpx(), m_titleBarBottom),
 			D2D1::Point2F(dipRect.right / 2.0f - DPIScale::hpx(), dipRect.bottom)
-		});
+			});
 		//float returnsSplit = DPIScale::SnapToPixelY((dipRect.bottom + m_titleBarBottom) / 2.0f) - DPIScale::hpy();
 		//m_dividingLines.push_back({
 		//	D2D1::Point2F(dipRect.right / 2.0f, returnsSplit),
@@ -427,187 +610,16 @@ void Parthenos::CalculateDividingLines(D2D1_RECT_F dipRect)
 		m_dividingLines.push_back({
 			D2D1::Point2F(m_watchlistRight - DPIScale::hpx(), m_titleBarBottom),
 			D2D1::Point2F(m_watchlistRight - DPIScale::hpx(), dipRect.bottom)
-		});
+			});
 		break;
 	}
 }
 
-
-void Parthenos::AddTransaction(Transaction t)
+inline std::wstring MakeLongLabel(std::wstring const & ticker, double val, double percent)
 {
-	// Update transaction history
-	FileIO transFile;
-	transFile.Init(ROOTDIR + L"hist.trans");
-	transFile.Open();
-	transFile.Append(&t, sizeof(Transaction));
-	transFile.Close();
-
-	// Update holdings
-	FileIO holdingsFile;
-	holdingsFile.Init(ROOTDIR + L"port.hold");
-	holdingsFile.Open();
-	std::vector<Holdings> flattenedHoldings = holdingsFile.Read<Holdings>();
-	NestedHoldings holdings = FlattenedHoldingsToTickers(flattenedHoldings);
-	AddTransactionToHoldings(holdings, t);
-	std::vector<Holdings> out;
-	for (auto const & x : holdings) out.insert(out.end(), x.begin(), x.end());
-	holdingsFile.Write(out.data(), sizeof(Holdings) * out.size());
-	holdingsFile.Close();
-
-	// Update data
-	m_tickers = GetTickers(holdings);
-	m_stats = GetBatchQuoteStats(m_tickers);
-	m_accounts[t.account].positions = HoldingsToPositions(holdings, t.account, GetCurrentDate(), GetMarketPrices(m_stats));
-	m_accounts.back().positions = HoldingsToPositions(holdings, -1, GetCurrentDate(), GetMarketPrices(m_stats)); // all accounts
-
-	// Read equity history
-	FileIO histFile;
-	histFile.Init(ROOTDIR + m_accountNames[t.account] + L".hist");
-	histFile.Open();
-	std::vector<TimeSeries> portHist;
-	portHist = histFile.Read<TimeSeries>();
-
-	// Update equity history
-	auto it = std::lower_bound(portHist.begin(), portHist.end(), t.date,
-		[](TimeSeries const & ts, date_t date) {return ts.date < date; }
-	);
-	portHist.erase(it, portHist.end());
-	UpdateEquityHistory(portHist, m_accounts[t.account].positions);
-
-	// Write equity history
-	histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
-	histFile.Close();
-
-	// Update hist data and chart
-	m_accounts[t.account].histDate.clear();
-	m_accounts[t.account].histEquity.clear();
-	double cash_in = GetCash(m_accounts[t.account].positions).second;
-	for (auto const & x : portHist)
-	{
-		m_accounts[t.account].histDate.push_back(x.date);
-		m_accounts[t.account].histEquity.push_back(x.prices + cash_in);
-	}
-
-	UpdatePortfolioPlotters(t.account);
-}
-
-NestedHoldings Parthenos::CalculateHoldings() const
-{
-	// Read transaction history
-	FileIO transFile;
-	transFile.Init(ROOTDIR + L"hist.trans");
-	transFile.Open(GENERIC_READ);
-	std::vector<Transaction> trans = transFile.Read<Transaction>();;
-	transFile.Close();
-
-	// Transaction -> Holdings
-	NestedHoldings holdings = FullTransactionsToHoldings(trans);
-	std::vector<Holdings> out;
-	for (auto const & x : holdings) out.insert(out.end(), x.begin(), x.end());
-
-	// Write
-	FileIO holdingsFile;
-	holdingsFile.Init(ROOTDIR + L"port.hold");
-	holdingsFile.Open();
-	holdingsFile.Write(out.data(), sizeof(Holdings) * out.size());
-	holdingsFile.Close();
-
-	return holdings;
-}
-
-// Holdings -> Positions
-void Parthenos::CalculatePositions(NestedHoldings const & holdings)
-{
-	date_t date = GetCurrentDate();
-	for (size_t i = 0; i < m_accountNames.size(); i++)
-	{
-		std::vector<Position> positions = HoldingsToPositions(
-			holdings, static_cast<char>(i), date, GetMarketPrices(m_stats));
-		m_accounts[i].positions = positions;
-	}
-	std::vector<Position> positions = HoldingsToPositions(
-		holdings, -1, date, GetMarketPrices(m_stats)); // all accounts
-	m_accounts.back().positions = positions;
-}
-
-void Parthenos::CalculateReturns()
-{
-	for (Account & acc : m_accounts)
-	{
-		acc.returnsBarData.clear();
-		acc.returnsPercBarData.clear();
-		acc.returnsBarData.reserve(acc.positions.size() - 1); // minus cash
-		acc.returnsPercBarData.reserve(acc.positions.size() - 1); // minus cash
-
-		// sort by decreasing equity
-		std::vector<size_t> inds = sort_indexes(acc.positions,
-			[](Position const & p1, Position const & p2) {return p1.n * p1.marketPrice > p2.n * p2.marketPrice; });
-
-		for (size_t i : inds)
-		{
-			Position const & p = acc.positions[i];
-			if (p.ticker == L"CASH") continue;
-			double returns = p.realized_held + p.realized_unheld + p.unrealized;
-			double perc = (p.n == 0) ? 0.0 : (p.realized_held + p.unrealized) / (p.avgCost * p.n) * 100.0;
-			acc.returnsBarData.push_back({ returns, Colors::Randomizer(p.ticker) });
-			if (perc != 0.0) acc.returnsPercBarData.push_back({ perc, Colors::Randomizer(p.ticker) });
-		}
-	}
-}
-
-// Calculate historical performance
-void Parthenos::CalculateHistories()
-{
-	for (size_t i = 0; i < m_accountNames.size(); i++)
-	{
-		Account & acc = m_accounts[i];
-		bool exists = FileExists((ROOTDIR + acc.name + L".hist").c_str());
-
-		FileIO histFile;
-		histFile.Init(ROOTDIR + acc.name + L".hist");
-		histFile.Open();
-		std::vector<TimeSeries> portHist;
-
-		if (!exists)
-		{
-			// Read transaction history
-			FileIO transFile;
-			transFile.Init(ROOTDIR + L"hist.trans");
-			transFile.Open(GENERIC_READ);
-			std::vector<Transaction> trans = transFile.Read<Transaction>();;
-			transFile.Close();
-
-			// Calculate full equity history
-			portHist = CalculateFullEquityHistory((char)i, trans);
-
-			// Write to file
-			histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
-		}
-		else // ASSUMES THAT HOLDINGS HAVEN'T CHANGED SINCE LAST UPDATE (add transactions will invalidate history)
-		{
-			// Read equity history
-			portHist = histFile.Read<TimeSeries>();
-
-			UpdateEquityHistory(portHist, acc.positions); 
-			// This will almost always crash because Alpha only allows 5 api calls per minute.
-			// Could use thread that sleeps, or try IEX but then need check for ex-dividend
-
-			histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
-		}
-		histFile.Close();
-
-		// Add to account for plotting
-		acc.histDate.reserve(portHist.size());
-		acc.histEquity.reserve(portHist.size());
-		double cash_in = GetCash(acc.positions).second;
-		for (auto const & x : portHist)
-		{
-			acc.histDate.push_back(x.date);
-			acc.histEquity.push_back(x.prices + cash_in);
-		}
-
-		for (auto const & x : portHist) OutputMessage(L"%s: %lf\n", DateToWString(x.date).c_str(), x.prices);
-	}
+	wchar_t buffer[100];
+	swprintf_s(buffer, _countof(buffer), L"%s\n%s, %.2lf%%", ticker.c_str(), FormatDollar(val).c_str(), percent);
+	return std::wstring(buffer);
 }
 
 void Parthenos::LoadPieChart()
@@ -683,13 +695,6 @@ void Parthenos::UpdatePortfolioPlotters(char account)
 	m_returnsPercAxes->Bar(m_accounts[account].returnsPercBarData.data(), m_accounts[account].returnsPercBarData.size());
 
 	::InvalidateRect(m_hwnd, NULL, FALSE);
-}
-
-inline std::wstring MakeLongLabel(std::wstring const & ticker, double val, double percent)
-{
-	wchar_t buffer[100];
-	swprintf_s(buffer, _countof(buffer), L"%s\n%s, %.2lf%%", ticker.c_str(), FormatDollar(val).c_str(), percent);
-	return std::wstring(buffer);
 }
 
 
@@ -812,6 +817,37 @@ LRESULT Parthenos::OnNCHitTest(POINT cursor)
 		return HTCLIENT;
 }
 
+LRESULT Parthenos::OnSize(WPARAM wParam)
+{
+	if (wParam == SIZE_MINIMIZED)
+		return 0;
+	else if (wParam == SIZE_MAXIMIZED)
+		m_titleBar->SetMaximized(true);
+	else if (wParam == SIZE_RESTORED)
+		m_titleBar->SetMaximized(false);
+
+	m_sizeChanged = true;
+	if (m_d2.pRenderTarget != NULL)
+	{
+		RECT rc;
+		GetClientRect(m_hwnd, &rc);
+
+		D2D1_SIZE_U size = D2D1::SizeU(rc.right, rc.bottom);
+		m_d2.pRenderTarget->Resize(size);
+
+		D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
+		CalculateDividingLines(dipRect);
+
+		for (auto item : m_activeItems)
+		{
+			item->SetSize(CalculateItemRect(item, dipRect));
+		}
+
+		InvalidateRect(m_hwnd, NULL, FALSE);
+	}
+	return 0;
+}
+
 LRESULT Parthenos::OnPaint()
 {
 	RECT rc;
@@ -849,37 +885,6 @@ LRESULT Parthenos::OnPaint()
 		EndPaint(m_hwnd, &ps);
 	}
 
-	return 0;
-}
-
-LRESULT Parthenos::OnSize(WPARAM wParam)
-{
-	if (wParam == SIZE_MINIMIZED)
-		return 0;
-	else if (wParam == SIZE_MAXIMIZED)
-		m_titleBar->SetMaximized(true);
-	else if (wParam == SIZE_RESTORED)
-		m_titleBar->SetMaximized(false);
-	
-	m_sizeChanged = true;
-	if (m_d2.pRenderTarget != NULL)
-	{
-		RECT rc;
-		GetClientRect(m_hwnd, &rc);
-
-		D2D1_SIZE_U size = D2D1::SizeU(rc.right, rc.bottom);
-		m_d2.pRenderTarget->Resize(size);
-
-		D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
-		CalculateDividingLines(dipRect);
-
-		for (auto item : m_activeItems)
-		{
-			item->SetSize(CalculateItemRect(item, dipRect));
-		}
-
-		InvalidateRect(m_hwnd, NULL, FALSE);
-	}
 	return 0;
 }
 
@@ -978,6 +983,10 @@ LRESULT Parthenos::OnTimer(WPARAM wParam, LPARAM lParam)
 	//ProcessCTPMessages();
 	return 0;
 }
+
+
+///////////////////////////////////////////////////////////
+// --- Other ---
 
 // Message handler for about box.
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
