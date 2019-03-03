@@ -529,6 +529,9 @@ void BarGraph::Make()
 
 	float x_diff = m_axes->GetDataRectXDiff();
 	float boxHalfWidth = 0.4f * x_diff / m_n;
+	float textHalfWidth = 0.5f * x_diff / m_n;
+	float textMinWidth = 20.0f;
+	if (textHalfWidth < textMinWidth) m_labelLayouts.clear();
 	for (int i = 0; i < m_n; i++)
 	{
 		float x = m_axes->XtoDIP(static_cast<double>(i));
@@ -551,12 +554,12 @@ void BarGraph::Make()
 			y1
 		);
 
-		if ((size_t)i < m_labels.size())
+		if ((size_t)i < m_labels.size() && textHalfWidth >= textMinWidth)
 		{
 			m_labelLayouts[i] = D2D1::RectF(
-				x - boxHalfWidth,
+				x - textHalfWidth,
 				y2 - m_axes->GetDataPad(), // label always above bar
-				x+ boxHalfWidth,
+				x + textHalfWidth,
 				y2
 			);
 		}
