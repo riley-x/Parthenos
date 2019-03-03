@@ -395,7 +395,7 @@ void Watchlist::CreateTextLayouts()
 	{
 		if (top + m_rowHeight > m_dipRect.bottom)
 		{
-			OutputMessage(L"Warning: Watchlist too many items");
+			OutputMessage(L"Warning: Watchlist too many items\n");
 			if (i > 0)
 			{
 				m_hLines.resize(i - 1);

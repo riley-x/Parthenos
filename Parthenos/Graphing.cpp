@@ -270,11 +270,12 @@ void Axes::Rescale()
 void Axes::CalculateXTicks()
 {
 	size_t nmax = static_cast<size_t>(m_rect_xdiff / (3.0f * m_labelHeight));
-	if (nmax == 0 || m_dates.empty()) return;
 	size_t step = (m_dates.size() + nmax - 1) / nmax; // round up
-	float xdip = XtoDIP(0);
+	if (step == 0) return;
+
+	float xdip = XtoDIP(0); // assumes dates are plotted as [0, n-1]
 	float spacing = XtoDIP(step) - xdip;
-	
+
 	int last_month = -1;
 	int last_year = -1;
 	bool show_days = GetYear(m_dates.back()) - GetYear(m_dates.front()) < 2; 

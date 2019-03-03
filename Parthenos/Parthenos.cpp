@@ -185,8 +185,8 @@ void Parthenos::PreShow()
 	BOOL bErr = GetClientRect(m_hwnd, &rc);
 	if (bErr == 0) OutputError(L"GetClientRect failed");
 	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
-	m_halfBelowMenu = DPIScale::SnapToPixelY((dipRect.bottom + m_menuBarBottom) / 2.0f);
-	m_centerX = DPIScale::SnapToPixelX(dipRect.right / 2.0f);
+	//m_halfBelowMenu = DPIScale::SnapToPixelY((dipRect.bottom + m_menuBarBottom) / 2.0f);
+	//m_centerX = DPIScale::SnapToPixelX(dipRect.right / 2.0f);
 	CalculateDividingLines(dipRect);
 
 	for (auto item : m_allItems)
