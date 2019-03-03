@@ -16,7 +16,7 @@ void PopupMenu::SetSize(D2D1_RECT_F dipRect)
 	m_dipRect.bottom = m_dipRect.top + m_height;
 
 	m_pixRect = DPIScale::DipsToPixels(m_dipRect);
-	m_borderRect = DPIScale::SnapToPixel(m_borderRect, true);	
+	m_borderRect = DPIScale::SnapToPixel(m_dipRect, true);	
 }
 
 void PopupMenu::Paint(D2D1_RECT_F updateRect)
@@ -52,9 +52,21 @@ void PopupMenu::Paint(D2D1_RECT_F updateRect)
 		);
 	}
 
+	// Divisions
+	m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
+	for (float y : m_divisionYs)
+	{
+		m_d2.pRenderTarget->DrawLine(
+			D2D1::Point2F(m_dipRect.left + 4.0f, m_dipRect.top + y),
+			D2D1::Point2F(m_dipRect.right - 10.0f, m_dipRect.top + y),
+			m_d2.pBrush,
+			1.0f,
+			m_d2.pHairlineStyle
+		);
+	}
+
 	// Border
-	m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
-	m_d2.pRenderTarget->DrawRectangle(m_borderRect, m_d2.pBrush, DPIScale::hpx());
+	m_d2.pRenderTarget->DrawRectangle(m_borderRect, m_d2.pBrush, 1.0f, m_d2.pHairlineStyle);
 }
 
 bool PopupMenu::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
@@ -122,7 +134,7 @@ void PopupMenu::SetItems(std::vector<std::wstring> const & items)
 			items[i].size(),		// The length of the string.
 			m_d2.pTextFormats[m_format],   // The text format to apply to the string (contains font information, etc).
 			500.0f,					// The width of the layout box.
-			m_fontSize,					// The height of the layout box.
+			m_fontSize,				// The height of the layout box.
 			&m_pTextLayouts[i]		// The IDWriteTextLayout interface pointer.
 		);
 		if (FAILED(hr)) throw Error(L"CreateTextLayout failed");
@@ -138,6 +150,16 @@ void PopupMenu::SetItems(std::vector<std::wstring> const & items)
 
 	m_width = 50.0f * ceil((max_width + 20.0f) / 50.0f); // 20 DIP pad
 	m_height = getTop(items.size());
+}
+
+void PopupMenu::SetDivisions(std::vector<size_t> const & divs)
+{
+	m_divisionYs.clear();
+	for (size_t div : divs)
+	{
+		if (div < m_items.size()) 
+			m_divisionYs.push_back(DPIScale::SnapToPixelY(getTop(div)) - DPIScale::hpy());
+	}
 }
 
 

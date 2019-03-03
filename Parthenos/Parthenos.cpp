@@ -177,12 +177,6 @@ void Parthenos::PreShow()
 
 	m_titleBar->SetActive(L"Chart");
 	m_chart->Draw(L"AAPL");
-
-	std::wstring msg;
-	msg.reserve(m_accounts.back().histEquity.size() * 8);
-	for (auto const & x : m_accounts.back().histEquity)
-		msg.append(std::to_wstring(x) + L"\n");
-	m_msgBox->Print(msg);
 }
 
 
@@ -491,6 +485,22 @@ void Parthenos::ProcessCTPMessages()
 
 			m_currAccount = account;
 			UpdatePortfolioPlotters(account);
+			break;
+		}
+		case CTPMessage::MENUBAR_PRINTTRANSACTIONS:
+		{
+			// Read transaction history
+			FileIO transFile;
+			transFile.Init(ROOTDIR + L"hist.trans");
+			transFile.Open(GENERIC_READ);
+			std::vector<Transaction> trans = transFile.Read<Transaction>();;
+			transFile.Close();
+
+			std::wstring out;
+			for (Transaction const & t : trans)
+				out.append(t.to_wstring());
+			m_msgBox->Print(out);
+			
 			break;
 		}
 		case CTPMessage::MENUBAR_ADDTRANSACTION:

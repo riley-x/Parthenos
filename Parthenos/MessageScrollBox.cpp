@@ -19,8 +19,7 @@ void MessageScrollBox::SetSize(D2D1_RECT_F dipRect)
 
 	CreateTextLayout();
 
-	// Set 1 line per minStep, 3 lines per detent
-	m_scrollBar.SetSteps(WHEEL_DELTA / 3, m_metrics.lineCount, m_visibleLines);
+	m_currLine = m_scrollBar.SetSteps(m_metrics.lineCount, m_visibleLines);
 
 	// scroll bar auto sets left
 	m_scrollBar.SetSize(D2D1::RectF(0.0f, m_titleRect.bottom, m_dipRect.right, m_dipRect.bottom));
@@ -208,7 +207,7 @@ void MessageScrollBox::Print(std::wstring const & msg)
 {
 	m_text.append(msg);
 	CreateTextLayout();
-	m_scrollBar.SetSteps(WHEEL_DELTA / 3, m_metrics.lineCount, m_visibleLines);
+	m_currLine = m_scrollBar.SetSteps(m_metrics.lineCount, m_visibleLines, ScrollBar::SetPosMethod::MaintainOffsetBottom);
 	m_scrollBar.Refresh();
 	::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 }
@@ -217,7 +216,7 @@ void MessageScrollBox::Clear()
 {
 	m_text.clear();
 	CreateTextLayout();
-	m_scrollBar.SetSteps(WHEEL_DELTA / 3, m_metrics.lineCount, m_visibleLines);
+	m_currLine = m_scrollBar.SetSteps(m_metrics.lineCount, m_visibleLines);
 	m_scrollBar.Refresh();
 	::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 }

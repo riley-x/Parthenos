@@ -156,6 +156,37 @@ void ScrollBar::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 	}
 }
 
+size_t ScrollBar::SetSteps(size_t totalSteps, size_t visibleSteps, SetPosMethod mtd)
+{
+	int oldTotal = (int)m_totalSteps;
+	int oldVisible = (int)m_visibleSteps;
+	m_totalSteps = (totalSteps < visibleSteps) ? visibleSteps : totalSteps;
+	m_visibleSteps = visibleSteps;
+
+	// Set current pos
+	switch (mtd)
+	{
+	case SetPosMethod::Top:
+		m_currPos = 0;
+		break;
+	case SetPosMethod::MaintainOffsetBottom:
+	{
+		int offset = oldTotal - oldVisible - m_currPos;
+		m_currPos = m_totalSteps - m_visibleSteps - offset;
+		break;
+	}
+	case SetPosMethod::MaintainOffsetTop:
+		break; // keep currPos where it is
+	}
+
+	int maxPos = static_cast<int>(m_totalSteps - m_visibleSteps);
+	if (m_currPos < 0) m_currPos = 0;
+	if (m_currPos > maxPos) m_currPos = maxPos; // maintain current position
+
+	return static_cast<size_t>(m_currPos);
+}
+
+
 void ScrollBar::CalculateBarRect()
 {
 	float fullLength = m_dipRect.bottom - m_dipRect.top - 2.0f * Width;

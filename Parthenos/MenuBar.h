@@ -3,13 +3,11 @@
 #include "AppItem.h"
 #include "Button.h"
 
-class Parthenos;
-
 
 class MenuBar : public AppItem
 {
 public:
-	MenuBar(HWND hwnd, D2Objects const & d2, Parthenos *parent, 
+	MenuBar(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent, 
 		std::vector<std::wstring> accounts, float height);
 	~MenuBar();
 
@@ -22,7 +20,7 @@ public:
 
 private:
 	// Objects
-	Parthenos					 *m_parent;
+	CTPMessageReceiver			 *m_parent;
 	std::vector<DropMenuButton*> m_buttons;
 
 	// Parameters

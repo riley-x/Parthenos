@@ -8,6 +8,7 @@ class ScrollBar : public AppItem
 public:
 	// Statics
 	static float const Width;
+	enum class SetPosMethod {Top, MaintainOffsetTop, MaintainOffsetBottom};
 
 	ScrollBar(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent);
 
@@ -22,16 +23,11 @@ public:
 
 	// Interface
 
-	// minStep should be a fraction of WHEEL_DELTA, while the other steps indicate the number
-	// of minSteps.
-	inline void SetSteps(int minStep, size_t totalSteps, size_t visibleSteps)
-	{
-		m_minStep = minStep;
-		m_totalSteps = (totalSteps < visibleSteps) ? visibleSteps : totalSteps;
-		m_visibleSteps = visibleSteps;
-		int maxPos = static_cast<int>(m_totalSteps - m_visibleSteps);
-		if (m_currPos > maxPos) m_currPos = maxPos; // maintain current position
-	}
+	// minStep should be a fraction of WHEEL_DELTA
+	inline void SetMinStep(int minStep) { m_minStep = minStep; }
+
+	// steps are number of minSteps. returns current position
+	size_t SetSteps(size_t totalSteps, size_t visibleSteps, SetPosMethod mtd = SetPosMethod::Top);
 	inline void Refresh() { CalculateBarRect(); }
 
 private:

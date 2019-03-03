@@ -1,8 +1,8 @@
 #include "stdafx.h"
 #include "MenuBar.h"
-#include "Parthenos.h"
+#include "PopupMenu.h"
 
-MenuBar::MenuBar(HWND hwnd, D2Objects const & d2, Parthenos * parent, 
+MenuBar::MenuBar(HWND hwnd, D2Objects const & d2, CTPMessageReceiver * parent, 
 	std::vector<std::wstring> accounts, float height)
 	: AppItem(hwnd, d2), m_parent(parent)
 {
@@ -15,11 +15,13 @@ MenuBar::MenuBar(HWND hwnd, D2Objects const & d2, Parthenos * parent,
 	temp = new DropMenuButton(hwnd, d2, this, false);
 	temp->SetText(m_texts[1], m_widths[1], height);
 	temp->SetItems(accounts);
+	temp->GetMenu().SetDivisions({ accounts.size() - 1 });
 	m_buttons.push_back(temp);
 
 	temp = new DropMenuButton(hwnd, d2, this, false);
 	temp->SetText(m_texts[2], m_widths[2], height);
-	temp->SetItems({ L"Add...", L"Recalculate All" });
+	temp->SetItems({ L"Add...", L"Print History", L"Recalculate All" });
+	temp->GetMenu().SetDivisions({ 1 });
 	m_buttons.push_back(temp);
 }
 
@@ -109,6 +111,8 @@ void MenuBar::ProcessCTPMessages()
 			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_ACCOUNT);
 		else if (msg.msg == L"Add...") // Transaction->Add...
 			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_ADDTRANSACTION);
+		else if (msg.msg == L"Print History") // Transaction->Print History
+			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_PRINTTRANSACTIONS);
 		else if (msg.msg == L"Recalculate All") // Transaction->Recalculate
 			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_CALCHOLDINGS);
 	}

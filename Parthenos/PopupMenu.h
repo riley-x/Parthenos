@@ -17,6 +17,7 @@ public:
 
 	void Show(bool show = true);
 	void SetItems(std::vector<std::wstring> const & items);
+	void SetDivisions(std::vector<size_t> const & divs);
 	inline std::wstring GetItem(size_t i) const { if (i < m_items.size()) return m_items[i]; else return L""; }
 	inline IDWriteTextLayout* GetLayout(size_t i) const { if (i < m_pTextLayouts.size()) return m_pTextLayouts[i]; else return NULL; }
 
@@ -38,11 +39,11 @@ private:
 	// Drawing
 	D2D1_RECT_F m_borderRect;
 	std::vector<IDWriteTextLayout*> m_pTextLayouts;
-
+	std::vector<float> m_divisionYs;
 
 	// Helpers
 
-	// get DIP coordinate relative to m_dipRect.top of top of boudning box of item i.
+	// get DIP coordinate relative to m_dipRect.top of top of bounding box of item i.
 	// top of text is at getTop(i) + m_vPad
 	inline float getTop(size_t i)
 	{
