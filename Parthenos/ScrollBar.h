@@ -8,7 +8,7 @@ class ScrollBar : public AppItem
 public:
 	// Statics
 	static float const Width;
-	enum class SetPosMethod {Top, MaintainOffsetTop, MaintainOffsetBottom};
+	enum class SetPosMethod {Top, Bottom, MaintainOffsetTop, MaintainOffsetBottom};
 
 	ScrollBar(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent);
 

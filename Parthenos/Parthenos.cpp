@@ -499,7 +499,7 @@ void Parthenos::ProcessCTPMessages()
 			std::wstring out;
 			for (Transaction const & t : trans)
 				out.append(t.to_wstring());
-			m_msgBox->Print(out);
+			m_msgBox->Overwrite(out);
 			
 			break;
 		}

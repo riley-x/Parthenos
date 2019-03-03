@@ -212,6 +212,15 @@ void MessageScrollBox::Print(std::wstring const & msg)
 	::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 }
 
+void MessageScrollBox::Overwrite(std::wstring const & msg)
+{
+	m_text = msg;
+	CreateTextLayout();
+	m_currLine = m_scrollBar.SetSteps(m_metrics.lineCount, m_visibleLines, ScrollBar::SetPosMethod::Bottom);
+	m_scrollBar.Refresh();
+	::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+}
+
 void MessageScrollBox::Clear()
 {
 	m_text.clear();

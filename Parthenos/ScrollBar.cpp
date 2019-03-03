@@ -169,6 +169,9 @@ size_t ScrollBar::SetSteps(size_t totalSteps, size_t visibleSteps, SetPosMethod 
 	case SetPosMethod::Top:
 		m_currPos = 0;
 		break;
+	case SetPosMethod::Bottom:
+		m_currPos = m_totalSteps - m_visibleSteps;
+		break;
 	case SetPosMethod::MaintainOffsetBottom:
 	{
 		int offset = oldTotal - oldVisible - m_currPos;
@@ -181,7 +184,7 @@ size_t ScrollBar::SetSteps(size_t totalSteps, size_t visibleSteps, SetPosMethod 
 
 	int maxPos = static_cast<int>(m_totalSteps - m_visibleSteps);
 	if (m_currPos < 0) m_currPos = 0;
-	if (m_currPos > maxPos) m_currPos = maxPos; // maintain current position
+	if (m_currPos > maxPos) m_currPos = maxPos;
 
 	return static_cast<size_t>(m_currPos);
 }

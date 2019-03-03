@@ -195,19 +195,7 @@ typedef struct Transaction_struct
 	double price;				// 56	don't include fees here
 	double strike;				// 64
 
-	inline std::wstring to_wstring() const
-	{
-		return L"Account: " + std::to_wstring(static_cast<int>(account))
-			+ L", Type: " + std::to_wstring(static_cast<int>(type))
-			+ L", Ticker: " + std::wstring(ticker)
-			+ L", n: " + std::to_wstring(n)
-			+ L", Date: " + DateToWString(date)
-			+ L", Expiration: " + DateToWString(expiration)
-			+ L", Value: " + std::to_wstring(value)
-			+ L", Price: " + std::to_wstring(price)
-			+ L", Strike: " + std::to_wstring(strike)
-			+ L"\n";
-	}
+	std::wstring to_wstring() const;
 } Transaction;
 
 std::vector<Transaction> CSVtoTransactions(std::wstring filepath);

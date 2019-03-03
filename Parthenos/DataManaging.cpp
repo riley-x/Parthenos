@@ -1398,3 +1398,19 @@ inline double GetAPY(double gain, double cost_in, date_t start_date, date_t end_
 	if (time_held <= 0) return (gain / cost_in) * 365.0; // assume 1 day
 	return (gain / cost_in) * 365.0 * 86400.0 / time_held;
 }
+
+
+///////////////////////////////////////////////////////////
+// --- Struct Printing Functions ---
+
+
+std::wstring Transaction_struct::to_wstring() const
+{
+	wchar_t buffer[300];
+	swprintf_s(buffer, _countof(buffer),
+		L"Date: %s, Ticker: %s, Account: %d, Type: %s, n: %d, Value: %.2lf, Price: %.4lf, Expiration: %s, Strike: %.2lf\n",
+		DateToWString(date).c_str(), ticker, static_cast<int>(account), ::to_wstring(type).c_str(),
+		n, value, price, DateToWString(expiration).c_str(), strike
+	);
+	return std::wstring(buffer);
+}

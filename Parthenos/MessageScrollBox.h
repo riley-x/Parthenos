@@ -26,6 +26,7 @@ public:
 
 	// Interface
 	void Print(std::wstring const & msg);
+	void Overwrite(std::wstring const & msg);
 	void Clear();
 
 private:
