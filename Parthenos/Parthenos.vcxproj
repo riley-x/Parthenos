@@ -168,11 +168,13 @@
     <ClInclude Include="Graphing.h" />
     <ClInclude Include="HTTP.h" />
     <ClInclude Include="MenuBar.h" />
+    <ClInclude Include="MessageScrollBox.h" />
     <ClInclude Include="Parthenos.h" />
     <ClInclude Include="PieChart.h" />
     <ClInclude Include="PopupMenu.h" />
     <ClInclude Include="PopupWindow.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="ScrollBar.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="TextBox.h" />
@@ -186,6 +188,7 @@
     <ClCompile Include="D2Objects.cpp" />
     <ClCompile Include="DataManaging.cpp" />
     <ClCompile Include="MenuBar.cpp" />
+    <ClCompile Include="MessageScrollBox.cpp" />
     <ClCompile Include="PieChart.cpp" />
     <ClCompile Include="PopupMenu.cpp" />
     <ClCompile Include="FileIO.cpp" />
@@ -194,6 +197,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Parthenos.cpp" />
     <ClCompile Include="PopupWindow.cpp" />
+    <ClCompile Include="ScrollBar.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

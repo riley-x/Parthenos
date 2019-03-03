@@ -174,6 +174,7 @@ std::vector<T2> FilterByKeyMatch(std::vector<T1> keys, std::vector<T2> vals, std
 namespace Colors
 {
 	const D2D1_COLOR_F HIGHLIGHT		= D2D1::ColorF(0.3f, 0.3f, 0.3f, 1.0f);
+	const D2D1_COLOR_F SCROLL_BAR		= D2D1::ColorF(0.25f, 0.25f, 0.25f, 1.0f);
 	const D2D1_COLOR_F MAIN_BACKGROUND	= D2D1::ColorF(0.2f, 0.2f, 0.2f, 1.0f);
 	const D2D1_COLOR_F WATCH_BACKGROUND = D2D1::ColorF(0.17f, 0.17f, 0.17f, 1.0f);
 	const D2D1_COLOR_F AXES_BACKGROUND	= D2D1::ColorF(0.15f, 0.15f, 0.15f, 1.0f);

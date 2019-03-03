@@ -101,17 +101,19 @@ void Watchlist::Paint(D2D1_RECT_F updateRect)
 bool Watchlist::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 {
 	int i = GetItem(cursor.y);
-	if (m_LButtonDown >= 0 && (wParam & MK_LBUTTON) && i != m_hover) // is dragging
+	if (m_LButtonDown >= 0 && (wParam & MK_LBUTTON)) // is dragging
 	{
-		m_ignoreSelection = true; // is dragging, so don't update even if dropped in same location
-		if (i >= 0 && i < static_cast<int>(m_items.size()))
+		if (m_hover == -1) // First time
 		{
-			m_hover = i;
-			::InvalidateRect(m_hwnd, &m_pixRect, false);
+			m_ignoreSelection = true; // is dragging, so don't update even if dropped in same location
+			m_parent->PostClientMessage(this, L"", CTPMessage::MOUSE_CAPTURED, 0);
 		}
-		else
+		if (i != m_hover)
 		{
-			m_hover = -1;
+			if (i >= 0 && i < static_cast<int>(m_items.size()))
+				m_hover = i;
+			else
+				m_hover = -2; // don't set to -1 to avoid confusion with init
 			::InvalidateRect(m_hwnd, &m_pixRect, false);
 		}
 		handeled = true;
@@ -189,6 +191,7 @@ void Watchlist::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 		}
 		m_hover = -1;
 		m_LButtonDown = -1;
+		m_parent->PostClientMessage(this, L"", CTPMessage::MOUSE_CAPTURED, -1);
 	}
 	ProcessCTPMessages();
 }

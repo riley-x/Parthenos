@@ -99,6 +99,12 @@
     <ClInclude Include="PieChart.h">
       <Filter>Header Files\AppItems</Filter>
     </ClInclude>
+    <ClInclude Include="ScrollBar.h">
+      <Filter>Header Files\AppItems</Filter>
+    </ClInclude>
+    <ClInclude Include="MessageScrollBox.h">
+      <Filter>Header Files\AppItems</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -154,6 +160,12 @@
     </ClCompile>
     <ClCompile Include="PieChart.cpp">
       <Filter>Source Files\AppItems</Filter>
+    </ClCompile>
+    <ClCompile Include="ScrollBar.cpp">
+      <Filter>Source Files\AppItems</Filter>
+    </ClCompile>
+    <ClCompile Include="MessageScrollBox.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

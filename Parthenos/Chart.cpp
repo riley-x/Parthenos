@@ -34,62 +34,6 @@ Chart::Chart(HWND hwnd, D2Objects const & d2)
 	m_timeframeButton.SetActive(3); // default 1 year
 }
 
-
-void Chart::Paint(D2D1_RECT_F updateRect)
-{
-	// When invalidating, converts to pixels then back to DIPs -> updateRect has smaller values
-	// than when invalidated.
-	if (updateRect.bottom <= m_dipRect.top || updateRect.right <= m_dipRect.left) return;
-
-	if (updateRect.top <= m_menuRect.bottom) {
-		// Background of menu
-		m_d2.pBrush->SetColor(Colors::AXES_BACKGROUND);
-		m_d2.pRenderTarget->FillRectangle(m_menuRect, m_d2.pBrush);
-
-		// Ticker box
-		m_tickerBox.Paint(m_menuRect); // pass m_menuRect to force repaint
-
-		// Timeframe menu
-		m_timeframeButton.Paint(m_menuRect);
-
-		// Chart type button highlight
-		m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
-		D2D1_RECT_F iconRect;
-		if (m_chartTypeButtons.GetActiveClickRect(iconRect))
-		{
-			m_d2.pRenderTarget->FillRectangle(iconRect, m_d2.pBrush);
-		}
-
-		// Chart type buttons
-		m_chartTypeButtons.Paint(m_menuRect);
-
-		// Menu division lines
-		m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
-		for (float x : m_divisions)
-		{
-			m_d2.pRenderTarget->DrawLine(
-				D2D1::Point2F(x, m_menuRect.top),
-				D2D1::Point2F(x, m_menuRect.bottom),
-				m_d2.pBrush,
-				DPIScale::PixelsToDipsX(1)
-			);
-		}
-		m_d2.pRenderTarget->DrawLine(
-			D2D1::Point2F(m_menuRect.left, m_menuRect.bottom - DPIScale::hpy()),
-			D2D1::Point2F(m_menuRect.right, m_menuRect.bottom - DPIScale::hpy()),
-			m_d2.pBrush,
-			DPIScale::PixelsToDipsY(1)
-		);
-	}
-
-	// Axes
-	if (updateRect.bottom > m_menuRect.bottom)
-		m_axes.Paint(updateRect);
-
-	// Popups -- need to be last
-	m_timeframeButton.GetMenu().Paint(updateRect);
-}
-
 void Chart::SetSize(D2D1_RECT_F dipRect)
 {
 	bool same_left = false;
@@ -97,7 +41,7 @@ void Chart::SetSize(D2D1_RECT_F dipRect)
 	if (equalRect(m_dipRect, dipRect)) return;
 	if (m_dipRect.left == dipRect.left) same_left = true;
 	if (m_dipRect.top == dipRect.top) same_top = true;
-	
+
 	m_dipRect = dipRect;
 	m_pixRect = DPIScale::DipsToPixels(dipRect);
 
@@ -105,9 +49,9 @@ void Chart::SetSize(D2D1_RECT_F dipRect)
 	m_menuRect.bottom = DPIScale::SnapToPixelY(m_menuRect.top + m_menuHeight);
 
 	m_axes.SetSize(D2D1::RectF(
-		m_dipRect.left, 
-		m_menuRect.bottom, 
-		m_dipRect.right, 
+		m_dipRect.left,
+		m_menuRect.bottom,
+		m_dipRect.right,
 		m_dipRect.bottom
 	));
 
@@ -162,6 +106,59 @@ void Chart::SetSize(D2D1_RECT_F dipRect)
 		m_divisions.push_back(DPIScale::SnapToPixelX(left + m_commandHPad) + DPIScale::hpx());
 		left += 3 * m_commandHPad;
 	}
+}
+
+void Chart::Paint(D2D1_RECT_F updateRect)
+{
+	if (!overlapRect(m_dipRect, updateRect)) return;
+
+	if (updateRect.top <= m_menuRect.bottom) {
+		// Background of menu
+		m_d2.pBrush->SetColor(Colors::AXES_BACKGROUND);
+		m_d2.pRenderTarget->FillRectangle(m_menuRect, m_d2.pBrush);
+
+		// Ticker box
+		m_tickerBox.Paint(m_menuRect); // pass m_menuRect to force repaint
+
+		// Timeframe menu
+		m_timeframeButton.Paint(m_menuRect);
+
+		// Chart type button highlight
+		m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
+		D2D1_RECT_F iconRect;
+		if (m_chartTypeButtons.GetActiveClickRect(iconRect))
+		{
+			m_d2.pRenderTarget->FillRectangle(iconRect, m_d2.pBrush);
+		}
+
+		// Chart type buttons
+		m_chartTypeButtons.Paint(m_menuRect);
+
+		// Menu division lines
+		m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
+		for (float x : m_divisions)
+		{
+			m_d2.pRenderTarget->DrawLine(
+				D2D1::Point2F(x, m_menuRect.top),
+				D2D1::Point2F(x, m_menuRect.bottom),
+				m_d2.pBrush,
+				DPIScale::PixelsToDipsX(1)
+			);
+		}
+		m_d2.pRenderTarget->DrawLine(
+			D2D1::Point2F(m_menuRect.left, m_menuRect.bottom - DPIScale::hpy()),
+			D2D1::Point2F(m_menuRect.right, m_menuRect.bottom - DPIScale::hpy()),
+			m_d2.pBrush,
+			DPIScale::PixelsToDipsY(1)
+		);
+	}
+
+	// Axes
+	if (updateRect.bottom > m_menuRect.bottom)
+		m_axes.Paint(updateRect);
+
+	// Popups -- need to be last
+	m_timeframeButton.GetMenu().Paint(updateRect);
 }
 
 bool Chart::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)

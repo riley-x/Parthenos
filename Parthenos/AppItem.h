@@ -10,7 +10,7 @@ enum class CTPMessage
 {
 	NONE,
 	TITLEBAR_CLOSE, TITLEBAR_MAXRESTORE, TITLEBAR_MIN, TITLEBAR_TAB,
-	BUTTON_DOWN,
+	BUTTON_DOWN, MOUSE_CAPTURED,
 	TEXTBOX_ENTER, TEXTBOX_DEACTIVATED,
 	DROPMENU_SELECTED,
 	WATCHLISTITEM_NEW, WATCHLISTITEM_EMPTY, WATCHLIST_SELECTED,
@@ -24,14 +24,22 @@ typedef struct ClientMessage_struct
 	AppItem *sender;
 	std::wstring msg;
 	CTPMessage imsg;
+	int iData;
+	double dData;
 } ClientMessage;
 
 
 class CTPMessageReceiver
 {
 public:
-	virtual void SendClientMessage(AppItem *sender, std::wstring msg, CTPMessage imsg) { m_messages.push_front({ sender,msg,imsg }); }
-	virtual void PostClientMessage(AppItem *sender, std::wstring msg, CTPMessage imsg) { m_messages.push_back({ sender,msg,imsg }); }
+	virtual void SendClientMessage(AppItem *sender, std::wstring msg, CTPMessage imsg, int iData = 0, double dData = 0) 
+	{
+		m_messages.push_front({ sender,msg,imsg,iData,dData });
+	}
+	virtual void PostClientMessage(AppItem *sender, std::wstring msg, CTPMessage imsg, int iData = 0, double dData = 0) 
+	{
+		m_messages.push_back({ sender,msg,imsg,iData,dData });
+	}
 protected:
 	virtual void ProcessCTPMessages() { if (!m_messages.empty()) m_messages.clear(); }
 	std::deque<ClientMessage> m_messages;
@@ -48,10 +56,11 @@ public:
 	} 
 	virtual void Paint(D2D1_RECT_F updateRect) 
 	{ 
-		m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 0.5f); 
+		if (overlapRect(m_dipRect, updateRect))
+			m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 0.5f); 
 	}
 
-	// generally, should return true when mouse/keyboard captured
+	// should return true when keyboard captured or mouse handeled (i.e. enforce z-order)
 	virtual bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled) { return false; }
 	virtual bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled) { return false; } // use 'handled' to respect z-order
 	virtual void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam) { return; }

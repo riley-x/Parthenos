@@ -443,6 +443,7 @@ void Parthenos::ProcessCTPMessages()
 				m_activeItems.push_back(m_portfolioList);
 				m_activeItems.push_back(m_menuBar);
 				m_activeItems.push_back(m_pieChart);
+				m_activeItems.push_back(m_msgBox);
 				m_tab = TPortfolio;
 			}
 			else if (msg.msg == L"Returns")
@@ -514,6 +515,18 @@ void Parthenos::ProcessCTPMessages()
 			if (!t) break;
 			AddTransaction(*t);
 			delete t;
+			break;
+		}
+		case CTPMessage::MOUSE_CAPTURED: // click and hold
+		{
+			if (msg.iData == -1) // Release
+				m_mouseCaptured = nullptr;
+			else if (msg.iData == 0) // Normal capture
+				m_mouseCaptured = msg.sender;
+			else // Capture the mouse outside the window too
+			{
+				// TODO
+			}
 			break;
 		}
 		default:
@@ -604,6 +617,15 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 			dipRect.right / 2.0f,
 			(dipRect.bottom + m_menuBarBottom) / 2.0f,
 			dipRect.right,
+			dipRect.bottom
+		);
+	}
+	else if (item == m_msgBox)
+	{
+		return D2D1::RectF(
+			0.0f,
+			DPIScale::SnapToPixelY((dipRect.bottom + m_titleBarHeight + m_menuBarHeight) / 2.0f),
+			m_portfolioListRight,
 			dipRect.bottom
 		);
 	}
@@ -802,6 +824,7 @@ LRESULT Parthenos::OnCreate()
 	m_eqHistoryAxes = new Axes(m_hwnd, m_d2);
 	m_returnsAxes = new Axes(m_hwnd, m_d2);
 	m_returnsPercAxes = new Axes(m_hwnd, m_d2);
+	m_msgBox = new MessageScrollBox(m_hwnd, m_d2);
 
 	m_allItems.push_back(m_titleBar);
 	m_allItems.push_back(m_chart);
@@ -812,6 +835,7 @@ LRESULT Parthenos::OnCreate()
 	m_allItems.push_back(m_eqHistoryAxes);
 	m_allItems.push_back(m_returnsAxes);
 	m_allItems.push_back(m_returnsPercAxes);
+	m_allItems.push_back(m_msgBox);
 	m_activeItems.push_back(m_titleBar);
 	m_activeItems.push_back(m_chart);
 	m_activeItems.push_back(m_watchlist);
@@ -939,27 +963,40 @@ LRESULT Parthenos::OnMouseMove(POINT cursor, WPARAM wParam)
 	m_mouseTrack.OnMouseMove(m_hwnd);  // Start tracking.
 
 	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
-	bool handeled = false;
-	for (auto item : m_activeItems)
+	if (m_mouseCaptured)
 	{
-		handeled = item->OnMouseMove(dipCursor, wParam, handeled) || handeled;
+		m_mouseCaptured->OnMouseMove(dipCursor, wParam, false);
+	}
+	else
+	{
+		bool handeled = false;
+		for (auto item : m_activeItems)
+		{
+			handeled = item->OnMouseMove(dipCursor, wParam, handeled) || handeled;
+		}
 	}
 
 	if (!Cursor::isSet) ::SetCursor(Cursor::hArrow);
 
-	//ProcessCTPMessages();
+	ProcessCTPMessages();
 	return 0;
 }
 
 LRESULT Parthenos::OnLButtonDown(POINT cursor, WPARAM wParam)
 {
 	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
-	bool handeled = false;
-	for (auto item : m_activeItems)
+	if (m_mouseCaptured)
 	{
-		handeled = item->OnLButtonDown(dipCursor, handeled) || handeled;
+		m_mouseCaptured->OnLButtonDown(dipCursor, false);
 	}
-	
+	else
+	{
+		bool handeled = false;
+		for (auto item : m_activeItems)
+		{
+			handeled = item->OnLButtonDown(dipCursor, handeled) || handeled;
+		}
+	}
 	ProcessCTPMessages();
 	return 0;
 }
@@ -978,9 +1015,16 @@ LRESULT Parthenos::OnLButtonDblclk(POINT cursor, WPARAM wParam)
 LRESULT Parthenos::OnLButtonUp(POINT cursor, WPARAM wParam)
 {
 	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
-	for (auto item : m_activeItems)
+	if (m_mouseCaptured)
 	{
-		item->OnLButtonUp(dipCursor, wParam);
+		m_mouseCaptured->OnLButtonUp(dipCursor, wParam);
+	}
+	else
+	{
+		for (auto item : m_activeItems)
+		{
+			item->OnLButtonUp(dipCursor, wParam);
+		}
 	}
 	ProcessCTPMessages();
 	

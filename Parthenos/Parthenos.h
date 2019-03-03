@@ -11,6 +11,7 @@
 #include "MenuBar.h"
 #include "PopupWindow.h"
 #include "PieChart.h"
+#include "MessageScrollBox.h"
 
 
 typedef struct Account_struct
@@ -60,6 +61,7 @@ private:
 	Axes					*m_eqHistoryAxes;
 	Axes					*m_returnsAxes;
 	Axes					*m_returnsPercAxes;
+	MessageScrollBox		*m_msgBox;
 
 	// Resource management
 	MouseTrackEvents		m_mouseTrack;
@@ -81,6 +83,7 @@ private:
 	bool m_sizeChanged = false; // For tab changes
 	enum Tabs { TPortfolio, TReturns, TChart };
 	Tabs m_tab = TChart;
+	AppItem *m_mouseCaptured = nullptr;
 
 	// Data management
 	int AccountToIndex(std::wstring account);
