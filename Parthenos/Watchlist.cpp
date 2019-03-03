@@ -307,7 +307,14 @@ void Watchlist::SetColumns(std::vector<Column> const & columns)
 // Get data via batch request
 void Watchlist::Load(std::vector<std::wstring> const & tickers, std::vector<Position> const & positions)
 {
-	Load(tickers, positions, GetBatchQuoteStats(tickers));
+	QStats qstats;
+	try {
+		qstats = GetBatchQuoteStats(tickers);
+	}
+	catch (const std::invalid_argument& ia) {
+		OutputDebugStringA(ia.what()); OutputDebugStringA("\n");
+	}
+	Load(tickers, positions, qstats);
 }
 
 // Clears and creates m_items

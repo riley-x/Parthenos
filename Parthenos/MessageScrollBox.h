@@ -28,30 +28,30 @@ private:
 	CTPMessageReceiver  *m_parent;
 	ScrollBar			m_scrollBar;
 
-	// Text
+	// Text Data
 	std::wstring		m_text;
 	IDWriteTextLayout	*m_pTextLayout = NULL; // must recreate each edit
-	DWRITE_TEXT_METRICS m_metrics;
 	std::vector<float>	m_linePos; // distance from top of layout to top of line
+	DWRITE_TEXT_METRICS m_metrics;
+	std::vector<DWRITE_HIT_TEST_METRICS> m_selectionMetrics;
 
 	// State
 	size_t				m_visibleLines;
 	size_t				m_currLine = 0; // topmost visible line
-
-	// Selection
-	//bool				m_selection = false; // is selection via mouse?
-	//int					m_istart; // for selection
-	//float				m_fstart; // for selection
-	int					m_scrollCapturedMouse = -1; // < 0 if not captured, > 0 if captured
+	bool				m_selection = false; // is actively selecting via mouse?
+	size_t				m_iSelectStart; // index into m_text
+	size_t				m_iSelectEnd; // set equal to start to indicate nothing selected
 	
 	// Parameters
 	float const			m_titleHeight = 18.0f;
 
-	// Drawing
+	// Layout
 	D2D1_RECT_F			m_titleRect;
 	float				m_titleBorderY;
 	D2D1_RECT_F			m_layoutRect;
 
 	// Helpers
 	void CreateTextLayout();
+	int HitTest(D2D1_POINT_2F cursor); // returns the text index under cursor
+	void GetSelectionMetrics();
 };

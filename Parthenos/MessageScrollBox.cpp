@@ -49,12 +49,30 @@ void MessageScrollBox::Paint(D2D1_RECT_F updateRect)
 		m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
 		m_d2.pRenderTarget->DrawTextW(L" Output:", 7, m_d2.pTextFormats[D2Objects::Formats::Segoe12], m_titleRect, m_d2.pBrush);
 
+		
 		// Text
 		if (m_pTextLayout)
 		{
 			m_d2.pRenderTarget->PushAxisAlignedClip(m_layoutRect, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
 			m_d2.pRenderTarget->SetTransform(D2D1::Matrix3x2F::Translation(0, -m_linePos[m_currLine]));
+
+			// Highlight
+			if (m_iSelectStart != m_iSelectEnd)
+			{
+				m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
+				for (auto const & metric : m_selectionMetrics)
+				{
+					m_d2.pRenderTarget->FillRectangle(
+						D2D1::RectF(metric.left, metric.top, metric.left + metric.width, metric.top + metric.height),
+						m_d2.pBrush
+					);
+				}
+			}
+
+			m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
 			m_d2.pRenderTarget->DrawTextLayout(D2D1::Point2F(m_layoutRect.left, m_layoutRect.top), m_pTextLayout, m_d2.pBrush);
+
+
 			m_d2.pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
 			m_d2.pRenderTarget->PopAxisAlignedClip();
 		}
@@ -64,13 +82,22 @@ void MessageScrollBox::Paint(D2D1_RECT_F updateRect)
 
 bool MessageScrollBox::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 {
-	bool out = m_scrollBar.OnMouseMove(cursor, wParam, handeled);
-	if (!out)
+	if (m_selection)
 	{
-		// TODO
+		int i = HitTest(cursor);
+		if (i != m_iSelectEnd)
+		{
+			m_iSelectEnd = i;
+			GetSelectionMetrics();
+			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+		}
+
+		handeled = true;
 	}
+	handeled = m_scrollBar.OnMouseMove(cursor, wParam, handeled) || handeled;
+
 	ProcessCTPMessages();
-	return out;
+	return handeled;
 }
 
 bool MessageScrollBox::OnMouseWheel(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
@@ -86,10 +113,21 @@ bool MessageScrollBox::OnMouseWheel(D2D1_POINT_2F cursor, WPARAM wParam, bool ha
 
 bool MessageScrollBox::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 {
-	if (handeled || !inRect(cursor, m_dipRect)) return false;
+	if (handeled || !inRect(cursor, m_dipRect))
+	{
+		return false;
+	}
+
 	if (!m_scrollBar.OnLButtonDown(cursor, handeled))
 	{
-		// TODO
+		m_selection = true;
+		if (m_iSelectEnd != m_iSelectStart)
+		{
+			::InvalidateRect(m_hwnd, &m_pixRect, FALSE); // remove current highlight
+		}
+		m_iSelectStart = HitTest(cursor);
+		m_iSelectEnd = m_iSelectStart;
+		m_parent->PostClientMessage(this, L"", CTPMessage::MOUSE_CAPTURED, 1);
 	}
 
 	ProcessCTPMessages();
@@ -104,6 +142,18 @@ void MessageScrollBox::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)
 void MessageScrollBox::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 {
 	m_scrollBar.OnLButtonUp(cursor, wParam);
+	if (m_selection)
+	{
+		m_selection = false;
+		m_parent->PostClientMessage(this, L"", CTPMessage::MOUSE_CAPTURED, -1);
+		int i = HitTest(cursor);
+		if (i != m_iSelectEnd)
+		{
+			m_iSelectEnd = i;
+			GetSelectionMetrics();
+			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+		}
+	}
 	ProcessCTPMessages();
 }
 
@@ -118,7 +168,6 @@ void MessageScrollBox::ProcessCTPMessages()
 			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 			break;
 		case CTPMessage::MOUSE_CAPTURED: // always from scrollbox
-			m_scrollCapturedMouse = msg.iData;
 			m_parent->PostClientMessage(this, msg.msg, msg.imsg, msg.iData, msg.dData);
 		default:
 			break;
@@ -206,5 +255,57 @@ void MessageScrollBox::CreateTextLayout()
 		m_visibleLines = 0;
 		m_currLine = 0;
 		m_linePos.clear();
+	}
+}
+
+int MessageScrollBox::HitTest(D2D1_POINT_2F cursor)
+{
+	DWRITE_HIT_TEST_METRICS hitTestMetrics;
+	BOOL isTrailingHit;
+	BOOL isInside;
+
+	m_pTextLayout->HitTestPoint(
+		cursor.x - m_layoutRect.left,
+		cursor.y - m_layoutRect.top + m_linePos[m_currLine],
+		&isTrailingHit,
+		&isInside,
+		&hitTestMetrics
+	);
+
+	return hitTestMetrics.textPosition + isTrailingHit;
+}
+
+// Populates m_selectionMetrics based on iSelectStart and iSelectEnd
+void MessageScrollBox::GetSelectionMetrics()
+{
+	UINT32 count;
+	m_selectionMetrics.resize(m_metrics.lineCount * m_metrics.maxBidiReorderingDepth);
+	HRESULT hr = m_pTextLayout->HitTestTextRange(
+		min(m_iSelectStart, m_iSelectEnd),
+		abs((int)m_iSelectEnd - (int)m_iSelectStart),
+		m_layoutRect.left, // originX
+		m_layoutRect.top, // originY
+		m_selectionMetrics.data(),
+		m_selectionMetrics.size(),
+		&count
+	);
+	m_selectionMetrics.resize(count);
+
+	if (hr == E_NOT_SUFFICIENT_BUFFER) // do again
+	{
+		HRESULT hr = m_pTextLayout->HitTestTextRange(
+			min(m_iSelectStart, m_iSelectEnd),
+			abs((int)m_iSelectEnd - (int)m_iSelectStart),
+			m_layoutRect.left, // originX
+			m_layoutRect.top, // originY
+			m_selectionMetrics.data(),
+			m_selectionMetrics.size(),
+			&count
+		);
+	}
+
+	if (FAILED(hr))
+	{
+		OutputError(L"MessageScrollBo::GetSelectionMetrics failed");
 	}
 }
