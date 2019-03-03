@@ -21,10 +21,10 @@ public:
 
 	// minStep should be a fraction of WHEEL_DELTA, while the other steps indicate the number
 	// of minSteps.
-	inline void SetSteps(int minStep, int totalSteps, int visibleSteps, int initStep = 0)
+	inline void SetSteps(size_t minStep, size_t totalSteps, size_t visibleSteps, int initStep = 0)
 	{
 		m_minStep = minStep;
-		m_totalSteps = totalSteps;
+		m_totalSteps = (totalSteps < visibleSteps) ? visibleSteps : totalSteps;
 		m_visibleSteps = visibleSteps;
 		m_currPos = initStep;
 	}
@@ -39,10 +39,10 @@ private:
 
 	// State
 	enum MouseOn { moNone, moUp, moBar, moDown };
-	int m_minStep = WHEEL_DELTA; // minimum scroll step (fraction of WHEEL_DELTA), i.e. from clicking 
-	int m_totalSteps = 0; // i.e. 0 would indicate no scrolling. Number of minSteps.
-	int m_visibleSteps = 0; // affects size of scroll bar. Number of minSteps.
-	int m_currPos = 0; // current position of top of scroll bar. Assert currStep + visibleSteps <= totalSteps
+	size_t m_minStep = WHEEL_DELTA; // minimum scroll step (fraction of WHEEL_DELTA), i.e. from clicking 
+	size_t m_totalSteps = 0; // i.e. 0 would indicate no scrolling. Number of minSteps.
+	size_t m_visibleSteps = 0; // affects size of scroll bar. Number of minSteps.
+	int m_currPos = 0; // current position of top of scroll bar. Assert currStep + visibleSteps <= totalSteps. Int for easy bounds check
 	MouseOn m_mouseOn = moNone;
 	bool m_drag = false;
 	float m_dragOffset; // when start dragging, offset in DIPs from top of bar

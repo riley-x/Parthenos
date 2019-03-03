@@ -185,6 +185,8 @@ void Parthenos::PreShow()
 	BOOL bErr = GetClientRect(m_hwnd, &rc);
 	if (bErr == 0) OutputError(L"GetClientRect failed");
 	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
+	m_halfBelowMenu = DPIScale::SnapToPixelY((dipRect.bottom + m_menuBarBottom) / 2.0f);
+	m_centerX = DPIScale::SnapToPixelX(dipRect.right / 2.0f);
 	CalculateDividingLines(dipRect);
 
 	for (auto item : m_allItems)
@@ -573,7 +575,7 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 			0.0f,
 			m_menuBarBottom,
 			m_portfolioListRight,
-			DPIScale::SnapToPixelY((dipRect.bottom + m_titleBarHeight + m_menuBarHeight) / 2.0f)
+			m_halfBelowMenu
 		);
 	}
 	else if (item == m_menuBar)
@@ -599,24 +601,24 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 		return D2D1::RectF(
 			dipRect.left,
 			m_menuBarBottom,
-			dipRect.right / 2.0f,
+			m_centerX,
 			dipRect.bottom
 		);
 	}
 	else if (item == m_returnsAxes)
 	{
 		return D2D1::RectF(
-			dipRect.right / 2.0f,
+			m_centerX,
 			m_menuBarBottom,
 			dipRect.right,
-			(dipRect.bottom + m_menuBarBottom) / 2.0f
+			m_halfBelowMenu
 		);
 	}
 	else if (item == m_returnsPercAxes)
 	{
 		return D2D1::RectF(
-			dipRect.right / 2.0f,
-			(dipRect.bottom + m_menuBarBottom) / 2.0f,
+			m_centerX,
+			m_halfBelowMenu,
 			dipRect.right,
 			dipRect.bottom
 		);
@@ -625,7 +627,7 @@ D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dip
 	{
 		return D2D1::RectF(
 			0.0f,
-			DPIScale::SnapToPixelY((dipRect.bottom + m_titleBarHeight + m_menuBarHeight) / 2.0f),
+			m_halfBelowMenu,
 			m_portfolioListRight,
 			dipRect.bottom
 		);
@@ -650,19 +652,10 @@ void Parthenos::CalculateDividingLines(D2D1_RECT_F dipRect)
 		break;
 	case TReturns:
 	{
-		//m_dividingLines.push_back({
-		//	D2D1::Point2F(dipRect.right / 2.0f - 10.0f, m_titleBarBottom),
-		//	D2D1::Point2F(dipRect.right / 2.0f - 10.0f, dipRect.bottom)
-		//});
 		m_dividingLines.push_back({
-			D2D1::Point2F(dipRect.right / 2.0f - DPIScale::hpx(), m_menuBarBottom),
-			D2D1::Point2F(dipRect.right / 2.0f - DPIScale::hpx(), dipRect.bottom)
+			D2D1::Point2F(m_centerX - DPIScale::hpx(), m_menuBarBottom),
+			D2D1::Point2F(m_centerX - DPIScale::hpx(), dipRect.bottom)
 		});
-		//float returnsSplit = DPIScale::SnapToPixelY((dipRect.bottom + m_titleBarBottom) / 2.0f) - DPIScale::hpy();
-		//m_dividingLines.push_back({
-		//	D2D1::Point2F(dipRect.right / 2.0f, returnsSplit),
-		//	D2D1::Point2F(dipRect.right, returnsSplit)
-		//});
 		break;
 	}
 	case TChart:
@@ -906,6 +899,8 @@ LRESULT Parthenos::OnSize(WPARAM wParam)
 		m_d2.pRenderTarget->Resize(size);
 
 		D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
+		m_halfBelowMenu = DPIScale::SnapToPixelY((dipRect.bottom + m_menuBarBottom) / 2.0f);
+		m_centerX = DPIScale::SnapToPixelX(dipRect.right / 2.0f);
 		CalculateDividingLines(dipRect);
 
 		for (auto item : m_activeItems)
@@ -985,6 +980,7 @@ LRESULT Parthenos::OnMouseMove(POINT cursor, WPARAM wParam)
 
 LRESULT Parthenos::OnMouseWheel(POINT cursor, WPARAM wParam)
 {
+	if (!::ScreenToClient(m_hwnd, &cursor)) throw Error(L"ScreenToClient failed");
 	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
 	bool handeled = false;
 	for (auto item : m_activeItems)

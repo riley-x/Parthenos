@@ -36,9 +36,7 @@ public:
 	void Deactivate(bool message = false);
 
 private:
-	TextBox(const TextBox&) = delete; // non construction-copyable
-	TextBox& operator=(const TextBox&) = delete; // non copyable
-
+	
 	// state
 	std::wstring		m_text;
 
@@ -66,5 +64,10 @@ private:
 	void CreateTextLayout();
 	void MoveCaret(int i); // move right by i
 	void DeleteSelection(bool invalidate = true);
+
+	// deleted
+	TextBox(const TextBox&) = delete; // non construction-copyable
+	TextBox& operator=(const TextBox&) = delete; // non copyable
+
 };
 

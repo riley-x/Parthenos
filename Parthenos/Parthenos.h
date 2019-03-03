@@ -77,6 +77,8 @@ private:
 	float		m_menuBarBottom;
 	float		m_watchlistRight;
 	float		m_portfolioListRight;
+	float		m_halfBelowMenu;
+	float		m_centerX;
 	std::vector<Line_t> m_dividingLines;
 
 	// Flags and state

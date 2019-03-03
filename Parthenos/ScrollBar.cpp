@@ -12,7 +12,7 @@ void ScrollBar::SetSize(D2D1_RECT_F dipRect)
 {
 	m_dipRect = dipRect;
 	m_dipRect.left = dipRect.right - m_width;
-	m_pixRect = DPIScale::DipsToPixels(dipRect);
+	m_pixRect = DPIScale::DipsToPixels(m_dipRect);
 
 	// width-2 DIPs for icon
 	m_upArrow.SetSize(D2D1::RectF(
@@ -150,13 +150,15 @@ void ScrollBar::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 		m_drag = false;
 		m_mouseOn = (inRect(cursor, m_dipRect)) ? HitTest(cursor.y) : moNone;
 		m_parent->PostClientMessage(this, L"", CTPMessage::MOUSE_CAPTURED, -1);
+		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 	}
 }
 
 void ScrollBar::CalculateBarRect()
 {
 	float fullLength = m_dipRect.bottom - m_dipRect.top - 2.0f * m_width;
-	float barLength = (float)m_visibleSteps / (float)m_totalSteps * fullLength;
+	float barLength = (m_totalSteps == 0) ? fullLength : 
+		(float)m_visibleSteps / (float)m_totalSteps * fullLength;
 	float barTop = (float)m_currPos / (float)m_totalSteps * fullLength;
 	m_barRect = D2D1::RectF(
 		m_dipRect.left,
@@ -176,7 +178,8 @@ int ScrollBar::CalculatePos(float y, float offset)
 void ScrollBar::ScrollTo(int newPos)
 {
 	if (newPos < 0) newPos = 0;
-	if (newPos > m_totalSteps - m_visibleSteps) newPos = m_totalSteps - m_visibleSteps;
+	int maxPos = static_cast<int>(m_totalSteps - m_visibleSteps);
+	if (newPos > maxPos) newPos = maxPos;
 
 	if (m_currPos != newPos)
 	{

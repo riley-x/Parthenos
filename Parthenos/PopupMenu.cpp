@@ -16,8 +16,7 @@ void PopupMenu::SetSize(D2D1_RECT_F dipRect)
 	m_dipRect.bottom = m_dipRect.top + m_height;
 
 	m_pixRect = DPIScale::DipsToPixels(m_dipRect);
-	m_borderRect = m_dipRect;
-	DPIScale::SnapToPixel(m_borderRect, true);
+	m_borderRect = DPIScale::SnapToPixel(m_borderRect, true);	
 }
 
 void PopupMenu::Paint(D2D1_RECT_F updateRect)

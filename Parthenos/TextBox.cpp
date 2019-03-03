@@ -377,7 +377,7 @@ void TextBox::CreateTextLayout()
 		m_dipRect.bottom - m_dipRect.top, // The height of the layout box.
 		&m_pTextLayout					// The IDWriteTextLayout interface pointer.
 	);
-	if (FAILED(hr)) throw Error(L"CreateTextLayout failed");
+	if (FAILED(hr)) OutputError(L"TextBox CreateTextLayout failed");
 }
 
 // Moves the caret, with error checking, and invalidates
