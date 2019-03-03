@@ -139,6 +139,11 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		// TODO: Handle the mouse-hover message.
 		m_mouseTrack.Reset(m_hwnd);
 		return 0;
+	case WM_MOUSEWHEEL:
+		return OnMouseWheel(
+			POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) },
+			wParam
+		);
 	case WM_SETCURSOR:
 		if (LOWORD(lParam) == HTCLIENT)
 		{
@@ -519,14 +524,10 @@ void Parthenos::ProcessCTPMessages()
 		}
 		case CTPMessage::MOUSE_CAPTURED: // click and hold
 		{
-			if (msg.iData == -1) // Release
+			if (msg.iData < 0) // Release (ReleaseCapture() called in OnLButtonUp)
 				m_mouseCaptured = nullptr;
-			else if (msg.iData == 0) // Normal capture
+			else // Capture (SetCapture() called in OnLButtonDown)
 				m_mouseCaptured = msg.sender;
-			else // Capture the mouse outside the window too
-			{
-				// TODO
-			}
 			break;
 		}
 		default:
@@ -824,7 +825,7 @@ LRESULT Parthenos::OnCreate()
 	m_eqHistoryAxes = new Axes(m_hwnd, m_d2);
 	m_returnsAxes = new Axes(m_hwnd, m_d2);
 	m_returnsPercAxes = new Axes(m_hwnd, m_d2);
-	m_msgBox = new MessageScrollBox(m_hwnd, m_d2);
+	m_msgBox = new MessageScrollBox(m_hwnd, m_d2, this);
 
 	m_allItems.push_back(m_titleBar);
 	m_allItems.push_back(m_chart);
@@ -982,8 +983,23 @@ LRESULT Parthenos::OnMouseMove(POINT cursor, WPARAM wParam)
 	return 0;
 }
 
+LRESULT Parthenos::OnMouseWheel(POINT cursor, WPARAM wParam)
+{
+	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
+	bool handeled = false;
+	for (auto item : m_activeItems)
+	{
+		handeled = item->OnMouseWheel(dipCursor, wParam, handeled) || handeled;
+	}
+
+	//ProcessCTPMessages();
+	return 0;
+}
+
 LRESULT Parthenos::OnLButtonDown(POINT cursor, WPARAM wParam)
 {
+	SetCapture(m_hwnd); // always?
+
 	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
 	if (m_mouseCaptured)
 	{
@@ -1028,7 +1044,7 @@ LRESULT Parthenos::OnLButtonUp(POINT cursor, WPARAM wParam)
 	}
 	ProcessCTPMessages();
 	
-	// ReleaseCapture();
+	ReleaseCapture();
 	return 0;
 }
 

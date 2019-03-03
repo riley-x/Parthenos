@@ -106,7 +106,7 @@ bool Watchlist::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 		if (m_hover == -1) // First time
 		{
 			m_ignoreSelection = true; // is dragging, so don't update even if dropped in same location
-			m_parent->PostClientMessage(this, L"", CTPMessage::MOUSE_CAPTURED, 0);
+			m_parent->PostClientMessage(this, L"", CTPMessage::MOUSE_CAPTURED, 1);
 		}
 		if (i != m_hover)
 		{

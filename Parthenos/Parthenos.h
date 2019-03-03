@@ -106,6 +106,7 @@ private:
 	LRESULT OnSize(WPARAM wParam);
 	LRESULT OnPaint();
 	LRESULT OnMouseMove(POINT cursor, WPARAM wParam);
+	LRESULT OnMouseWheel(POINT cursor, WPARAM wParam);
 	LRESULT	OnLButtonDown(POINT cursor, WPARAM wParam);
 	LRESULT OnLButtonDblclk(POINT cursor, WPARAM wParam);
 	LRESULT	OnLButtonUp(POINT cursor, WPARAM wParam);

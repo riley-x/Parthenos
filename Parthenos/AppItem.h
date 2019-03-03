@@ -10,9 +10,11 @@ enum class CTPMessage
 {
 	NONE,
 	TITLEBAR_CLOSE, TITLEBAR_MAXRESTORE, TITLEBAR_MIN, TITLEBAR_TAB,
-	BUTTON_DOWN, MOUSE_CAPTURED,
+	BUTTON_DOWN, 
+	MOUSE_CAPTURED, // < 0 release, >= 0 capture
 	TEXTBOX_ENTER, TEXTBOX_DEACTIVATED,
 	DROPMENU_SELECTED,
+	SCROLLBAR_SCROLL,
 	WATCHLISTITEM_NEW, WATCHLISTITEM_EMPTY, WATCHLIST_SELECTED,
 	MENUBAR_CALCHOLDINGS, MENUBAR_ACCOUNT, MENUBAR_ADDTRANSACTION,
 	WINDOW_ADDTRANSACTION_P
@@ -32,13 +34,21 @@ typedef struct ClientMessage_struct
 class CTPMessageReceiver
 {
 public:
-	virtual void SendClientMessage(AppItem *sender, std::wstring msg, CTPMessage imsg, int iData = 0, double dData = 0) 
+	void SendClientMessage(AppItem *sender, std::wstring msg, CTPMessage imsg, int iData = 0, double dData = 0) 
 	{
-		m_messages.push_front({ sender,msg,imsg,iData,dData });
+		m_messages.push_front({ sender, msg, imsg, iData, dData });
 	}
-	virtual void PostClientMessage(AppItem *sender, std::wstring msg, CTPMessage imsg, int iData = 0, double dData = 0) 
+	void SendClientMessage(ClientMessage const & msg)
 	{
-		m_messages.push_back({ sender,msg,imsg,iData,dData });
+		m_messages.push_front(msg);
+	}
+	void PostClientMessage(AppItem *sender, std::wstring msg, CTPMessage imsg, int iData = 0, double dData = 0) 
+	{
+		m_messages.push_back({ sender, msg, imsg, iData, dData });
+	}
+	void PostClientMessage(ClientMessage const & msg)
+	{
+		m_messages.push_back(msg);
 	}
 protected:
 	virtual void ProcessCTPMessages() { if (!m_messages.empty()) m_messages.clear(); }
@@ -60,8 +70,9 @@ public:
 			m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 0.5f); 
 	}
 
-	// should return true when keyboard captured or mouse handeled (i.e. enforce z-order)
+	// should return true when keyboard captured or mouse handeled (i.e. true if in dipRect to enforce z-order)
 	virtual bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled) { return false; }
+	virtual bool OnMouseWheel(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled) { return false; }
 	virtual bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled) { return false; } // use 'handled' to respect z-order
 	virtual void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam) { return; }
 	virtual void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam) { return; }

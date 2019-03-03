@@ -32,8 +32,8 @@ public:
 	void Paint(D2D1_RECT_F updateRect);
 	inline bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled) 
 	{
-		if (!handeled) return inRect(cursor, m_clickRect); 
-		return false;
+		if (handeled) return false;
+		return inRect(cursor, m_clickRect);
 	}
 
 	// Interface
