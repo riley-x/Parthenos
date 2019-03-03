@@ -9,6 +9,7 @@ public:
 	MessageScrollBox(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent)
 		: AppItem(hwnd, d2), m_scrollBar(hwnd, d2, this), m_parent(parent) {}
 
+	// AppItem
 	void SetSize(D2D1_RECT_F dipRect);
 	void Paint(D2D1_RECT_F updateRect);
 	bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled);
@@ -16,9 +17,11 @@ public:
 	bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled);
 	void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam);
 	void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam);
-
 	void ProcessCTPMessages();
 
+	// Interface
+	void Print(std::wstring const & msg);
+	void Clear();
 
 private:
 	// Objects

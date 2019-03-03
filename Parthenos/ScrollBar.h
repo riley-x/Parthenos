@@ -24,12 +24,13 @@ public:
 
 	// minStep should be a fraction of WHEEL_DELTA, while the other steps indicate the number
 	// of minSteps.
-	inline void SetSteps(size_t minStep, size_t totalSteps, size_t visibleSteps, int initStep = 0)
+	inline void SetSteps(int minStep, size_t totalSteps, size_t visibleSteps)
 	{
 		m_minStep = minStep;
 		m_totalSteps = (totalSteps < visibleSteps) ? visibleSteps : totalSteps;
 		m_visibleSteps = visibleSteps;
-		m_currPos = initStep;
+		int maxPos = static_cast<int>(m_totalSteps - m_visibleSteps);
+		if (m_currPos > maxPos) m_currPos = maxPos; // maintain current position
 	}
 	inline void Refresh() { CalculateBarRect(); }
 
@@ -39,7 +40,7 @@ private:
 
 	// State
 	enum MouseOn { moNone, moUp, moBar, moDown };
-	size_t m_minStep = WHEEL_DELTA; // minimum scroll step (fraction of WHEEL_DELTA), i.e. from clicking 
+	int m_minStep = WHEEL_DELTA; // minimum scroll step (fraction of WHEEL_DELTA), i.e. from clicking 
 	size_t m_totalSteps = 0; // i.e. 0 would indicate no scrolling. Number of minSteps.
 	size_t m_visibleSteps = 0; // affects size of scroll bar. Number of minSteps.
 	int m_currPos = 0; // current position of top of scroll bar. Assert currStep + visibleSteps <= totalSteps. Int for easy bounds check

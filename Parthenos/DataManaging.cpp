@@ -43,6 +43,11 @@ double GetPrice(std::wstring ticker)
 {
 	std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::tolower);
 	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/" + ticker + L"/price");
+	if (json.empty())
+	{
+		OutputMessage(L"GetPrice HTTP request empty\n");
+		return 0;
+	}
 
 	double price;
 	int n = sscanf_s(json.c_str(), "%lf", &price);
@@ -61,7 +66,12 @@ Quote GetQuote(std::wstring ticker)
 	std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::tolower);
 	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/" + ticker + L"/quote",
 		L"filter=" + QUOTEFILTERS);
-	
+	if (json.empty())
+	{
+		OutputMessage(L"GetQuote HTTP request empty\n");
+		return {};
+	}
+
 	return parseFilteredQuote(json, ticker);
 }
 
@@ -72,6 +82,11 @@ Stats GetStats(std::wstring ticker)
 	std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::tolower);
 	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/" + ticker + L"/stats",
 		L"filter=" + STATSFILTERS);
+	if (json.empty())
+	{
+		OutputMessage(L"GetStats HTTP request empty\n");
+		return {};
+	}
 
 	return parseFilteredStats(json);
 }
@@ -81,12 +96,19 @@ std::pair<Quote, Stats> GetQuoteStats(std::wstring ticker)
 	std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::tolower);
 	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/" + ticker + L"/batch",
 		L"types=quote,stats&filter=" + QUOTEFILTERS + L"," + STATSFILTERS);
+	if (json.empty())
+	{
+		OutputMessage(L"GetQuoteStats HTTP request empty\n");
+		return {};
+	}
 
 	return parseQuoteStats(json, ticker);
 }
 
 std::vector<std::pair<Quote, Stats>> GetBatchQuoteStats(std::vector<std::wstring> tickers)
 {
+	std::vector<std::pair<Quote, Stats>> out;
+
 	std::wstring ticks;
 	for (auto & x : tickers)
 	{
@@ -96,8 +118,12 @@ std::vector<std::pair<Quote, Stats>> GetBatchQuoteStats(std::vector<std::wstring
 	
 	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/market/batch",
 		L"symbols=" + ticks + L"&types=quote,stats&filter=" + QUOTEFILTERS + L"," + STATSFILTERS);
+	if (json.empty())
+	{
+		OutputMessage(L"GetBatchQuoteStats HTTP request empty\n");
+		return out;
+	}
 
-	std::vector<std::pair<Quote, Stats>> out;
 	out.reserve(tickers.size());
 
 	size_t start = 0;
@@ -764,8 +790,15 @@ std::vector<OHLC> GetOHLC_IEX(std::wstring const ticker, size_t last_n, date_t &
 	date_t latestDate = 0;
 	if (ohlcData.size() > 0)
 		latestDate = ohlcData.back().date;
+
 	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/" + ticker + L"/chart/" + chart_range,
 		L"filter=date,open,high,low,close,volume");
+	if (json.empty())
+	{
+		OutputMessage(L"GetOHLC_IEX HTTP request empty\n");
+		return ohlcData;
+	}
+
 	std::vector<OHLC> extra = parseIEXChart(json, latestDate);
 
 	if (days_to_get == -1)
@@ -807,6 +840,12 @@ std::vector<OHLC> GetOHLC_Alpha(std::wstring ticker, size_t last_n, date_t & las
 
 	std::string json = SendHTTPSRequest_GET(ALPHAHOST, L"query", 
 		L"function=TIME_SERIES_DAILY&symbol=" + ticker + L"&outputsize=" + outputsize + L"&apikey=" + ALPHAKEY);
+	if (json.empty())
+	{
+		OutputMessage(L"GetOHLC_Alpha HTTP request empty\n");
+		return ohlcData;
+	}
+
 	std::vector<OHLC> extra = parseAlphaChart(json, latestDate);
 	std::reverse(extra.begin(), extra.end());
 

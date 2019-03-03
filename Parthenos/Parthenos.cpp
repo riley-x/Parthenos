@@ -196,6 +196,12 @@ void Parthenos::PreShow()
 
 	m_titleBar->SetActive(L"Chart");
 	m_chart->Draw(L"AAPL");
+
+	std::wstring msg;
+	msg.reserve(m_accounts.back().histEquity.size() * 8);
+	for (auto const & x : m_accounts.back().histEquity)
+		msg.append(std::to_wstring(x) + L"\n");
+	m_msgBox->Print(msg);
 }
 
 

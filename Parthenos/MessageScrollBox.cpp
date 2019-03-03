@@ -12,9 +12,10 @@ void MessageScrollBox::SetSize(D2D1_RECT_F dipRect)
 	m_titleBorderY = m_titleRect.bottom - DPIScale::hpy();
 
 	m_layoutRect = m_dipRect;
-	m_layoutRect.top = m_titleRect.bottom;
 	m_layoutRect.left += 3.0f;
+	m_layoutRect.top = m_titleRect.bottom;
 	m_layoutRect.right -= 3.0f + ScrollBar::Width;
+	m_layoutRect.bottom -= 3.0f;
 
 	CreateTextLayout();
 
@@ -51,7 +52,7 @@ void MessageScrollBox::Paint(D2D1_RECT_F updateRect)
 		// Text
 		if (m_pTextLayout)
 		{
-			m_d2.pRenderTarget->PushAxisAlignedClip(m_dipRect, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+			m_d2.pRenderTarget->PushAxisAlignedClip(m_layoutRect, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
 			m_d2.pRenderTarget->SetTransform(D2D1::Matrix3x2F::Translation(0, -m_linePos[m_currLine]));
 			m_d2.pRenderTarget->DrawTextLayout(D2D1::Point2F(m_layoutRect.left, m_layoutRect.top), m_pTextLayout, m_d2.pBrush);
 			m_d2.pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
@@ -127,6 +128,24 @@ void MessageScrollBox::ProcessCTPMessages()
 	if (!m_messages.empty()) m_messages.clear();
 }
 
+void MessageScrollBox::Print(std::wstring const & msg)
+{
+	m_text.append(msg);
+	CreateTextLayout();
+	m_scrollBar.SetSteps(WHEEL_DELTA / 3, m_metrics.lineCount, m_visibleLines);
+	m_scrollBar.Refresh();
+	::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+}
+
+void MessageScrollBox::Clear()
+{
+	m_text.clear();
+	CreateTextLayout();
+	m_scrollBar.SetSteps(WHEEL_DELTA / 3, m_metrics.lineCount, m_visibleLines);
+	m_scrollBar.Refresh();
+	::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+}
+
 
 // Creates the text layout and also calculates the metrics, line positions, and visible lines
 void MessageScrollBox::CreateTextLayout()
@@ -168,7 +187,7 @@ void MessageScrollBox::CreateTextLayout()
 				}
 
 				float avgHeight = cum / (float)actualLineCount;
-				m_visibleLines = static_cast<size_t>(roundf((m_dipRect.bottom - m_dipRect.top) / avgHeight));
+				m_visibleLines = static_cast<size_t>(floorf((m_dipRect.bottom - m_dipRect.top) / avgHeight));
 			}
 			else
 			{
