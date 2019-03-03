@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "ScrollBar.h"
 
+float const ScrollBar::Width = 15.0f;
+
 ScrollBar::ScrollBar(HWND hwnd, D2Objects const & d2, CTPMessageReceiver * parent)
 	: AppItem(hwnd, d2), m_upArrow(hwnd, d2), m_dnArrow(hwnd, d2), m_parent(parent)
 {
@@ -11,21 +13,21 @@ ScrollBar::ScrollBar(HWND hwnd, D2Objects const & d2, CTPMessageReceiver * paren
 void ScrollBar::SetSize(D2D1_RECT_F dipRect)
 {
 	m_dipRect = dipRect;
-	m_dipRect.left = dipRect.right - m_width;
+	m_dipRect.left = dipRect.right - Width;
 	m_pixRect = DPIScale::DipsToPixels(m_dipRect);
 
 	// width-2 DIPs for icon
 	m_upArrow.SetSize(D2D1::RectF(
-		m_dipRect.left + 1.0f, m_dipRect.top + 2.0f, m_dipRect.right - 1.0f, m_dipRect.top + m_width
+		m_dipRect.left + 1.0f, m_dipRect.top + 2.0f, m_dipRect.right - 1.0f, m_dipRect.top + Width
 	));
 	m_upArrow.SetClickRect(D2D1::RectF(
-		m_dipRect.left, m_dipRect.top, m_dipRect.right, m_dipRect.top + m_width
+		m_dipRect.left, m_dipRect.top, m_dipRect.right, m_dipRect.top + Width
 	));
 	m_dnArrow.SetSize(D2D1::RectF(
-		m_dipRect.left + 1.0f, m_dipRect.bottom - m_width, m_dipRect.right - 1.0f, m_dipRect.bottom - 2.0f
+		m_dipRect.left + 1.0f, m_dipRect.bottom - Width, m_dipRect.right - 1.0f, m_dipRect.bottom - 2.0f
 	));
 	m_dnArrow.SetClickRect(D2D1::RectF(
-		m_dipRect.left, m_dipRect.bottom - m_width, m_dipRect.right, m_dipRect.bottom
+		m_dipRect.left, m_dipRect.bottom - Width, m_dipRect.right, m_dipRect.bottom
 	));
 
 	CalculateBarRect();
@@ -156,22 +158,22 @@ void ScrollBar::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 
 void ScrollBar::CalculateBarRect()
 {
-	float fullLength = m_dipRect.bottom - m_dipRect.top - 2.0f * m_width;
+	float fullLength = m_dipRect.bottom - m_dipRect.top - 2.0f * Width;
 	float barLength = (m_totalSteps == 0) ? fullLength : 
 		(float)m_visibleSteps / (float)m_totalSteps * fullLength;
 	float barTop = (float)m_currPos / (float)m_totalSteps * fullLength;
 	m_barRect = D2D1::RectF(
 		m_dipRect.left,
-		m_dipRect.top + m_width + barTop,
+		m_dipRect.top + Width + barTop,
 		m_dipRect.right,
-		m_dipRect.top + m_width + barTop + barLength
+		m_dipRect.top + Width + barTop + barLength
 	);
 }
 
 int ScrollBar::CalculatePos(float y, float offset)
 {
-	float fullLength = m_dipRect.bottom - m_dipRect.top - 2.0f * m_width;
-	float dipPos = y - offset - (m_dipRect.top + m_width);
+	float fullLength = m_dipRect.bottom - m_dipRect.top - 2.0f * Width;
+	float dipPos = y - offset - (m_dipRect.top + Width);
 	return static_cast<int>(roundf(dipPos / fullLength * (float)m_totalSteps));
 }
 
@@ -192,8 +194,8 @@ void ScrollBar::ScrollTo(int newPos)
 // y client DIP
 ScrollBar::MouseOn ScrollBar::HitTest(float y)
 {
-	if (y < m_dipRect.top + m_width) return moUp;
-	else if (y > m_dipRect.bottom - m_width) return moDown;
+	if (y < m_dipRect.top + Width) return moUp;
+	else if (y > m_dipRect.bottom - Width) return moDown;
 	else if (y > m_barRect.top && y < m_barRect.bottom) return moBar;
 	else return moNone;
 }

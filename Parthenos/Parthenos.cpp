@@ -185,8 +185,8 @@ void Parthenos::PreShow()
 	BOOL bErr = GetClientRect(m_hwnd, &rc);
 	if (bErr == 0) OutputError(L"GetClientRect failed");
 	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
-	//m_halfBelowMenu = DPIScale::SnapToPixelY((dipRect.bottom + m_menuBarBottom) / 2.0f);
-	//m_centerX = DPIScale::SnapToPixelX(dipRect.right / 2.0f);
+	m_halfBelowMenu = DPIScale::SnapToPixelY((dipRect.bottom + m_menuBarBottom) / 2.0f);
+	m_centerX = DPIScale::SnapToPixelX(dipRect.right / 2.0f);
 	CalculateDividingLines(dipRect);
 
 	for (auto item : m_allItems)
@@ -649,6 +649,10 @@ void Parthenos::CalculateDividingLines(D2D1_RECT_F dipRect)
 			D2D1::Point2F(m_portfolioListRight - DPIScale::hpx(), m_menuBarBottom),
 			D2D1::Point2F(m_portfolioListRight - DPIScale::hpx(), dipRect.bottom)
 			});
+		m_dividingLines.push_back({
+			D2D1::Point2F(dipRect.left, m_halfBelowMenu - DPIScale::hpy()),
+			D2D1::Point2F(m_portfolioListRight, m_halfBelowMenu - DPIScale::hpy())
+		});
 		break;
 	case TReturns:
 	{

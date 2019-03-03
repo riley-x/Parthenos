@@ -33,8 +33,7 @@ private:
 
 	// State
 	size_t				m_visibleLines;
-	size_t				m_lineStart = 0;
-	size_t				m_lineEnd = 0; // exclusive
+	size_t				m_currLine = 0; // topmost visible line
 
 	// Selection
 	//bool				m_selection = false; // is selection via mouse?
@@ -42,7 +41,12 @@ private:
 	//float				m_fstart; // for selection
 	int					m_scrollCapturedMouse = -1; // < 0 if not captured, > 0 if captured
 	
+	// Parameters
+	float const			m_titleHeight = 18.0f;
+
 	// Drawing
+	D2D1_RECT_F			m_titleRect;
+	float				m_titleBorderY;
 	D2D1_RECT_F			m_layoutRect;
 
 	// Helpers

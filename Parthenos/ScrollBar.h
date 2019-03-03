@@ -6,6 +6,9 @@
 class ScrollBar : public AppItem
 {
 public:
+	// Statics
+	static float const Width;
+
 	ScrollBar(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent);
 
 	// AppItem
@@ -33,9 +36,6 @@ public:
 private:
 	// Parent
 	CTPMessageReceiver *m_parent;
-
-	// Parameters
-	float const m_width = 15.0f;
 
 	// State
 	enum MouseOn { moNone, moUp, moBar, moDown };

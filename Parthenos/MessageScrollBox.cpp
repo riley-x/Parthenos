@@ -7,36 +7,57 @@ void MessageScrollBox::SetSize(D2D1_RECT_F dipRect)
 	m_dipRect = dipRect;
 	m_pixRect = DPIScale::DipsToPixels(m_dipRect);
 
+	m_titleRect = m_dipRect;
+	m_titleRect.bottom = DPIScale::SnapToPixelY(m_titleRect.top + m_titleHeight);
+	m_titleBorderY = m_titleRect.bottom - DPIScale::hpy();
+
 	m_layoutRect = m_dipRect;
+	m_layoutRect.top = m_titleRect.bottom;
 	m_layoutRect.left += 3.0f;
-	m_layoutRect.right -= 3.0f;
+	m_layoutRect.right -= 3.0f + ScrollBar::Width;
 
-	m_text = L"ASDFLSAKDJFLSA\nsadfasdl\n\n\n\n\n\n\n\n\nkjsadlfkjsaldjflsadkjflaskdjflaksdjflksdfjdslkfajs\nasdlfkj";
 	CreateTextLayout();
-	m_scrollBar.SetSteps(WHEEL_DELTA / 3, m_metrics.lineCount, m_visibleLines);
-	// Set 1 line per minStep, 3 lines per detent
 
-	m_scrollBar.SetSize(m_dipRect); // scroll bar auto sets left
+	// Set 1 line per minStep, 3 lines per detent
+	m_scrollBar.SetSteps(WHEEL_DELTA / 3, m_metrics.lineCount, m_visibleLines);
+
+	// scroll bar auto sets left
+	m_scrollBar.SetSize(D2D1::RectF(0.0f, m_titleRect.bottom, m_dipRect.right, m_dipRect.bottom));
 }
 
 void MessageScrollBox::Paint(D2D1_RECT_F updateRect)
 {
 	if (!overlapRect(m_dipRect, updateRect)) return;
-	//m_d2.pBrush->SetColor(Colors::ACCENT);
-	//m_d2.pRenderTarget->DrawRectangle(DPIScale::SnapToPixel(m_dipRect), m_d2.pBrush, 1.0f, m_d2.pHairlineStyle);
-	m_d2.pBrush->SetColor(Colors::WATCH_BACKGROUND);
-	m_d2.pRenderTarget->FillRectangle(m_dipRect, m_d2.pBrush);
-
-	if (m_pTextLayout)
+	if (updateRect.left < m_layoutRect.right)
 	{
-		m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
-		//m_d2.pRenderTarget->PushAxisAlignedClip(m_dipRect, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
-		//m_d2.pRenderTarget->SetTransform(D2D1::Matrix3x2F::Translation(0, -m_linePos[m_lineStart]));
-		m_d2.pRenderTarget->DrawTextLayout(D2D1::Point2F(m_layoutRect.left, m_layoutRect.top), m_pTextLayout, m_d2.pBrush);
-		//m_d2.pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
-		//m_d2.pRenderTarget->PopAxisAlignedClip();
-	}
+		// Background
+		m_d2.pBrush->SetColor(Colors::WATCH_BACKGROUND);
+		m_d2.pRenderTarget->FillRectangle(m_dipRect, m_d2.pBrush);
 
+		// Title
+		m_d2.pBrush->SetColor(Colors::AXES_BACKGROUND);
+		m_d2.pRenderTarget->FillRectangle(m_titleRect, m_d2.pBrush);
+		m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
+		m_d2.pRenderTarget->DrawLine(
+			D2D1::Point2F(m_titleRect.left, m_titleBorderY),
+			D2D1::Point2F(m_titleRect.right, m_titleBorderY),
+			m_d2.pBrush,
+			1.0f,
+			m_d2.pHairlineStyle
+		);
+		m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
+		m_d2.pRenderTarget->DrawTextW(L" Output:", 7, m_d2.pTextFormats[D2Objects::Formats::Segoe12], m_titleRect, m_d2.pBrush);
+
+		// Text
+		if (m_pTextLayout)
+		{
+			m_d2.pRenderTarget->PushAxisAlignedClip(m_dipRect, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+			m_d2.pRenderTarget->SetTransform(D2D1::Matrix3x2F::Translation(0, -m_linePos[m_currLine]));
+			m_d2.pRenderTarget->DrawTextLayout(D2D1::Point2F(m_layoutRect.left, m_layoutRect.top), m_pTextLayout, m_d2.pBrush);
+			m_d2.pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
+			m_d2.pRenderTarget->PopAxisAlignedClip();
+		}
+	}
 	m_scrollBar.Paint(updateRect);
 }
 
@@ -92,7 +113,7 @@ void MessageScrollBox::ProcessCTPMessages()
 		switch (msg.imsg)
 		{
 		case CTPMessage::SCROLLBAR_SCROLL:
-			// TODO
+			m_currLine += msg.iData;
 			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 			break;
 		case CTPMessage::MOUSE_CAPTURED: // always from scrollbox
@@ -131,23 +152,32 @@ void MessageScrollBox::CreateTextLayout()
 		UINT32 actualLineCount;
 		DWRITE_LINE_METRICS *metrics = new DWRITE_LINE_METRICS[m_metrics.lineCount];
 		hr = m_pTextLayout->GetLineMetrics(metrics, m_metrics.lineCount, &actualLineCount);
-		if (actualLineCount != m_metrics.lineCount) 
+		if (actualLineCount != m_metrics.lineCount)
 			OutputMessage(L"MessageBox CreateTextLayout line count mismatch: expected %u, got %u\n", m_metrics.lineCount, actualLineCount);
-	
+
 		if (SUCCEEDED(hr))
 		{
-			m_linePos.resize(actualLineCount);
-			float cum = 0;
-			for (size_t i = 0; i < actualLineCount; i++)
+			if (actualLineCount != 0)
 			{
-				m_linePos[i] = cum;
-				cum += metrics[i].height;
+				m_linePos.resize(actualLineCount);
+				float cum = 0;
+				for (size_t i = 0; i < actualLineCount; i++)
+				{
+					m_linePos[i] = cum;
+					cum += metrics[i].height;
+				}
+
+				float avgHeight = cum / (float)actualLineCount;
+				m_visibleLines = static_cast<size_t>(roundf((m_dipRect.bottom - m_dipRect.top) / avgHeight));
 			}
-
-			float avgHeight = cum / (float)actualLineCount;
-			m_visibleLines = static_cast<size_t>(roundf((m_dipRect.bottom - m_dipRect.top) / avgHeight));
+			else
+			{
+				m_metrics.lineCount = 0;
+				m_visibleLines = 0;
+				m_currLine = 0;
+				m_linePos.clear();
+			}
 		}
-
 		delete[] metrics;
 	}
 	if (FAILED(hr))
@@ -155,5 +185,7 @@ void MessageScrollBox::CreateTextLayout()
 		OutputError(L"MessageBox CreateTextLayout failed");
 		m_metrics.lineCount = 0;
 		m_visibleLines = 0;
+		m_currLine = 0;
+		m_linePos.clear();
 	}
 }
