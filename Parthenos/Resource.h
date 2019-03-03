@@ -21,6 +21,7 @@
 #define IDB_LINE                        135
 #define IDB_ENVELOPE                    136
 #define IDB_DOWNARROWHEAD               137
+#define IDA_COPY                        901
 #define IDC_STATIC                      -1
 
 // Next default values for new objects

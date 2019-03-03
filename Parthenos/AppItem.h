@@ -79,6 +79,7 @@ public:
 	virtual bool OnChar(wchar_t c, LPARAM lParam) { return false; }
 	virtual bool OnKeyDown(WPARAM wParam, LPARAM lParam) { return false; }
 	virtual void OnTimer(WPARAM wParam, LPARAM lParam) { return; }
+	virtual bool OnCopy() { return false; }
 
 	D2D1_RECT_F GetDIPRect() const { return m_dipRect; }
 

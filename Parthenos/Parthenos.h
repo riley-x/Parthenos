@@ -115,6 +115,7 @@ private:
 	LRESULT OnChar(wchar_t c, LPARAM lParam);
 	bool	OnKeyDown(WPARAM wParam, LPARAM lParam);
 	LRESULT OnTimer(WPARAM wParam, LPARAM lParam);
+	void	OnCopy();
 
 	// Deleted
 	Parthenos(const Parthenos&) = delete; // non construction-copyable

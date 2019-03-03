@@ -65,41 +65,22 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 	case WM_CREATE:
 		return OnCreate();
-	//case WM_COMMAND: // Command items from application menu; accelerators
-	//{
-	//	int wmId = LOWORD(wParam);
-	//	// Parse the menu selections:
-	//	switch (wmId)
-	//	{
-	//	case IDM_ABOUT:
-	//		DialogBox(m_hInstance, MAKEINTRESOURCE(IDD_ABOUTBOX), m_hwnd, About);
-	//		break;
-	//	case IDM_EXIT:
-	//		DestroyWindow(m_hwnd);
-	//		break;
-	//		/*
-	//	case ID_DRAW_MODE:
-	//		SetMode(DrawMode);
-	//		break;
-	//	case ID_SELECT_MODE:
-	//		SetMode(SelectMode);
-	//		break;
-	//	case ID_TOGGLE_MODE:
-	//		if (mode == DrawMode)
-	//		{
-	//			SetMode(SelectMode);
-	//		}
-	//		else
-	//		{
-	//			SetMode(DrawMode);
-	//		}
-	//		break;
-	//		*/
-	//	default:
-	//		return DefWindowProc(m_hwnd, uMsg, wParam, lParam);
-	//	}
-	//	return 0;
-	//}
+	case WM_COMMAND: // Command items from application menu; accelerators
+	{
+		int wmId = LOWORD(wParam);
+		switch (wmId)
+		{
+		case IDM_ABOUT:
+			DialogBox(m_hInstance, MAKEINTRESOURCE(IDD_ABOUTBOX), m_hwnd, About);
+			break;
+		case IDA_COPY:
+			OnCopy();
+			break;
+		default:
+			return DefWindowProc(m_hwnd, uMsg, wParam, lParam);
+		}
+		return 0;
+	}
 	//case WM_CLOSE: {
 	//	if (MessageBox(m_hwnd, L"Really quit?", L"Parthenos", MB_OKCANCEL) == IDOK)
 	//	{
@@ -1093,6 +1074,14 @@ LRESULT Parthenos::OnTimer(WPARAM wParam, LPARAM lParam)
 	}
 	//ProcessCTPMessages();
 	return 0;
+}
+
+void Parthenos::OnCopy()
+{
+	for (auto item : m_activeItems)
+	{
+		if (item->OnCopy()) break; // short circuit
+	}
 }
 
 

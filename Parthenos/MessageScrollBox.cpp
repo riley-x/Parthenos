@@ -157,6 +157,33 @@ void MessageScrollBox::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 	ProcessCTPMessages();
 }
 
+bool MessageScrollBox::OnCopy()
+{
+	if (m_iSelectEnd == m_iSelectStart) return false;
+
+	std::wstring out = m_text.substr(
+		min(m_iSelectStart, m_iSelectEnd), 
+		abs((int)m_iSelectEnd - (int)m_iSelectStart)
+	);
+
+	if (!OpenClipboard(m_hwnd)) return false;
+
+	HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, sizeof(wchar_t) * (out.size() + 1)); // plus null
+	if (hMem == NULL)
+	{
+		CloseClipboard();
+		return false;
+	}
+	memcpy(GlobalLock(hMem), out.data(), sizeof(wchar_t) * (out.size() + 1));
+	GlobalUnlock(hMem);
+
+	EmptyClipboard();
+	SetClipboardData(CF_UNICODETEXT, hMem);
+	CloseClipboard();
+
+	return true;
+}
+
 void MessageScrollBox::ProcessCTPMessages()
 {
 	for (auto const & msg : m_messages)
