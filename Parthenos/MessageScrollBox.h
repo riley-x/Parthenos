@@ -48,7 +48,8 @@ private:
 	bool				m_selection = false; // is actively selecting via mouse?
 	size_t				m_iSelectStart; // index into m_text
 	size_t				m_iSelectEnd; // set equal to start to indicate nothing selected
-	
+	bool				m_timerSet = false;
+
 	// Parameters
 	float const			m_titleHeight = 18.0f;
 

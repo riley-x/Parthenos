@@ -30,6 +30,14 @@ public:
 	size_t SetSteps(size_t totalSteps, size_t visibleSteps, SetPosMethod mtd = SetPosMethod::Top);
 	inline void Refresh() { CalculateBarRect(); }
 
+	// use this when scroll from something other than ScrollBar, like mouse selection.
+	// steps is number of minSteps. returns new position. does not post message to parent.
+	inline size_t Scroll(int steps)
+	{
+		ScrollTo(m_currPos + steps, false);
+		return static_cast<size_t>(m_currPos);
+	}
+
 private:
 	// Parent
 	CTPMessageReceiver *m_parent;
@@ -56,6 +64,6 @@ private:
 	// offset is offset of y from top of bar
 	int CalculatePos(float y, float offset);
 
-	void ScrollTo(int newPos); // let this do bounds check
+	void ScrollTo(int newPos, bool message = true); // let this do bounds check
 	MouseOn HitTest(float y);
 };

@@ -189,7 +189,6 @@ size_t ScrollBar::SetSteps(size_t totalSteps, size_t visibleSteps, SetPosMethod 
 	return static_cast<size_t>(m_currPos);
 }
 
-
 void ScrollBar::CalculateBarRect()
 {
 	float fullLength = m_dipRect.bottom - m_dipRect.top - 2.0f * Width;
@@ -211,7 +210,7 @@ int ScrollBar::CalculatePos(float y, float offset)
 	return static_cast<int>(roundf(dipPos / fullLength * (float)m_totalSteps));
 }
 
-void ScrollBar::ScrollTo(int newPos)
+void ScrollBar::ScrollTo(int newPos, bool message)
 {
 	if (newPos < 0) newPos = 0;
 	int maxPos = static_cast<int>(m_totalSteps - m_visibleSteps);
@@ -219,7 +218,7 @@ void ScrollBar::ScrollTo(int newPos)
 
 	if (m_currPos != newPos)
 	{
-		m_parent->PostClientMessage(this, L"", CTPMessage::SCROLLBAR_SCROLL, newPos - m_currPos);
+		if (message) m_parent->PostClientMessage(this, L"", CTPMessage::SCROLLBAR_SCROLL, newPos - m_currPos);
 		m_currPos = newPos;
 		CalculateBarRect();
 	}

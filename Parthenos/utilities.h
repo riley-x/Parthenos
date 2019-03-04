@@ -201,7 +201,7 @@ namespace Timers
 {
 	const int n_timers = 2;
 	enum TimerIDs { IDT_CARET = 1, IDT_SCROLLBAR }; // zero is reserved
-	const UINT intervals[n_timers + 1] = { 0, 750, 200 }; // milliseconds
+	const UINT intervals[n_timers + 1] = { 0, 750, 50 }; // milliseconds
 
 	struct WndTimers // one for each HWND
 	{
@@ -233,7 +233,7 @@ namespace Timers
 		auto it = Timers::WndTimersMap.find(hwnd);
 		if (it != Timers::WndTimersMap.end())
 		{
-			it->second->nActiveP1[Timers::IDT_CARET]--;
+			it->second->nActiveP1[id]--;
 		}
 	}
 }

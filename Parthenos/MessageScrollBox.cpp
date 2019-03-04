@@ -83,12 +83,23 @@ bool MessageScrollBox::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool han
 {
 	if (m_selection)
 	{
-		int i = HitTest(cursor);
-		if (i != m_iSelectEnd)
+		if (cursor.y < m_layoutRect.top || cursor.y > m_layoutRect.bottom)
 		{
-			m_iSelectEnd = i;
-			GetSelectionMetrics();
-			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+			if (!m_timerSet)
+			{
+				Timers::SetTimer(m_hwnd, Timers::IDT_SCROLLBAR);
+				m_timerSet = true;
+			}
+		} // let OnTimer handle the selection
+		else
+		{
+			int i = HitTest(cursor);
+			if (i != m_iSelectEnd)
+			{
+				m_iSelectEnd = i;
+				GetSelectionMetrics();
+				::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+			}
 		}
 
 		Cursor::SetCursor(Cursor::hIBeam);
@@ -162,17 +173,62 @@ void MessageScrollBox::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 			GetSelectionMetrics();
 			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 		}
+		if (m_timerSet)
+		{
+			Timers::UnsetTimer(m_hwnd, Timers::IDT_SCROLLBAR);
+			m_timerSet = false;
+		}
 	}
 	ProcessCTPMessages();
 }
 
 void MessageScrollBox::OnTimer(WPARAM wParam, LPARAM lParam)
 {
-	if (wParam == Timers::IDT_SCROLLBAR)
+	if (wParam == Timers::IDT_SCROLLBAR && m_timerSet)
 	{
-		// TODO
-		return;
-		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+		POINT p;
+		bool ok = GetCursorPos(&p);
+		if (ok) ok = ScreenToClient(m_hwnd, &p);
+		if (!ok) return OutputMessage(L"MessageScrollBox OnTimer get cursor failed\n");
+		D2D1_POINT_2F cursor = DPIScale::PixelsToDips(p);
+
+		static int nTicks = 0;
+		nTicks++;
+		int threshold = 4; // Timer is 50ms, change granularity depending on mouse distance
+		int step = 0;
+
+		if (cursor.y < m_layoutRect.top)
+		{
+			step = -1;
+			if (m_layoutRect.top - cursor.y >= 30.0f) threshold = 1;
+			if (m_layoutRect.top - cursor.y >= 60.0f) step = -2;
+			cursor.y = m_layoutRect.top;
+		}
+		else if (cursor.y > m_layoutRect.bottom)
+		{
+			step = 1;
+			if (cursor.y - m_layoutRect.top >= 30.0f) threshold = 1;
+			if (cursor.y - m_layoutRect.top >= 60.0f) step = 2;
+			cursor.y = m_layoutRect.bottom;
+		}
+		else // Inside layout rect, so let OnMouseMove handle
+		{
+			nTicks = 0;
+			return;
+		}
+
+		if (nTicks >= threshold)
+		{
+			m_currLine = m_scrollBar.Scroll(step);
+			int i = HitTest(cursor);
+			if (i != m_iSelectEnd)
+			{
+				m_iSelectEnd = i;
+				GetSelectionMetrics();
+				::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+			}
+			nTicks = 0;
+		}
 	}
 }
 
