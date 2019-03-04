@@ -54,17 +54,6 @@ std::system_error Error(const std::wstring & msg)
 	return out_error;
 }
 
-void OutputMessage(const std::wstring format, ...)
-{
-	wchar_t msg[1024];
-	va_list args;
-	va_start(args, format);
-	vswprintf_s(msg, format.c_str(), args);
-	va_end(args);
-
-	OutputDebugString(msg);
-}
-
 BOOL SystemTimeToEasternTime(SYSTEMTIME const * sysTime, SYSTEMTIME * eastTime)
 {
 	DYNAMIC_TIME_ZONE_INFORMATION pdtzi; 

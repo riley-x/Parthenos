@@ -287,7 +287,7 @@ void Parthenos::CalculateHistories()
 			// Write to file
 			histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
 		}
-		else // ASSUMES THAT HOLDINGS HAVEN'T CHANGED SINCE LAST UPDATE (add transactions will invalidate history)
+		else // assumes that holdings haven't changed since last update (add transaction will properly invalidate history)
 		{
 			portHist = histFile.Read<TimeSeries>();
 			UpdateEquityHistory(portHist, acc.positions, m_stats); 
@@ -308,10 +308,10 @@ void Parthenos::CalculateHistories()
 
 	// Sum all accounts for "All".
 	Account & accAll = m_accounts.back();
-	std::vector<size_t> iAccDate(m_accounts.size() - 1);
+	std::vector<size_t> iAccDate(m_accounts.size() - 1); // index into each account's histDate
 	std::vector<double> cashIn(m_accounts.size() - 1);
 	size_t maxSize = 0;
-	size_t iAccMax;
+	size_t iAccMax; // index of account with maximum history length
 	for (size_t i = 0; i < m_accounts.size() - 1; i++)
 	{
 		cashIn[i] = GetCash(m_accounts[i].positions).second;
@@ -497,6 +497,19 @@ void Parthenos::ProcessCTPMessages()
 				NestedHoldings holdings = CalculateHoldings();
 				CalculatePositions(holdings);
 			}
+			break;
+		}
+		case CTPMessage::MENUBAR_PRINTHOLDINGS:
+		{
+			// Read Holdings
+			FileIO holdingsFile;
+			holdingsFile.Init(ROOTDIR + L"port.hold");
+			holdingsFile.Open(GENERIC_READ);
+			std::vector<Holdings> out = holdingsFile.Read<Holdings>();
+			holdingsFile.Close();
+
+			NestedHoldings holdings = FlattenedHoldingsToTickers(out);
+			if (m_msgBox) m_msgBox->Overwrite(NestedHoldingsToWString(holdings));
 			break;
 		}
 		case CTPMessage::MENUBAR_ACCOUNT:

@@ -267,11 +267,12 @@ NestedHoldings FlattenedHoldingsToTickers(std::vector<Holdings> const & holdings
 	return out;
 }
 
-void PrintTickerHoldings(std::vector<Holdings> const & h)
+std::wstring TickerHoldingsToWString(std::vector<Holdings> const & h)
 {
-	if (h.empty()) return;
-	OutputMessage(L"-------------------------------------------\n");
-	OutputMessage(L"%s, Accounts: %d\n", h[0].tickerInfo.ticker, h[0].tickerInfo.nAccounts);
+	std::wstring out;
+	if (h.empty()) return out;
+	out.append(L"-------------------------------------------\n");
+	out.append(FormatMsg(L"%s, Accounts: %d\n", h[0].tickerInfo.ticker, h[0].tickerInfo.nAccounts));
 
 	std::vector<size_t> headers;
 	size_t i_header = 1; // 0 is the ticker 
@@ -285,20 +286,20 @@ void PrintTickerHoldings(std::vector<Holdings> const & h)
 	for (size_t i_header : headers)
 	{
 		HoldingHeader const *header = &(h[i_header].head);
-		OutputDebugString(header->to_wstring().c_str());
-		OutputMessage(L"\tLots:\n");
+		out.append(header->to_wstring());
+		out.append(L"\tLots:\n");
 		for (int i = 1; i <= header->nLots; i++)
 		{
-			OutputMessage(L"\t\t%s", h[i_header + i].lot.to_wstring().c_str());
+			out.append(FormatMsg(L"\t\t%s", h[i_header + i].lot.to_wstring().c_str()));
 		}
-		OutputMessage(L"\tOptions:\n");
+		out.append(L"\tOptions:\n");
 		for (int i = header->nLots + 1; i <= header->nLots + header->nOptions; i++)
 		{
-			OutputMessage(L"\t\t%s\n", h[i_header + i].option.to_wstring().c_str());
+			out.append(FormatMsg(L"\t\t%s\n", h[i_header + i].option.to_wstring().c_str()));
 		}
 	}
+	return out;
 }
-
 
 ///////////////////////////////////////////////////////////
 // --- Positions and Equity Interface Functions ---
@@ -457,7 +458,7 @@ namespace EquityHistoryHelper
 		{
 			if (x.iDate > x.ohlc.size() || x.ohlc[x.iDate].date != curr_date)
 			{
-				OutputMessage(L"Error: GetEquityHistory date mismatch: %u\n", curr_date);
+				OutputMessage(L"Error: GetEquityHistory date mismatch: %s %u\n", x.ticker.c_str(), curr_date);
 				throw std::invalid_argument("EquityHistory transaction date doesn't match VOO");
 			}
 			out += x.n * x.ohlc[x.iDate].close;

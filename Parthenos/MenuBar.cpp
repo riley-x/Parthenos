@@ -8,7 +8,8 @@ MenuBar::MenuBar(HWND hwnd, D2Objects const & d2, CTPMessageReceiver * parent,
 {
 	DropMenuButton *temp = new DropMenuButton(hwnd, d2, this, false);
 	temp->SetText(m_texts[0], m_widths[0], height);
-	temp->SetItems({ L"TODO", L"HIII" });
+	temp->SetItems({ L"TODO", L"Print Holdings" });
+	temp->GetMenu().SetDivisions({ 1 });
 	m_buttons.push_back(temp);
 
 	accounts.push_back(L"All");
@@ -109,11 +110,13 @@ void MenuBar::ProcessCTPMessages()
 		if (msg.imsg != CTPMessage::DROPMENU_SELECTED); // clear below
 		else if (msg.sender == m_buttons[1]) // Account
 			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_ACCOUNT);
+		else if (msg.msg == L"Print Holdings") // File->Print Holdings
+			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_PRINTHOLDINGS);
 		else if (msg.msg == L"Add...") // Transaction->Add...
 			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_ADDTRANSACTION);
 		else if (msg.msg == L"Print History") // Transaction->Print History
 			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_PRINTTRANSACTIONS);
-		else if (msg.msg == L"Recalculate All") // Transaction->Recalculate
+		else if (msg.msg == L"Recalculate All") // Transaction->Recalculate All
 			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_CALCHOLDINGS);
 	}
 	if (!m_messages.empty()) m_messages.clear();

@@ -4,7 +4,26 @@
 // --- Messaging --- 
 std::wstring OutputError(const std::wstring & msg);
 std::system_error Error(const std::wstring & msg);
-void OutputMessage(const std::wstring format, ...);
+inline std::wstring FormatMsg(const std::wstring format, ...)
+{
+	wchar_t msg[1024];
+	va_list args;
+	va_start(args, format);
+	vswprintf_s(msg, format.c_str(), args);
+	va_end(args);
+
+	return std::wstring(msg);
+}
+inline void OutputMessage(const std::wstring format, ...)
+{
+	wchar_t msg[1024];
+	va_list args;
+	va_start(args, format);
+	vswprintf_s(msg, format.c_str(), args);
+	va_end(args);
+
+	OutputDebugString(msg);
+}
 
 ///////////////////////////////////////////////////////////
 // --- Datetime --- 

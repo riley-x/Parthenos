@@ -305,15 +305,15 @@ typedef std::vector<std::vector<Holdings>> NestedHoldings;
 void AddTransactionToHoldings(NestedHoldings & holdings, Transaction const & transaction);
 NestedHoldings FullTransactionsToHoldings(std::vector<Transaction> const & transactions);
 NestedHoldings FlattenedHoldingsToTickers(std::vector<Holdings> const & holdings);
-void PrintTickerHoldings(std::vector<Holdings> const & h);
-
-inline void PrintFlattenedHoldings(std::vector<Holdings> const & h)
+std::wstring TickerHoldingsToWString(std::vector<Holdings> const & h);
+inline std::wstring NestedHoldingsToWString(NestedHoldings const & holdings)
 {
-	auto holdings = FlattenedHoldingsToTickers(h);
-	for (auto const & i : holdings)
+	std::wstring out;
+	for (std::vector<Holdings> const & x : holdings)
 	{
-		PrintTickerHoldings(i);
+		out.append(TickerHoldingsToWString(x));
 	}
+	return out;
 }
 
 inline std::vector<std::wstring> GetTickers(NestedHoldings const & holdings, bool cash = false)
