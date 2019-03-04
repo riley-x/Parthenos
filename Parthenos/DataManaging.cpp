@@ -899,7 +899,9 @@ std::vector<OHLC> parseIEXChart(std::string json, date_t latestDate)
 		start = end + delim.length();
 		end = json.find(delim, start);
 	}
-	out.push_back(parseIEXChartItem(json.substr(start, json.size() - 2 - start))); // skip closing }]
+	OHLC temp = parseIEXChartItem(json.substr(start, json.size() - 2 - start)); // skip closing }]
+	if (latestDate == 0 || temp.date > latestDate)
+		out.push_back(temp);
 
 	return out;
 }

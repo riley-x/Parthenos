@@ -111,7 +111,9 @@ bool MessageScrollBox::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool han
 	{
 		handeled = m_scrollBar.OnMouseMove(cursor, wParam, handeled) || handeled;
 
-		if (inRect(cursor, m_dipRect) && !handeled)
+		D2D1_RECT_F temp = m_dipRect;
+		temp.top = m_titleRect.bottom;
+		if (!handeled && inRect(cursor, temp))
 		{
 			Cursor::SetCursor(Cursor::hIBeam);
 			handeled = true;
