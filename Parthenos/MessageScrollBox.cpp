@@ -12,14 +12,14 @@ void MessageScrollBox::SetSize(D2D1_RECT_F dipRect)
 	m_titleBorderY = m_titleRect.bottom - DPIScale::hpy();
 
 	m_layoutRect = m_dipRect;
-	m_layoutRect.left += 3.0f;
-	m_layoutRect.top = m_titleRect.bottom;
-	m_layoutRect.right -= 3.0f + ScrollBar::Width;
+	m_layoutRect.left += 7.0f;
+	m_layoutRect.top = m_titleRect.bottom + 3.0f;
+	m_layoutRect.right -= 7.0f + ScrollBar::Width;
 	m_layoutRect.bottom -= 3.0f;
 
 	CreateTextLayout();
 
-	m_currLine = m_scrollBar.SetSteps(m_metrics.lineCount, m_visibleLines);
+	m_currLine = m_scrollBar.SetSteps(m_metrics.lineCount, m_visibleLines, ScrollBar::SetPosMethod::MaintainOffsetBottom);
 
 	// scroll bar auto sets left
 	m_scrollBar.SetSize(D2D1::RectF(0.0f, m_titleRect.bottom, m_dipRect.right, m_dipRect.bottom));
@@ -349,7 +349,7 @@ void MessageScrollBox::CreateTextLayout()
 				}
 
 				float avgHeight = cum / (float)actualLineCount;
-				m_visibleLines = static_cast<size_t>(floorf((m_dipRect.bottom - m_dipRect.top) / avgHeight));
+				m_visibleLines = static_cast<size_t>(floorf((m_layoutRect.bottom - m_layoutRect.top) / avgHeight));
 			}
 			else
 			{
