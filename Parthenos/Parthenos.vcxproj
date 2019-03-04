@@ -221,6 +221,7 @@
     <Image Include="Command Icons\Maximize.png" />
     <Image Include="Command Icons\Minimize.png" />
     <Image Include="Command Icons\Restore.png" />
+    <Image Include="Command Icons\UpArrowHead.png" />
     <Image Include="Parthenos.ico" />
     <Image Include="Parthenos_white.png" />
   </ItemGroup>

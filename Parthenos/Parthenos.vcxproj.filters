@@ -204,6 +204,9 @@
     <Image Include="Command Icons\DownArrowHead.png">
       <Filter>Resource Files\Command Icons</Filter>
     </Image>
+    <Image Include="Command Icons\UpArrowHead.png">
+      <Filter>Resource Files\Command Icons</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Messages.txt">

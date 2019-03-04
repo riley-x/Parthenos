@@ -6,7 +6,7 @@ float const ScrollBar::Width = 15.0f;
 ScrollBar::ScrollBar(HWND hwnd, D2Objects const & d2, CTPMessageReceiver * parent)
 	: AppItem(hwnd, d2), m_upArrow(hwnd, d2), m_dnArrow(hwnd, d2), m_parent(parent)
 {
-	m_upArrow.SetIcon(GetResourceIndex(IDB_DOWNARROWHEAD)); // TODO
+	m_upArrow.SetIcon(GetResourceIndex(IDB_UPARROWHEAD));
 	m_dnArrow.SetIcon(GetResourceIndex(IDB_DOWNARROWHEAD));
 }
 

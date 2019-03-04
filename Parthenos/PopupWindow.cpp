@@ -574,4 +574,8 @@ D2D1_RECT_F ConfirmationWindow::CalculateItemRect(AppItem *item, D2D1_RECT_F con
 			dipRect.bottom - m_buttonVPad
 		);
 	}
+	else
+	{
+		return D2D1::RectF(0, 0, 0, 0);
+	}
 }
