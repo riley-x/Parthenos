@@ -49,6 +49,7 @@ private:
 	size_t				m_iSelectStart; // index into m_text
 	size_t				m_iSelectEnd; // set equal to start to indicate nothing selected
 	bool				m_timerSet = false;
+	bool				m_mouseInBox = true; // when timer is set, flag this to skip OnTimer
 
 	// Parameters
 	float const			m_titleHeight = 18.0f;

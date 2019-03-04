@@ -90,6 +90,7 @@ bool MessageScrollBox::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool han
 				Timers::SetTimer(m_hwnd, Timers::IDT_SCROLLBAR);
 				m_timerSet = true;
 			}
+			m_mouseInBox = false;
 		} // let OnTimer handle the selection
 		else
 		{
@@ -100,6 +101,7 @@ bool MessageScrollBox::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool han
 				GetSelectionMetrics();
 				::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 			}
+			if (m_timerSet) m_mouseInBox = true;
 		}
 
 		Cursor::SetCursor(Cursor::hIBeam);
@@ -184,7 +186,7 @@ void MessageScrollBox::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 
 void MessageScrollBox::OnTimer(WPARAM wParam, LPARAM lParam)
 {
-	if (wParam == Timers::IDT_SCROLLBAR && m_timerSet)
+	if (wParam == Timers::IDT_SCROLLBAR && m_timerSet && !m_mouseInBox)
 	{
 		POINT p;
 		bool ok = GetCursorPos(&p);
@@ -211,7 +213,7 @@ void MessageScrollBox::OnTimer(WPARAM wParam, LPARAM lParam)
 			if (cursor.y - m_layoutRect.bottom >= 60.0f) step = 2;
 			cursor.y = m_layoutRect.bottom;
 		}
-		else // Inside layout rect, so let OnMouseMove handle
+		else // Inside layout rect, so let OnMouseMove handle. Shouldn't get here
 		{
 			nTicks = 0;
 			return;
