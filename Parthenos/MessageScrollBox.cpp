@@ -207,8 +207,8 @@ void MessageScrollBox::OnTimer(WPARAM wParam, LPARAM lParam)
 		else if (cursor.y > m_layoutRect.bottom)
 		{
 			step = 1;
-			if (cursor.y - m_layoutRect.top >= 30.0f) threshold = 1;
-			if (cursor.y - m_layoutRect.top >= 60.0f) step = 2;
+			if (cursor.y - m_layoutRect.bottom >= 30.0f) threshold = 1;
+			if (cursor.y - m_layoutRect.bottom >= 60.0f) step = 2;
 			cursor.y = m_layoutRect.bottom;
 		}
 		else // Inside layout rect, so let OnMouseMove handle
