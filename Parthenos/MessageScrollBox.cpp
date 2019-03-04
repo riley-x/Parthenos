@@ -91,9 +91,19 @@ bool MessageScrollBox::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool han
 			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 		}
 
+		Cursor::SetCursor(Cursor::hIBeam);
 		handeled = true;
 	}
-	handeled = m_scrollBar.OnMouseMove(cursor, wParam, handeled) || handeled;
+	else
+	{
+		handeled = m_scrollBar.OnMouseMove(cursor, wParam, handeled) || handeled;
+
+		if (inRect(cursor, m_dipRect) && !handeled)
+		{
+			Cursor::SetCursor(Cursor::hIBeam);
+			handeled = true;
+		}
+	}
 
 	ProcessCTPMessages();
 	return handeled;
@@ -154,6 +164,16 @@ void MessageScrollBox::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 		}
 	}
 	ProcessCTPMessages();
+}
+
+void MessageScrollBox::OnTimer(WPARAM wParam, LPARAM lParam)
+{
+	if (wParam == Timers::IDT_SCROLLBAR)
+	{
+		// TODO
+		return;
+		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+	}
 }
 
 bool MessageScrollBox::OnCopy()

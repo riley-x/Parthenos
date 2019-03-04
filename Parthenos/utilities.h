@@ -199,17 +199,43 @@ namespace Colors
 ///////////////////////////////////////////////////////////
 namespace Timers
 {
-	const int n_timers = 1;
-	enum { IDT_CARET = 1 }; // no zero
+	const int n_timers = 2;
+	enum TimerIDs { IDT_CARET = 1, IDT_SCROLLBAR }; // zero is reserved
+	const UINT intervals[n_timers + 1] = { 0, 750, 200 }; // milliseconds
 
-	struct WndTimers
+	struct WndTimers // one for each HWND
 	{
 		int nActiveP1[n_timers + 1] = {}; // extra entry for easy indexing
 		// Set 0 for deleted, 1 to flag deletion (delays a little)
 	};
-	extern std::map<void*, WndTimers*> WndTimersMap; // Global map so don't have to pass timers to every object
 
-	const UINT CARET_TIME = 750; // 0.75 seconds
+	// Global map so don't have to pass timers to every object
+	// (HWND, timer)
+	extern std::map<void*, WndTimers*> WndTimersMap; 
+
+	inline void SetTimer(HWND hwnd, TimerIDs id)
+	{
+		auto it = Timers::WndTimersMap.find(hwnd);
+		if (it != Timers::WndTimersMap.end())
+		{
+			if (it->second->nActiveP1[id] == 0)
+			{
+				it->second->nActiveP1[id]++;
+				UINT_PTR err = ::SetTimer(hwnd, id, intervals[id], NULL);
+				if (err == 0) OutputError(L"Set timer failed");
+			}
+			it->second->nActiveP1[id]++;
+		}
+	}
+
+	inline void UnsetTimer(HWND hwnd, TimerIDs id)
+	{
+		auto it = Timers::WndTimersMap.find(hwnd);
+		if (it != Timers::WndTimersMap.end())
+		{
+			it->second->nActiveP1[Timers::IDT_CARET]--;
+		}
+	}
 }
 
 ///////////////////////////////////////////////////////////

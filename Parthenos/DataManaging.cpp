@@ -1408,8 +1408,19 @@ std::wstring Transaction_struct::to_wstring() const
 {
 	wchar_t buffer[300];
 	swprintf_s(buffer, _countof(buffer),
-		L"Date: %s, Ticker: %s, Account: %d, Type: %s, n: %d, Value: %.2lf, Price: %.4lf, Expiration: %s, Strike: %.2lf\n",
+		L"%s: %s (Account: %d) %s, n: %d, Value: %.2lf, Price: %.4lf, Expiration: %s, Strike: %.2lf\n",
 		DateToWString(date).c_str(), ticker, static_cast<int>(account), ::to_wstring(type).c_str(),
+		n, value, price, DateToWString(expiration).c_str(), strike
+	);
+	return std::wstring(buffer);
+}
+
+std::wstring Transaction_struct::to_wstring(std::vector<std::wstring> const & accounts) const
+{
+	wchar_t buffer[300];
+	swprintf_s(buffer, _countof(buffer),
+		L"%s: %s (%s) %s, n: %d, Value: %.2lf, Price: %.4lf, Expiration: %s, Strike: %.2lf\n",
+		DateToWString(date).c_str(), ticker, accounts[account].c_str(), ::to_wstring(type).c_str(),
 		n, value, price, DateToWString(expiration).c_str(), strike
 	);
 	return std::wstring(buffer);

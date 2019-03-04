@@ -498,7 +498,7 @@ void Parthenos::ProcessCTPMessages()
 
 			std::wstring out;
 			for (Transaction const & t : trans)
-				out.append(t.to_wstring());
+				out.append(t.to_wstring(m_accountNames));
 			m_msgBox->Overwrite(out);
 			
 			break;
@@ -1078,7 +1078,7 @@ LRESULT Parthenos::OnTimer(WPARAM wParam, LPARAM lParam)
 		if (m_timers.nActiveP1[i] == 1)
 		{
 			BOOL err = ::KillTimer(m_hwnd, i);
-			if (err == 0)  OutputError(L"Kill timer failed");
+			if (err == 0) OutputError(L"Kill timer failed");
 			m_timers.nActiveP1[i] = 0;
 		}
 	}

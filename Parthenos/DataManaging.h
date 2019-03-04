@@ -196,6 +196,7 @@ typedef struct Transaction_struct
 	double strike;				// 64
 
 	std::wstring to_wstring() const;
+	std::wstring to_wstring(std::vector<std::wstring> const & accounts) const;
 } Transaction;
 
 std::vector<Transaction> CSVtoTransactions(std::wstring filepath);

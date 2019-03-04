@@ -165,7 +165,7 @@
       <Filter>Source Files\AppItems</Filter>
     </ClCompile>
     <ClCompile Include="MessageScrollBox.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\AppItems</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

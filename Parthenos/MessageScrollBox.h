@@ -21,6 +21,7 @@ public:
 	bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled);
 	void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam);
 	void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam);
+	void OnTimer(WPARAM wParam, LPARAM lParam);
 	bool OnCopy();
 	void ProcessCTPMessages();
 
