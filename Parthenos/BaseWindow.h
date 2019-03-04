@@ -81,13 +81,13 @@ public:
 		wcex.hIcon = args.hIcon;
 		wcex.hIconSm = args.hIconSm;
 
-		m_hInstance = args.hInstance;
 		ATOM atom = RegisterClassExW(&wcex);
 
 		return (atom ? TRUE : FALSE);
 	}
 
 	BOOL Create(WndCreateArgs & args) {
+		m_hInstance = args.hInstance;
 		m_hwnd = CreateWindowEx(
 			args.dwExStyle, ClassName(), args.lpWindowName, args.dwStyle, args.x, args.y,
 			args.nWidth, args.nHeight, args.hWndParent, args.hMenu, args.hInstance, this

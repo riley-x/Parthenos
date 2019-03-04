@@ -13,15 +13,20 @@
 class PopupWindow : public BorderlessWindow<PopupWindow>, public CTPMessageReceiver
 {
 public:
-	PopupWindow(PCWSTR szClassName) : BorderlessWindow(szClassName) {}
+	PopupWindow(std::wstring const & name) : BorderlessWindow(L"PARTHENOSPOPUP"), m_name(name) {}
 	~PopupWindow() { for (auto item : m_items) if (item) delete item; }
 
 	BOOL Create(HINSTANCE hInstance);
 	LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);
 	
 	virtual void PreShow() = 0; // Handle AppItem creation here
+	inline void SetParent(CTPMessageReceiver *parent, HWND phwnd) { m_parent = parent; m_phwnd = phwnd; }
 
 protected:
+	// Parent
+	HWND					m_phwnd;
+	CTPMessageReceiver		*m_parent;
+
 	// Objects
 	std::vector<AppItem*>	m_items;
 	TitleBar				*m_titleBar;
@@ -38,6 +43,9 @@ protected:
 	virtual LRESULT		OnPaint() = 0;
 
 private:
+	// Name
+	std::wstring m_name;
+
 	// Flags
 	bool m_created = false; // only allow create once
 
@@ -60,15 +68,11 @@ private:
 class AddTransactionWindow : public PopupWindow
 {
 public:
-	using PopupWindow::PopupWindow;
+	AddTransactionWindow() : PopupWindow(L"AddTransactionWindow") {}
 
 	void PreShow();
 	inline void SetAccounts(std::vector<std::wstring> const & accounts) { m_accounts = accounts; }
-	inline void SetParent(CTPMessageReceiver *parent, HWND phwnd) { m_parent = parent; m_phwnd = phwnd; }
 private:
-	// Parent
-	HWND				m_phwnd;
-	CTPMessageReceiver  *m_parent;
 
 	// Items
 	DropMenuButton	*m_accountButton;
@@ -112,4 +116,38 @@ private:
 	D2D1_RECT_F CalculateItemRect(size_t i, D2D1_RECT_F const & dipRect);
 	void DrawTexts(D2D1_RECT_F fullRect);
 	Transaction *CreateTransaction();
+};
+
+
+// Initialize with text and a message to send to parent when user presses "OK"
+class ConfirmationWindow : public PopupWindow
+{
+public:
+	ConfirmationWindow() : PopupWindow(L"ConfirmationWindow") {}
+
+	void PreShow();
+	inline void SetText(std::wstring const & text) { m_text = text; }
+	inline void SetMessage(ClientMessage const & msg) { m_msg = msg; }
+private:
+
+	// Items
+	TextButton		*m_ok;
+	TextButton		*m_cancel;
+
+	// Data
+	std::wstring	m_text;
+	ClientMessage	m_msg; // message to send to parent if click OK
+
+	// Layout
+	float		m_center;
+	float const	m_buttonHPad = 10.0f;
+	float const	m_buttonVPad = 30.0f;
+	float const	m_buttonWidth = 50.0f;
+	float const	m_buttonHeight = 20.0f;
+
+	// Functions
+	LRESULT	OnPaint();
+
+	void ProcessCTPMessages();
+	D2D1_RECT_F CalculateItemRect(AppItem *item, D2D1_RECT_F const & dipRect);
 };

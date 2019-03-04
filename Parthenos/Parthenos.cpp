@@ -48,6 +48,7 @@ Parthenos::~Parthenos()
 	for (auto item : m_allItems)
 		if (item) delete item;
 	if (m_addTWin) delete m_addTWin;
+	if (m_okWin) delete m_okWin;
 }
 
 LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -192,6 +193,7 @@ int Parthenos::AccountToIndex(std::wstring account)
 	return -1; // also means "All"
 }
 
+// Calculates holdings from full transaction history
 NestedHoldings Parthenos::CalculateHoldings() const
 {
 	// Read transaction history
@@ -472,9 +474,29 @@ void Parthenos::ProcessCTPMessages()
 		}
 		case CTPMessage::MENUBAR_CALCHOLDINGS:
 		{
-			NestedHoldings holdings = CalculateHoldings();
-			for (auto const & x : holdings) PrintTickerHoldings(x);
-			CalculatePositions(holdings);
+			if (msg.iData == 0) // sent by menubar -> ask confirmation
+			{
+				if (!m_okWin) // shouldn't already exist
+				{
+					m_okWin = new ConfirmationWindow();
+					BOOL ok = m_okWin->Create(m_hInstance);
+					if (!ok) OutputError(L"Create AddTransaction window failed");
+
+					m_okWin->SetParent(this, m_hwnd);
+					m_okWin->SetText(L"Recalculate holdings from full transaction history?");
+					msg.iData = 1;
+					m_okWin->SetMessage(msg);
+					m_okWin->PreShow();
+
+					ShowWindow(m_okWin->Window(), SW_SHOW);
+				}
+			}
+			else if (msg.iData == 1) // sent from confirmation window
+			{
+				if (m_msgBox) m_msgBox->Print(L"Recalculating holdings\n");
+				NestedHoldings holdings = CalculateHoldings();
+				CalculatePositions(holdings);
+			}
 			break;
 		}
 		case CTPMessage::MENUBAR_ACCOUNT:
@@ -505,12 +527,37 @@ void Parthenos::ProcessCTPMessages()
 		}
 		case CTPMessage::MENUBAR_ADDTRANSACTION:
 		{
-			BOOL ok = m_addTWin->Create(m_hInstance);
-			if (!ok) OutputError(L"Create AddTransaction window failed");
-			m_addTWin->SetParent(this, m_hwnd);
-			m_addTWin->SetAccounts(m_accountNames);
-			m_addTWin->PreShow();
-			ShowWindow(m_addTWin->Window(), SW_SHOW);
+			if (!m_addTWin)
+			{
+				m_addTWin = new AddTransactionWindow();
+				BOOL ok = m_addTWin->Create(m_hInstance);
+				if (!ok) OutputError(L"Create AddTransaction window failed");
+				m_addTWin->SetParent(this, m_hwnd);
+				m_addTWin->SetAccounts(m_accountNames);
+				m_addTWin->PreShow();
+				ShowWindow(m_addTWin->Window(), SW_SHOW);
+			}
+			break;
+		}
+		case CTPMessage::WINDOW_CLOSED:
+		{
+			PopupWindow *win = reinterpret_cast<PopupWindow*>(msg.sender);
+			if (msg.msg == L"AddTransactionWindow" && win == m_addTWin)
+			{
+				delete m_addTWin;
+				m_addTWin = nullptr;
+			}
+			else if (msg.msg == L"ConfirmationWindow" && win == m_okWin)
+			{
+				delete m_okWin;
+				m_okWin = nullptr;
+			}
+			else
+			{
+				std::wstring err = L"Error: WINDOW_CLOSED couldn't match window\n";
+				if (m_msgBox) m_msgBox->Print(err);
+				else OutputMessage(err);
+			}
 			break;
 		}
 		case CTPMessage::WINDOW_ADDTRANSACTION_P:
@@ -787,8 +834,8 @@ LRESULT Parthenos::OnCreate()
 	Timers::WndTimersMap.insert({ m_hwnd, &m_timers });
 
 
-	// Create 'child' windows
-
+	// Register 'child' windows
+	// Only need to register once. All popups use the same message handler that splits via virtuals
 	WndCreateArgs args;
 	args.hInstance = m_hInstance;
 	args.classStyle = CS_DBLCLKS;
@@ -796,11 +843,11 @@ LRESULT Parthenos::OnCreate()
 	args.hIcon = LoadIcon(args.hInstance, MAKEINTRESOURCE(IDI_PARTHENOS));
 	args.hIconSm = LoadIcon(args.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
-	// Only need to register once. All popups use the same message handler that splits via virtuals
-	m_addTWin = new AddTransactionWindow(L"PARTHENOSPOPUP");
-	BOOL ok = m_addTWin->Register(args);
+	m_okWin = new ConfirmationWindow(); // temp
+	BOOL ok = m_okWin->Register(args);
 	if (!ok) OutputError(L"Register Popup failed");
-	
+	delete m_okWin;
+	m_okWin = nullptr;
 
 	// Create AppItems
 

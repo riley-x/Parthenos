@@ -38,6 +38,8 @@ LRESULT PopupWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		m_d2.DiscardGraphicsResources();
 		m_d2.DiscardDeviceIndependentResources();
 		m_created = FALSE;
+		m_parent->SendClientMessage(reinterpret_cast<AppItem*>(this), m_name, CTPMessage::WINDOW_CLOSED);
+		PostMessage(m_phwnd, WM_APP, 0, 0);
 		return 0;
 	case WM_PAINT:
 		return OnPaint();
@@ -248,12 +250,11 @@ void AddTransactionWindow::PreShow()
 	m_ok->SetName(L"Ok");
 	m_cancel->SetName(L"Cancel");
 
-	for (size_t i = 0; i < m_items.size(); i++) // skip TitleBar
+	for (size_t i = 0; i < m_items.size(); i++)
 	{
 		m_items[i]->SetSize(CalculateItemRect(i, dipRect));
 	}
 }
-
 
 LRESULT AddTransactionWindow::OnPaint()
 {
@@ -290,7 +291,6 @@ LRESULT AddTransactionWindow::OnPaint()
 
 	return 0;
 }
-
 
 void AddTransactionWindow::ProcessCTPMessages()
 {
@@ -445,3 +445,133 @@ Transaction* AddTransactionWindow::CreateTransaction()
 	return nullptr;
 }
 
+
+///////////////////////////////////////////////////////////
+// --- ConfirmationWindow ---
+
+void ConfirmationWindow::PreShow()
+{
+	RECT rc;
+	BOOL bErr = GetClientRect(m_hwnd, &rc);
+	if (bErr == 0) OutputError(L"GetClientRect failed");
+	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
+
+	m_center = (dipRect.left + dipRect.right) / 2.0f;
+
+	// Create AppItems
+	m_titleBar = new TitleBar(m_hwnd, m_d2, this);
+	m_ok = new TextButton(m_hwnd, m_d2, this);
+	m_cancel = new TextButton(m_hwnd, m_d2, this);
+
+	m_items = { m_titleBar, m_ok, m_cancel };
+
+	m_ok->SetName(L"Ok");
+	m_cancel->SetName(L"Cancel");
+
+	for (auto item : m_items)
+	{
+		item->SetSize(CalculateItemRect(item, dipRect));
+	}
+}
+
+LRESULT ConfirmationWindow::OnPaint()
+{
+	RECT rc;
+	BOOL bErr = GetClientRect(m_hwnd, &rc);
+	if (bErr == 0) OutputError(L"GetClientRect failed");
+	D2D1_RECT_F fullRect = DPIScale::PixelsToDips(rc);
+
+	HRESULT hr = m_d2.CreateGraphicsResources(m_hwnd);
+	if (SUCCEEDED(hr))
+	{
+		PAINTSTRUCT ps;
+		BeginPaint(m_hwnd, &ps);
+		m_d2.pRenderTarget->BeginDraw();
+
+		// Repaint everything
+		m_d2.pRenderTarget->Clear(Colors::MAIN_BACKGROUND);
+		for (auto item : m_items)
+			item->Paint(fullRect);
+
+		m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
+		m_d2.pTextFormats[D2Objects::Formats::Segoe12]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+		m_d2.pRenderTarget->DrawTextW(
+			m_text.c_str(),
+			m_text.size(),
+			m_d2.pTextFormats[D2Objects::Formats::Segoe12],
+			D2D1::RectF(fullRect.left, m_titleBarHeight, fullRect.right, fullRect.bottom - m_buttonVPad - m_buttonHeight),
+			m_d2.pBrush
+		);
+		m_d2.pTextFormats[D2Objects::Formats::Segoe12]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+
+		hr = m_d2.pRenderTarget->EndDraw();
+		if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
+		{
+			m_d2.DiscardGraphicsResources();
+		}
+		EndPaint(m_hwnd, &ps);
+	}
+
+	return 0;
+}
+
+void ConfirmationWindow::ProcessCTPMessages()
+{
+	for (ClientMessage msg : m_messages)
+	{
+		switch (msg.imsg)
+		{
+		case CTPMessage::TITLEBAR_CLOSE:
+			SendMessage(m_hwnd, WM_CLOSE, 0, 0);
+			break;
+		case CTPMessage::TITLEBAR_MAXRESTORE: // Do nothing
+			break;
+		case CTPMessage::TITLEBAR_MIN:
+			ShowWindow(m_hwnd, SW_MINIMIZE);
+			break;
+		case CTPMessage::BUTTON_DOWN:
+			if (msg.sender == m_ok)
+			{
+				m_parent->PostClientMessage(m_msg);
+				PostMessage(m_phwnd, WM_APP, 0, 0);
+			}
+			SendMessage(m_hwnd, WM_CLOSE, 0, 0); // Close on both ok and close
+			break;
+		default:
+			OutputMessage(L"Unknown message %d received\n", static_cast<int>(msg.imsg));
+			break;
+		}
+	}
+	if (!m_messages.empty()) m_messages.clear();
+}
+
+D2D1_RECT_F ConfirmationWindow::CalculateItemRect(AppItem *item, D2D1_RECT_F const & dipRect)
+{
+	if (item == m_titleBar)
+	{
+		return D2D1::RectF(
+			0.0f,
+			0.0f,
+			dipRect.right,
+			DPIScale::SnapToPixelY(m_titleBarHeight)
+		);
+	}
+	else if (item == m_ok)
+	{
+		return D2D1::RectF(
+			m_center - m_buttonHPad - m_buttonWidth,
+			dipRect.bottom - m_buttonVPad - m_buttonHeight,
+			m_center - m_buttonHPad,
+			dipRect.bottom - m_buttonVPad
+		);
+	}
+	else if (item == m_cancel)
+	{
+		return D2D1::RectF(
+			m_center + m_buttonHPad,
+			dipRect.bottom - m_buttonVPad - m_buttonHeight,
+			m_center + m_buttonHPad + m_buttonWidth,
+			dipRect.bottom - m_buttonVPad
+		);
+	}
+}

@@ -48,6 +48,7 @@ private:
 
 	// 'Child' windows
 	AddTransactionWindow	*m_addTWin = nullptr;
+	ConfirmationWindow		*m_okWin = nullptr;
 
 	// Logical components
 	std::vector<AppItem*>	m_activeItems; // items that need to be painted
