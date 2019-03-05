@@ -1017,22 +1017,25 @@ LRESULT Parthenos::OnPaint()
 	
 		hr = m_d2.pRenderTarget->EndDraw();
 		
-		// Present
-		DXGI_PRESENT_PARAMETERS parameters = { 0 };
-		parameters.DirtyRectsCount = 0;
-		parameters.pDirtyRects = nullptr;
-		parameters.pScrollRect = nullptr;
-		parameters.pScrollOffset = nullptr;
-		if (SUCCEEDED(hr))
-			hr = m_d2.pDXGISwapChain->Present1(1, 0, &parameters);
-
 		if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
 		{
 			m_d2.DiscardGraphicsResources();
 		}
+		else
+		{
+			// Present
+			DXGI_PRESENT_PARAMETERS parameters = { 0 };
+			parameters.DirtyRectsCount = 0;
+			parameters.pDirtyRects = nullptr;
+			parameters.pScrollRect = nullptr;
+			parameters.pScrollOffset = nullptr;
+
+			hr = m_d2.pDXGISwapChain->Present1(1, 0, &parameters);
+		}
+		
 		EndPaint(m_hwnd, &ps);
 	}
-	else
+	if (FAILED(hr))
 	{
 		OutputError(L"CreateGraphicsResources failed");
 	}

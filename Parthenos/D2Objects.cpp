@@ -104,9 +104,9 @@ HRESULT D2Objects::CreateLifetimeResources(HWND hwnd)
 	swapChainDesc.SampleDesc.Count = 1;                // don't use multi-sampling
 	swapChainDesc.SampleDesc.Quality = 0;
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	swapChainDesc.BufferCount = 2;                     // use double buffering to enable flip
-	swapChainDesc.Scaling = DXGI_SCALING_NONE;
-	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL; // all apps must use this SwapEffect
+	swapChainDesc.BufferCount = 1;
+	swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
+	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
 	swapChainDesc.Flags = 0;
 
 	// Create DXGI swap chain targeting a window handle
