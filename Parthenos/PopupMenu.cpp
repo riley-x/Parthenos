@@ -27,13 +27,13 @@ void PopupMenu::Paint(D2D1_RECT_F updateRect)
 	
 	// Fill
 	m_d2.pBrush->SetColor(Colors::MENU_BACKGROUND);
-	m_d2.pRenderTarget->FillRectangle(m_dipRect, m_d2.pBrush);
+	m_d2.pD2DContext->FillRectangle(m_dipRect, m_d2.pBrush);
 	
 	// Highlight
 	if (m_highlight >= 0)
 	{
 		m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
-		m_d2.pRenderTarget->FillRectangle(D2D1::RectF(
+		m_d2.pD2DContext->FillRectangle(D2D1::RectF(
 			m_dipRect.left,
 			m_dipRect.top + getTop(m_highlight),
 			m_dipRect.right,
@@ -45,7 +45,7 @@ void PopupMenu::Paint(D2D1_RECT_F updateRect)
 	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
 	for (size_t i = 0; i < m_pTextLayouts.size(); i++)
 	{
-		m_d2.pRenderTarget->DrawTextLayout(
+		m_d2.pD2DContext->DrawTextLayout(
 			D2D1::Point2F(m_dipRect.left + 4.0f, m_dipRect.top + getTop(i) + m_vPad),
 			m_pTextLayouts[i],
 			m_d2.pBrush
@@ -56,7 +56,7 @@ void PopupMenu::Paint(D2D1_RECT_F updateRect)
 	m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
 	for (float y : m_divisionYs)
 	{
-		m_d2.pRenderTarget->DrawLine(
+		m_d2.pD2DContext->DrawLine(
 			D2D1::Point2F(m_dipRect.left + 4.0f, m_dipRect.top + y),
 			D2D1::Point2F(m_dipRect.right - 10.0f, m_dipRect.top + y),
 			m_d2.pBrush,
@@ -66,7 +66,7 @@ void PopupMenu::Paint(D2D1_RECT_F updateRect)
 	}
 
 	// Border
-	m_d2.pRenderTarget->DrawRectangle(m_borderRect, m_d2.pBrush, 1.0f, m_d2.pHairlineStyle);
+	m_d2.pD2DContext->DrawRectangle(m_borderRect, m_d2.pBrush, 1.0f, m_d2.pHairlineStyle);
 }
 
 bool PopupMenu::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)

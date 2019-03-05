@@ -29,9 +29,9 @@ public:
 	ID3D11Device1			*pDirect3DDevice		= NULL;
 	ID3D11DeviceContext1	*pDirect3DContext		= NULL;
 	ID2D1Device				*pDirect2DDevice		= NULL;
-	ID2D1DeviceContext		*pRenderTarget			= NULL;
-	IDXGISwapChain1			*pDXGISwapChain			= NULL;
-	ID2D1Bitmap1			*pDirect2DBackBuffer	= NULL;
+	ID2D1DeviceContext		*pD2DContext			= NULL; // inherits from ID2D1RenderTarget (?); use similarly
+	IDXGISwapChain1			*pDXGISwapChain			= NULL; // stores buffers that the d2dcontext targets
+	ID2D1Bitmap1			*pDirect2DBackBuffer	= NULL; // actual bitmap that the d2dcontext targets
 
 	// Drawing
 	ID2D1StrokeStyle		*pDashedStyle			= NULL;

@@ -23,7 +23,7 @@ void TextBox::Paint(D2D1_RECT_F updateRect)
 	if (m_selection)
 	{
 		m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
-		m_d2.pRenderTarget->FillRectangle(D2D1::RectF(
+		m_d2.pD2DContext->FillRectangle(D2D1::RectF(
 			min(m_fpos, m_fstart),
 			m_dipRect.top,
 			max(m_fpos, m_fstart),
@@ -33,7 +33,7 @@ void TextBox::Paint(D2D1_RECT_F updateRect)
 
 	// Text
 	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
-	m_d2.pRenderTarget->DrawTextLayout(
+	m_d2.pD2DContext->DrawTextLayout(
 		D2D1::Point2F(m_dipRect.left + m_leftOffset, m_dipRect.top),
 		m_pTextLayout,
 		m_d2.pBrush
@@ -43,7 +43,7 @@ void TextBox::Paint(D2D1_RECT_F updateRect)
 	if (m_active && m_flash)
 	{
 		m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
-		m_d2.pRenderTarget->DrawLine(
+		m_d2.pD2DContext->DrawLine(
 			D2D1::Point2F(m_fpos, m_dipRect.top),
 			D2D1::Point2F(m_fpos, m_dipRect.bottom),
 			m_d2.pBrush,
@@ -58,7 +58,7 @@ void TextBox::Paint(D2D1_RECT_F updateRect)
 			m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
 		else
 			m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
-		m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 0.5f);
+		m_d2.pD2DContext->DrawRectangle(m_dipRect, m_d2.pBrush, 0.5f);
 	}
 }
 

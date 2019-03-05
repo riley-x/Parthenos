@@ -22,7 +22,7 @@ void IconButton::Paint(D2D1_RECT_F updateRect)
 {
 	if (m_iBitmap != -1 && m_d2.pD2DBitmaps[m_iBitmap])
 	{
-		m_d2.pRenderTarget->DrawBitmap(
+		m_d2.pD2DContext->DrawBitmap(
 			m_d2.pD2DBitmaps[m_iBitmap],
 			m_dipRect
 		);
@@ -88,12 +88,12 @@ void DropMenuButton::Paint(D2D1_RECT_F updateRect)
 			m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
 		else
 			m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
-		m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 0.5f);
+		m_d2.pD2DContext->DrawRectangle(m_dipRect, m_d2.pBrush, 0.5f);
 
 		// Arrow icon
 		if (m_d2.pD2DBitmaps[GetResourceIndex(IDB_DOWNARROWHEAD)])
 		{
-			m_d2.pRenderTarget->DrawBitmap(
+			m_d2.pD2DContext->DrawBitmap(
 				m_d2.pD2DBitmaps[GetResourceIndex(IDB_DOWNARROWHEAD)],
 				m_iconRect
 			);
@@ -102,7 +102,7 @@ void DropMenuButton::Paint(D2D1_RECT_F updateRect)
 
 	// Text
 	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
-	m_d2.pRenderTarget->DrawTextLayout(
+	m_d2.pD2DContext->DrawTextLayout(
 		D2D1::Point2F(m_textRect.left, m_textRect.top),
 		m_activeLayout,
 		m_d2.pBrush
@@ -176,20 +176,20 @@ void TextButton::Paint(D2D1_RECT_F updateRect)
 	if (m_fill)
 	{
 		m_d2.pBrush->SetColor(m_fillColor);
-		m_d2.pRenderTarget->FillRectangle(m_dipRect, m_d2.pBrush);
+		m_d2.pD2DContext->FillRectangle(m_dipRect, m_d2.pBrush);
 	}
 
 	// Border
 	if (m_border)
 	{
 		m_d2.pBrush->SetColor(m_borderColor);
-		m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush);
+		m_d2.pD2DContext->DrawRectangle(m_dipRect, m_d2.pBrush);
 	}
 
 	// Text
 	m_d2.pTextFormats[m_format]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
 	m_d2.pBrush->SetColor(m_textColor);
-	m_d2.pRenderTarget->DrawText(
+	m_d2.pD2DContext->DrawText(
 		m_name.c_str(),
 		m_name.size(),
 		m_d2.pTextFormats[m_format],

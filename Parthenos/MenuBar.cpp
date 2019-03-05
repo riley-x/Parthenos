@@ -37,7 +37,7 @@ void MenuBar::Paint(D2D1_RECT_F updateRect)
 	{
 		// Background
 		m_d2.pBrush->SetColor(Colors::TITLE_BACKGROUND);
-		m_d2.pRenderTarget->FillRectangle(m_dipRect, m_d2.pBrush);
+		m_d2.pD2DContext->FillRectangle(m_dipRect, m_d2.pBrush);
 
 		// Buttons
 		for (int i = 0; i < m_nButtons; i++)
@@ -46,7 +46,7 @@ void MenuBar::Paint(D2D1_RECT_F updateRect)
 			{
 				D2D1_RECT_F rect = m_buttons[i]->GetDIPRect();
 				m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
-				m_d2.pRenderTarget->FillRectangle(rect, m_d2.pBrush);
+				m_d2.pD2DContext->FillRectangle(rect, m_d2.pBrush);
 			}
 			m_buttons[i]->Paint(updateRect);
 		}

@@ -64,17 +64,17 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 
 	// Background
 	m_d2.pBrush->SetColor(Colors::AXES_BACKGROUND);
-	m_d2.pRenderTarget->FillRectangle(m_dipRect, m_d2.pBrush);
+	m_d2.pD2DContext->FillRectangle(m_dipRect, m_d2.pBrush);
 
 	// Grid lines
 	m_d2.pBrush->SetColor(Colors::DULL_LINE);
 	for (auto line : m_grid_lines[0]) // x lines
 	{
-		m_d2.pRenderTarget->DrawLine(line.start, line.end, m_d2.pBrush, 0.8f, m_d2.pDashedStyle);
+		m_d2.pD2DContext->DrawLine(line.start, line.end, m_d2.pBrush, 0.8f, m_d2.pDashedStyle);
 	}
 	for (auto line : m_grid_lines[1]) // y lines
 	{
-		m_d2.pRenderTarget->DrawLine(line.start, line.end, m_d2.pBrush, 0.8f, m_d2.pDashedStyle);
+		m_d2.pD2DContext->DrawLine(line.start, line.end, m_d2.pBrush, 0.8f, m_d2.pDashedStyle);
 	}
 
 	// Title
@@ -82,7 +82,7 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 	if (!m_title.empty())
 	{
 		m_d2.pTextFormats[m_titleFormat]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
-			m_d2.pRenderTarget->DrawTextW(
+			m_d2.pD2DContext->DrawTextW(
 			m_title.c_str(),
 			m_title.size(),
 			m_d2.pTextFormats[m_titleFormat],
@@ -100,7 +100,7 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 			float loc = std::get<0>(tick);
 			std::wstring label = std::get<2>(tick);
 
-			m_d2.pRenderTarget->DrawText(
+			m_d2.pD2DContext->DrawText(
 				label.c_str(),
 				label.size(),
 				m_d2.pTextFormats[D2Objects::Segoe10],
@@ -117,7 +117,7 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 		float loc = std::get<0>(tick);
 		std::wstring label = std::get<2>(tick);
 
-		m_d2.pRenderTarget->DrawText(
+		m_d2.pD2DContext->DrawText(
 			label.c_str(),
 			label.size(),
 			m_d2.pTextFormats[D2Objects::Segoe10],
@@ -139,14 +139,14 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 		m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
 		if (m_hoverStyle == HoverStyle::crosshairs) // draw horizontal line
 		{
-			m_d2.pRenderTarget->DrawLine(
+			m_d2.pD2DContext->DrawLine(
 				D2D1::Point2F(m_axesRect.left, m_hoverLoc.y),
 				D2D1::Point2F(m_axesRect.right, m_hoverLoc.y),
 				m_d2.pBrush, 1.0f, m_d2.pDashedStyle
 			);
 		}
 		// draw vertical line
-		m_d2.pRenderTarget->DrawLine(
+		m_d2.pD2DContext->DrawLine(
 			D2D1::Point2F(m_hoverLoc.x, m_axesRect.top),
 			D2D1::Point2F(m_hoverLoc.x, m_axesRect.bottom),
 			m_d2.pBrush, 1.0f, m_d2.pDashedStyle
@@ -163,7 +163,7 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 
 		Line_t xaxis = { D2D1::Point2F(m_axesRect.left,  xaxis_dip_pos),
 						 D2D1::Point2F(m_axesRect.right, xaxis_dip_pos) };
-		m_d2.pRenderTarget->DrawLine(xaxis.start, xaxis.end, m_d2.pBrush, DPIScale::py());
+		m_d2.pD2DContext->DrawLine(xaxis.start, xaxis.end, m_d2.pBrush, DPIScale::py());
 	}
 	if (!std::isnan(m_yAxisPos))
 	{
@@ -173,16 +173,16 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 
 		Line_t yaxis = { D2D1::Point2F(m_axesRect.right, m_axesRect.bottom),
 						 D2D1::Point2F(m_axesRect.right, m_axesRect.top) };
-		m_d2.pRenderTarget->DrawLine(yaxis.start, yaxis.end, m_d2.pBrush, DPIScale::px());
+		m_d2.pD2DContext->DrawLine(yaxis.start, yaxis.end, m_d2.pBrush, DPIScale::px());
 	}
 
 	// Hover text
 	if (m_hoverOn >= 0)
 	{
 		m_d2.pBrush->SetColor(Colors::MENU_BACKGROUND);
-		m_d2.pRenderTarget->FillRectangle(m_hoverRect, m_d2.pBrush);
+		m_d2.pD2DContext->FillRectangle(m_hoverRect, m_d2.pBrush);
 		m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
-		m_d2.pRenderTarget->DrawTextLayout(
+		m_d2.pD2DContext->DrawTextLayout(
 			D2D1::Point2F(m_hoverRect.left + m_labelPad, m_hoverRect.top + m_labelPad),
 			m_hoverLayout,
 			m_d2.pBrush
@@ -574,7 +574,7 @@ void LineGraph::Paint(D2Objects const & d2)
 	d2.pBrush->SetColor(m_color);
 	for (auto line : m_lines)
 	{
-		d2.pRenderTarget->DrawLine(line.start, line.end, d2.pBrush, m_stroke_width, m_pStyle);
+		d2.pD2DContext->DrawLine(line.start, line.end, d2.pBrush, m_stroke_width, m_pStyle);
 	}
 }
 
@@ -650,18 +650,18 @@ void CandlestickGraph::Paint(D2Objects const & d2)
 {
 	d2.pBrush->SetColor(D2D1::ColorF(0.8f, 0.8f, 0.8f, 1.0f));
 	for (auto line : m_lines)
-		d2.pRenderTarget->DrawLine(line.start, line.end, d2.pBrush);
+		d2.pD2DContext->DrawLine(line.start, line.end, d2.pBrush);
 
 	for (auto line : m_no_change)
-		d2.pRenderTarget->DrawLine(line.start, line.end, d2.pBrush);
+		d2.pD2DContext->DrawLine(line.start, line.end, d2.pBrush);
 
 	d2.pBrush->SetColor(D2D1::ColorF(32.0f / 255, 214.0f / 255, 126.0f / 255, 1.0f));
 	for (auto rect : m_up_rects)
-		d2.pRenderTarget->FillRectangle(rect, d2.pBrush);
+		d2.pD2DContext->FillRectangle(rect, d2.pBrush);
 
 	d2.pBrush->SetColor(D2D1::ColorF(1.0f, 0.2f, 0.2f, 1.0f));
 	for (auto rect : m_down_rects)
-		d2.pRenderTarget->FillRectangle(rect, d2.pBrush);
+		d2.pD2DContext->FillRectangle(rect, d2.pBrush);
 
 }
 
@@ -728,14 +728,14 @@ void BarGraph::Paint(D2Objects const & d2)
 	for (size_t i = 0; i < m_n; i++)
 	{
 		d2.pBrush->SetColor(data[i].second);
-		d2.pRenderTarget->FillRectangle(m_bars[i], d2.pBrush);
+		d2.pD2DContext->FillRectangle(m_bars[i], d2.pBrush);
 	}
 
 	d2.pBrush->SetColor(Colors::MAIN_TEXT);
 	d2.pTextFormats[D2Objects::Formats::Segoe12]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
 	for (size_t i = 0; i < m_labelLayouts.size(); i++)
 	{
-		d2.pRenderTarget->DrawText(
+		d2.pD2DContext->DrawText(
 			m_labels[i].c_str(),
 			m_labels[i].size(),
 			d2.pTextFormats[D2Objects::Formats::Segoe12],

@@ -68,7 +68,7 @@ public:
 	virtual void Paint(D2D1_RECT_F updateRect) 
 	{ 
 		if (overlapRect(m_dipRect, updateRect))
-			m_d2.pRenderTarget->DrawRectangle(m_dipRect, m_d2.pBrush, 0.5f); 
+			m_d2.pD2DContext->DrawRectangle(m_dipRect, m_d2.pBrush, 0.5f); 
 	}
 
 	// should return true when keyboard captured or mouse handeled (i.e. true if in dipRect to enforce z-order)

@@ -269,10 +269,10 @@ LRESULT AddTransactionWindow::OnPaint()
 		PAINTSTRUCT ps;
 		BeginPaint(m_hwnd, &ps);
 		//D2D1_RECT_F dipRect = DPIScale::PixelsToDips(ps.rcPaint);
-		m_d2.pRenderTarget->BeginDraw();
+		m_d2.pD2DContext->BeginDraw();
 
 		// Repaint everything
-		m_d2.pRenderTarget->Clear(Colors::MAIN_BACKGROUND);
+		m_d2.pD2DContext->Clear(Colors::MAIN_BACKGROUND);
 
 		for (auto item : m_items)
 			item->Paint(fullRect);
@@ -281,7 +281,7 @@ LRESULT AddTransactionWindow::OnPaint()
 		m_accountButton->GetMenu().Paint(fullRect);
 		m_transactionTypeButton->GetMenu().Paint(fullRect);
 
-		hr = m_d2.pRenderTarget->EndDraw();
+		hr = m_d2.pD2DContext->EndDraw();
 		if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
 		{
 			m_d2.DiscardGraphicsResources();
@@ -372,7 +372,7 @@ void AddTransactionWindow::DrawTexts(D2D1_RECT_F fullRect)
 	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
 
 	std::wstring title(L"Add a transaction:");
-	m_d2.pRenderTarget->DrawTextW(
+	m_d2.pD2DContext->DrawTextW(
 		title.c_str(),
 		title.size(),
 		m_d2.pTextFormats[D2Objects::Formats::Segoe12],
@@ -389,7 +389,7 @@ void AddTransactionWindow::DrawTexts(D2D1_RECT_F fullRect)
 			m_inputLeft - m_labelHPad,
 			m_inputTop + i * (m_itemHeight + m_itemVPad) + m_itemHeight
 		);
-		m_d2.pRenderTarget->DrawText(
+		m_d2.pD2DContext->DrawText(
 			m_labels[i].c_str(),
 			m_labels[i].size(),
 			m_d2.pTextFormats[D2Objects::Formats::Segoe12],
@@ -407,7 +407,7 @@ void AddTransactionWindow::DrawTexts(D2D1_RECT_F fullRect)
 			fullRect.right,
 			m_inputTop + extra_inds[i] * (m_itemHeight + m_itemVPad) + m_itemHeight
 		);
-		m_d2.pRenderTarget->DrawText(
+		m_d2.pD2DContext->DrawText(
 			extra_labels[i].c_str(),
 			extra_labels[i].size(),
 			m_d2.pTextFormats[D2Objects::Formats::Segoe12],
@@ -486,16 +486,16 @@ LRESULT ConfirmationWindow::OnPaint()
 	{
 		PAINTSTRUCT ps;
 		BeginPaint(m_hwnd, &ps);
-		m_d2.pRenderTarget->BeginDraw();
+		m_d2.pD2DContext->BeginDraw();
 
 		// Repaint everything
-		m_d2.pRenderTarget->Clear(Colors::MAIN_BACKGROUND);
+		m_d2.pD2DContext->Clear(Colors::MAIN_BACKGROUND);
 		for (auto item : m_items)
 			item->Paint(fullRect);
 
 		m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
 		m_d2.pTextFormats[D2Objects::Formats::Segoe12]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
-		m_d2.pRenderTarget->DrawTextW(
+		m_d2.pD2DContext->DrawTextW(
 			m_text.c_str(),
 			m_text.size(),
 			m_d2.pTextFormats[D2Objects::Formats::Segoe12],
@@ -504,7 +504,7 @@ LRESULT ConfirmationWindow::OnPaint()
 		);
 		m_d2.pTextFormats[D2Objects::Formats::Segoe12]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
 
-		hr = m_d2.pRenderTarget->EndDraw();
+		hr = m_d2.pD2DContext->EndDraw();
 		if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
 		{
 			m_d2.DiscardGraphicsResources();

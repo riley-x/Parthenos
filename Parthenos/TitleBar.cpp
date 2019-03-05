@@ -66,12 +66,12 @@ void TitleBar::Paint(D2D1_RECT_F updateRect)
 	// then when invalidated. Add 1 to adjust.
 	if (updateRect.top + 1 > m_dipRect.bottom) return;
 	m_d2.pBrush->SetColor(Colors::TITLE_BACKGROUND);
-	m_d2.pRenderTarget->FillRectangle(m_dipRect, m_d2.pBrush);
+	m_d2.pD2DContext->FillRectangle(m_dipRect, m_d2.pBrush);
 
 	// Paint titlebar icon
 	if (m_d2.pD2DBitmaps[4])
 	{
-		m_d2.pRenderTarget->DrawBitmap(
+		m_d2.pD2DContext->DrawBitmap(
 			m_d2.pD2DBitmaps[4],
 			m_TitleIconRect
 		);
@@ -85,7 +85,7 @@ void TitleBar::Paint(D2D1_RECT_F updateRect)
 	for (size_t i = 0; i < m_tabButtons.Size(); i++)
 	{
 		float x = m_tabLeftStart + i * m_tabWidth;
-		m_d2.pRenderTarget->DrawLine(
+		m_d2.pD2DContext->DrawLine(
 			D2D1::Point2F(x, m_dipRect.top + m_dividerVPad),
 			D2D1::Point2F(x, m_dipRect.bottom - m_dividerVPad),
 			m_d2.pBrush,
@@ -98,25 +98,25 @@ void TitleBar::Paint(D2D1_RECT_F updateRect)
 	if (m_tabButtons.GetActiveRect(active))
 	{
 		m_d2.pBrush->SetColor(Colors::ALMOST_WHITE);
-		m_d2.pRenderTarget->SetTransform(
+		m_d2.pD2DContext->SetTransform(
 			D2D1::Matrix3x2F::Translation(D2D1::SizeF(active.left - m_bracketWidth / 2.0f, active.top))
 		);
-		m_d2.pRenderTarget->FillGeometry(
+		m_d2.pD2DContext->FillGeometry(
 			m_bracketGeometries[0],
 			m_d2.pBrush
 		);
-		m_d2.pRenderTarget->SetTransform(
+		m_d2.pD2DContext->SetTransform(
 			D2D1::Matrix3x2F::Translation(D2D1::SizeF(active.right + m_bracketWidth / 2.0f, active.top))
 		);
-		m_d2.pRenderTarget->FillGeometry(
+		m_d2.pD2DContext->FillGeometry(
 			m_bracketGeometries[1],
 			m_d2.pBrush
 		);
-		m_d2.pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
+		m_d2.pD2DContext->SetTransform(D2D1::Matrix3x2F::Identity());
 	}
 
 	// Paint pixels, not DIPs, for command icons
-	m_d2.pRenderTarget->SetDpi(96.0f, 96.0f); 
+	m_d2.pD2DContext->SetDpi(96.0f, 96.0f); 
 
 	// Paint highlight of command icons
 	int mouse_on = -1;
@@ -126,7 +126,7 @@ void TitleBar::Paint(D2D1_RECT_F updateRect)
 	if (mouse_on >= 0)
 	{
 		m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
-		m_d2.pRenderTarget->FillRectangle(D2D1::RectF(
+		m_d2.pD2DContext->FillRectangle(D2D1::RectF(
 			m_CommandIconRects[mouse_on].left - iconHPad,
 			static_cast<float>(m_pixRect.top),
 			m_CommandIconRects[mouse_on].right + iconHPad,
@@ -139,14 +139,14 @@ void TitleBar::Paint(D2D1_RECT_F updateRect)
 	for (int i = 0; i < nIcons; i++)
 	{
 		if (m_d2.pD2DBitmaps[i])
-			m_d2.pRenderTarget->DrawBitmap(
+			m_d2.pD2DContext->DrawBitmap(
 				m_d2.pD2DBitmaps[bitmap_ind[static_cast<int>(m_maximized)][i]], 
 				m_CommandIconRects[i]
 			);
 	}
 
 	// restore DIPs
-	m_d2.pRenderTarget->SetDpi(DPIScale::DPIX(), DPIScale::DPIY()); 
+	m_d2.pD2DContext->SetDpi(DPIScale::DPIX(), DPIScale::DPIY()); 
 }
 
 bool TitleBar::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)

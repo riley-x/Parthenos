@@ -33,14 +33,14 @@ void Watchlist::Paint(D2D1_RECT_F updateRect)
 
 	// Background
 	m_d2.pBrush->SetColor(Colors::WATCH_BACKGROUND);
-	m_d2.pRenderTarget->FillRectangle(m_dipRect, m_d2.pBrush);
+	m_d2.pD2DContext->FillRectangle(m_dipRect, m_d2.pBrush);
 
 	// Column headers
 	float left = m_dipRect.left;
 	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
 	for (size_t i = 0; i < m_columns.size(); i++)
 	{
-		m_d2.pRenderTarget->DrawTextLayout(
+		m_d2.pD2DContext->DrawTextLayout(
 			D2D1::Point2F(left + m_hTextPad, m_dipRect.top),
 			m_pTextLayouts[i],
 			m_d2.pBrush
@@ -57,7 +57,7 @@ void Watchlist::Paint(D2D1_RECT_F updateRect)
 	m_d2.pBrush->SetColor(Colors::DULL_LINE);
 	for (float line : m_vLines)
 	{
-		m_d2.pRenderTarget->DrawLine(
+		m_d2.pD2DContext->DrawLine(
 			D2D1::Point2F(line, m_dipRect.top),
 			D2D1::Point2F(line, m_dipRect.bottom),
 			m_d2.pBrush,
@@ -66,7 +66,7 @@ void Watchlist::Paint(D2D1_RECT_F updateRect)
 	}
 	for (float line : m_hLines)
 	{
-		m_d2.pRenderTarget->DrawLine(
+		m_d2.pD2DContext->DrawLine(
 			D2D1::Point2F(m_dipRect.left, line),
 			D2D1::Point2F(m_dipRect.right, line),
 			m_d2.pBrush,
@@ -76,7 +76,7 @@ void Watchlist::Paint(D2D1_RECT_F updateRect)
 
 	// Header dividing line
 	m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
-	m_d2.pRenderTarget->DrawLine(
+	m_d2.pD2DContext->DrawLine(
 		D2D1::Point2F(m_dipRect.left, m_headerBorder),
 		D2D1::Point2F(m_dipRect.right, m_headerBorder),
 		m_d2.pBrush,
@@ -88,7 +88,7 @@ void Watchlist::Paint(D2D1_RECT_F updateRect)
 	{
 		float y = DPIScale::SnapToPixelY(GetHeight(m_hover)) - DPIScale::hpy();
 		m_d2.pBrush->SetColor(Colors::ACCENT);
-		m_d2.pRenderTarget->DrawLine(
+		m_d2.pD2DContext->DrawLine(
 			D2D1::Point2F(m_dipRect.left, y),
 			D2D1::Point2F(m_dipRect.right, y),
 			m_d2.pBrush,
@@ -551,7 +551,7 @@ void WatchlistItem::Paint(D2D1_RECT_F updateRect)
 	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
 	for (size_t i = 0; i < m_data.size(); i++)
 	{
-		m_d2.pRenderTarget->DrawTextLayout(
+		m_d2.pD2DContext->DrawTextLayout(
 			D2D1::Point2F(m_origins[i], m_dipRect.top),
 			m_pTextLayouts[i],
 			m_d2.pBrush

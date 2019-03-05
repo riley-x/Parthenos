@@ -19,9 +19,8 @@ HRESULT D2Objects::CreateLifetimeResources(HWND hwnd)
 	}
 
 	// This flag adds support for surfaces with a different color channel ordering than the API default.
-		// You need it for compatibility with Direct2D.
+	// You need it for compatibility with Direct2D.
 	UINT creationFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
-
 
 	// This array defines the set of DirectX hardware feature levels this app supports.
 	// The ordering is important and you should preserve it.
@@ -37,7 +36,6 @@ HRESULT D2Objects::CreateLifetimeResources(HWND hwnd)
 		D3D_FEATURE_LEVEL_9_2,
 		D3D_FEATURE_LEVEL_9_1
 	};
-
 
 	// Create the DX11 API device object, and get a corresponding context.
 	ComPtr<ID3D11Device> device;
@@ -58,8 +56,6 @@ HRESULT D2Objects::CreateLifetimeResources(HWND hwnd)
 		);
 
 	// Get underlying interfaces for D3D device
-	// so device is a ComPtr...do we need to keep in scope?
-	// do we need this pointers?
 	if (SUCCEEDED(hr))
 		hr = device->QueryInterface(__uuidof(ID3D11Device1), (void **)&pDirect3DDevice);
 	if (SUCCEEDED(hr))
@@ -78,12 +74,12 @@ HRESULT D2Objects::CreateLifetimeResources(HWND hwnd)
 	if (SUCCEEDED(hr))
 		hr = pDirect2DDevice->CreateDeviceContext(
 			D2D1_DEVICE_CONTEXT_OPTIONS_NONE,
-			&pRenderTarget
+			&pD2DContext
 		);
 	
 	// Set the DPI
 	if (SUCCEEDED(hr))
-		pRenderTarget->SetDpi(DPIScale::DPIX(), DPIScale::DPIY());
+		pD2DContext->SetDpi(DPIScale::DPIX(), DPIScale::DPIY());
 
 	// Identify the physical adapter (GPU or card) this device is runs on.
 	ComPtr<IDXGIAdapter> dxgiAdapter;
@@ -97,16 +93,16 @@ HRESULT D2Objects::CreateLifetimeResources(HWND hwnd)
 
 	// Allocate a descriptor.
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = { 0 };
-	swapChainDesc.Width = 0;                           // use automatic sizing
+	swapChainDesc.Width = 0; // use automatic sizing
 	swapChainDesc.Height = 0;
 	swapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM; // this is the most common swapchain format
 	swapChainDesc.Stereo = false;
-	swapChainDesc.SampleDesc.Count = 1;                // don't use multi-sampling
+	swapChainDesc.SampleDesc.Count = 1; // don't use multi-sampling
 	swapChainDesc.SampleDesc.Quality = 0;
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	swapChainDesc.BufferCount = 1;
+	swapChainDesc.BufferCount = 1; // Only render one frame at a time, so only need one buffer
 	swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
-	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD; // see https://docs.microsoft.com/en-us/windows/desktop/direct3ddxgi/dxgi-flip-model
 	swapChainDesc.Flags = 0;
 
 	// Create DXGI swap chain targeting a window handle
@@ -233,13 +229,13 @@ HRESULT D2Objects::CreateLifetimeResources(HWND hwnd)
 	if (SUCCEEDED(hr))
 	{
 		const D2D1_COLOR_F color = D2D1::ColorF(0.15f, 0.15f, 0.16f);
-		hr = pRenderTarget->CreateSolidColorBrush(color, &pBrush);
+		hr = pD2DContext->CreateSolidColorBrush(color, &pBrush);
 	}
 	// Re-create D2DBitmap it from the source bitmap.
 	for (int i = 0; i < nIcons; i++)
 	{
 		if (SUCCEEDED(hr))
-			hr = pRenderTarget->CreateBitmapFromWicBitmap(pConvertedSourceBitmaps[i], NULL, &pD2DBitmaps[i]);
+			hr = pD2DContext->CreateBitmapFromWicBitmap(pConvertedSourceBitmaps[i], NULL, &pD2DBitmaps[i]);
 	}
 
 	return hr;
@@ -333,6 +329,7 @@ HRESULT D2Objects::CreateGraphicsResources(HWND hwnd)
 		GetClientRect(hwnd, &rc);
 		D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
 
+		// Resize the buffers (automatically fits client window)
 		hr = pDXGISwapChain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
 
 		// Now we set up the Direct2D render target bitmap linked to the swapchain. 
@@ -352,7 +349,7 @@ HRESULT D2Objects::CreateGraphicsResources(HWND hwnd)
 
 		// Get a D2D surface from the DXGI back buffer to use as the D2D render target.
 		if (SUCCEEDED(hr))
-			hr = pRenderTarget->CreateBitmapFromDxgiSurface(
+			hr = pD2DContext->CreateBitmapFromDxgiSurface(
 				dxgiBackBuffer.Get(),
 				&bitmapProperties,
 				&pDirect2DBackBuffer
@@ -360,7 +357,7 @@ HRESULT D2Objects::CreateGraphicsResources(HWND hwnd)
 
 		// Now we can set the Direct2D render target.
 		if (SUCCEEDED(hr))
-			pRenderTarget->SetTarget(pDirect2DBackBuffer);
+			pD2DContext->SetTarget(pDirect2DBackBuffer);
 	}
 
 	return hr;
@@ -371,7 +368,7 @@ HRESULT D2Objects::CreateGraphicsResources(HWND hwnd)
 void D2Objects::DiscardLifetimeResources()
 {
 	SafeRelease(&pDXGISwapChain);
-	SafeRelease(&pRenderTarget);
+	SafeRelease(&pD2DContext);
 	SafeRelease(&pDirect2DDevice);
 	SafeRelease(&pDirect3DContext);
 	SafeRelease(&pDirect3DDevice);
@@ -402,7 +399,7 @@ void D2Objects::DiscardLifetimeResources()
 
 void D2Objects::DiscardGraphicsResources()
 {
-	pRenderTarget->SetTarget(NULL);
+	pD2DContext->SetTarget(NULL);
 	SafeRelease(&pDirect2DBackBuffer);
 }
 

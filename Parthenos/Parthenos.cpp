@@ -22,25 +22,25 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 Parthenos::Parthenos(PCWSTR szClassName)
 	: BorderlessWindow(szClassName), m_accountNames({ L"Robinhood", L"Arista" })
 {
-	//// Read Holdings
-	//FileIO holdingsFile;
-	//holdingsFile.Init(ROOTDIR + L"port.hold");
-	//holdingsFile.Open(GENERIC_READ);
-	//std::vector<Holdings> out = holdingsFile.Read<Holdings>();
-	//holdingsFile.Close();
+	// Read Holdings
+	FileIO holdingsFile;
+	holdingsFile.Init(ROOTDIR + L"port.hold");
+	holdingsFile.Open(GENERIC_READ);
+	std::vector<Holdings> out = holdingsFile.Read<Holdings>();
+	holdingsFile.Close();
 
-	//NestedHoldings holdings = FlattenedHoldingsToTickers(out);
-	//m_tickers = GetTickers(holdings); // all tickers
-	//m_stats = GetBatchQuoteStats(m_tickers);
+	NestedHoldings holdings = FlattenedHoldingsToTickers(out);
+	m_tickers = GetTickers(holdings); // all tickers
+	m_stats = GetBatchQuoteStats(m_tickers);
 
-	//m_accounts.resize(m_accountNames.size() + 1);
-	//for (size_t i = 0; i < m_accountNames.size(); i++)
-	//	m_accounts[i].name = m_accountNames[i];
-	//m_accounts.back().name = L"All Accounts";
-	//
-	//CalculatePositions(holdings);
-	//CalculateReturns();
-	//CalculateHistories();
+	m_accounts.resize(m_accountNames.size() + 1);
+	for (size_t i = 0; i < m_accountNames.size(); i++)
+		m_accounts[i].name = m_accountNames[i];
+	m_accounts.back().name = L"All Accounts";
+	
+	CalculatePositions(holdings);
+	CalculateReturns();
+	CalculateHistories();
 }
 
 Parthenos::~Parthenos()
@@ -958,7 +958,7 @@ LRESULT Parthenos::OnSize(WPARAM wParam)
 		m_titleBar->SetMaximized(false);
 
 	m_sizeChanged = true;
-	if (m_d2.pRenderTarget != NULL)
+	if (m_d2.pD2DContext != NULL)
 	{
 		RECT rc;
 		GetClientRect(m_hwnd, &rc);
@@ -998,12 +998,12 @@ LRESULT Parthenos::OnPaint()
 		PAINTSTRUCT ps;
 		BeginPaint(m_hwnd, &ps);
 		D2D1_RECT_F dipRect = DPIScale::PixelsToDips(ps.rcPaint);
-		m_d2.pRenderTarget->BeginDraw();
+		m_d2.pD2DContext->BeginDraw();
 
 		if (ps.rcPaint.left == 0 && ps.rcPaint.top == 0 &&
 			ps.rcPaint.right == rc.right && ps.rcPaint.bottom == rc.bottom)
 		{
-			m_d2.pRenderTarget->Clear(Colors::MAIN_BACKGROUND);
+			m_d2.pD2DContext->Clear(Colors::MAIN_BACKGROUND);
 		}
 
 		for (auto item : m_activeItems)
@@ -1012,10 +1012,10 @@ LRESULT Parthenos::OnPaint()
 		for (Line_t const & l : m_dividingLines)
 		{
 			m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
-			m_d2.pRenderTarget->DrawLine(l.start, l.end, m_d2.pBrush, 1.0f, m_d2.pHairlineStyle);
+			m_d2.pD2DContext->DrawLine(l.start, l.end, m_d2.pBrush, 1.0f, m_d2.pHairlineStyle);
 		}
 	
-		hr = m_d2.pRenderTarget->EndDraw();
+		hr = m_d2.pD2DContext->EndDraw();
 		
 		if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
 		{

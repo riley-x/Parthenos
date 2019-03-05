@@ -31,7 +31,7 @@ void PieChart::Paint(D2D1_RECT_F updateRect)
 
 	// Background
 	m_d2.pBrush->SetColor(Colors::AXES_BACKGROUND);
-	m_d2.pRenderTarget->FillRectangle(m_dipRect, m_d2.pBrush);
+	m_d2.pD2DContext->FillRectangle(m_dipRect, m_d2.pBrush);
 
 	// Wedges
 	float offset_angle = 0.0f;
@@ -40,7 +40,7 @@ void PieChart::Paint(D2D1_RECT_F updateRect)
 		PaintWedge(m_wedges[i], offset_angle, m_colors[i]);
 		offset_angle += m_angles[i];
 	}
-	m_d2.pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
+	m_d2.pD2DContext->SetTransform(D2D1::Matrix3x2F::Identity());
 
 	// Borders (this is cleaner than drawing the geometry borders)
 	m_d2.pBrush->SetColor(m_borderColor);
@@ -50,18 +50,18 @@ void PieChart::Paint(D2D1_RECT_F updateRect)
 		float offset_radians = static_cast<float>(M_PI / 180.0 * offset_angle);
 		float x = m_trueRadius * sin(offset_radians);
 		float y = m_trueRadius * -cos(offset_radians);
-		m_d2.pRenderTarget->DrawLine(
+		m_d2.pD2DContext->DrawLine(
 			D2D1::Point2F(m_center.x + m_innerRadius * x, m_center.y + m_innerRadius * y),
 			D2D1::Point2F(m_center.x + m_outerRadius * x, m_center.y + m_outerRadius * y),
 			m_d2.pBrush, 2.0f
 		);
 		offset_angle += m_angles[i];
 	}
-	m_d2.pRenderTarget->DrawEllipse(
+	m_d2.pD2DContext->DrawEllipse(
 		D2D1::Ellipse(m_center, m_trueRadius * m_innerRadius, m_trueRadius * m_innerRadius), 
 		m_d2.pBrush, 2.0f
 	);
-	m_d2.pRenderTarget->DrawEllipse(
+	m_d2.pD2DContext->DrawEllipse(
 		D2D1::Ellipse(m_center, m_trueRadius * m_outerRadius, m_trueRadius * m_outerRadius),
 		m_d2.pBrush, 2.0f
 	);
@@ -78,7 +78,7 @@ void PieChart::Paint(D2D1_RECT_F updateRect)
 			float center_x = center_r * sin(center_angle);
 			float center_y = -center_r * cos(center_angle);
 
-			m_d2.pRenderTarget->DrawTextLayout(
+			m_d2.pD2DContext->DrawTextLayout(
 				D2D1::Point2F(m_center.x + center_x - m_shortLayoutSize / 2.0f, m_center.y + center_y - m_shortLayoutSize / 2.0f),
 				m_shortLabelLayouts[i],
 				m_d2.pBrush
@@ -88,7 +88,7 @@ void PieChart::Paint(D2D1_RECT_F updateRect)
 	}
 
 	// Long label
-	m_d2.pRenderTarget->DrawTextLayout(
+	m_d2.pD2DContext->DrawTextLayout(
 		D2D1::Point2F(m_center.x - m_longLayoutSize / 2.0f, m_center.y - m_longLayoutSize / 2.0f),
 		m_longLabelLayouts[m_mouseOn + 1],
 		m_d2.pBrush
@@ -255,10 +255,10 @@ void PieChart::PaintWedge(ID2D1PathGeometry * pWedge, float offset_angle, D2D1_C
 		D2D1::Point2F(0, 0)
 	);
 	D2D1_MATRIX_3X2_F translation = D2D1::Matrix3x2F::Translation(m_center.x, m_center.y);
-	m_d2.pRenderTarget->SetTransform(scale * rotation * translation);
+	m_d2.pD2DContext->SetTransform(scale * rotation * translation);
 
 	m_d2.pBrush->SetColor(color);
-	m_d2.pRenderTarget->FillGeometry(pWedge, m_d2.pBrush);
+	m_d2.pD2DContext->FillGeometry(pWedge, m_d2.pBrush);
 	//m_d2.pBrush->SetColor(m_borderColor);
-	//m_d2.pRenderTarget->DrawGeometry(pWedge, m_d2.pBrush, 2.0f, m_d2.pFixedTransformStyle);
+	//m_d2.pD2DContext->DrawGeometry(pWedge, m_d2.pBrush, 2.0f, m_d2.pFixedTransformStyle);
 }

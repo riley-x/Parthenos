@@ -37,18 +37,18 @@ void ScrollBar::Paint(D2D1_RECT_F updateRect)
 {
 	// Background
 	m_d2.pBrush->SetColor(Colors::MAIN_BACKGROUND);
-	m_d2.pRenderTarget->FillRectangle(m_dipRect, m_d2.pBrush);
+	m_d2.pD2DContext->FillRectangle(m_dipRect, m_d2.pBrush);
 
 	// Button Highlight
 	if (m_mouseOn == moUp)
 	{
 		m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
-		m_d2.pRenderTarget->FillRectangle(m_upArrow.GetClickRect(), m_d2.pBrush);
+		m_d2.pD2DContext->FillRectangle(m_upArrow.GetClickRect(), m_d2.pBrush);
 	}
 	else if (m_mouseOn == moDown)
 	{
 		m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
-		m_d2.pRenderTarget->FillRectangle(m_dnArrow.GetClickRect(), m_d2.pBrush);
+		m_d2.pD2DContext->FillRectangle(m_dnArrow.GetClickRect(), m_d2.pBrush);
 	}
 
 	// Buttons
@@ -59,12 +59,12 @@ void ScrollBar::Paint(D2D1_RECT_F updateRect)
 	if (m_mouseOn == moBar)
 	{
 		m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
-		m_d2.pRenderTarget->FillRectangle(m_barRect, m_d2.pBrush);
+		m_d2.pD2DContext->FillRectangle(m_barRect, m_d2.pBrush);
 	}
 	else
 	{
 		m_d2.pBrush->SetColor(Colors::SCROLL_BAR);
-		m_d2.pRenderTarget->FillRectangle(m_barRect, m_d2.pBrush);
+		m_d2.pD2DContext->FillRectangle(m_barRect, m_d2.pBrush);
 	}
 }
 

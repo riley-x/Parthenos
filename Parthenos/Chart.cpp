@@ -157,7 +157,7 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 	if (updateRect.top <= m_menuRect.bottom) {
 		// Background of menu
 		m_d2.pBrush->SetColor(Colors::AXES_BACKGROUND);
-		m_d2.pRenderTarget->FillRectangle(m_menuRect, m_d2.pBrush);
+		m_d2.pD2DContext->FillRectangle(m_menuRect, m_d2.pBrush);
 
 		// Ticker box
 		m_tickerBox.Paint(m_menuRect); // pass m_menuRect to force repaint
@@ -169,9 +169,9 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 		m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
 		D2D1_RECT_F iconRect;
 		if (m_chartTypeButtons.GetActiveClickRect(iconRect))
-			m_d2.pRenderTarget->FillRectangle(iconRect, m_d2.pBrush);
+			m_d2.pD2DContext->FillRectangle(iconRect, m_d2.pBrush);
 		if (m_mouseTypeButtons.GetActiveClickRect(iconRect))
-			m_d2.pRenderTarget->FillRectangle(iconRect, m_d2.pBrush);
+			m_d2.pD2DContext->FillRectangle(iconRect, m_d2.pBrush);
 
 		// Icon buttons
 		m_chartTypeButtons.Paint(m_menuRect);
@@ -181,14 +181,14 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 		m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
 		for (float x : m_divisions)
 		{
-			m_d2.pRenderTarget->DrawLine(
+			m_d2.pD2DContext->DrawLine(
 				D2D1::Point2F(x, m_menuRect.top),
 				D2D1::Point2F(x, m_menuRect.bottom),
 				m_d2.pBrush,
 				DPIScale::PixelsToDipsX(1)
 			);
 		}
-		m_d2.pRenderTarget->DrawLine(
+		m_d2.pD2DContext->DrawLine(
 			D2D1::Point2F(m_menuRect.left, m_menuRect.bottom - DPIScale::hpy()),
 			D2D1::Point2F(m_menuRect.right, m_menuRect.bottom - DPIScale::hpy()),
 			m_d2.pBrush,

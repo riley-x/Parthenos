@@ -32,13 +32,13 @@ void MessageScrollBox::Paint(D2D1_RECT_F updateRect)
 	{
 		// Background
 		m_d2.pBrush->SetColor(Colors::WATCH_BACKGROUND);
-		m_d2.pRenderTarget->FillRectangle(m_dipRect, m_d2.pBrush);
+		m_d2.pD2DContext->FillRectangle(m_dipRect, m_d2.pBrush);
 
 		// Title
 		m_d2.pBrush->SetColor(Colors::AXES_BACKGROUND);
-		m_d2.pRenderTarget->FillRectangle(m_titleRect, m_d2.pBrush);
+		m_d2.pD2DContext->FillRectangle(m_titleRect, m_d2.pBrush);
 		m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
-		m_d2.pRenderTarget->DrawLine(
+		m_d2.pD2DContext->DrawLine(
 			D2D1::Point2F(m_titleRect.left, m_titleBorderY),
 			D2D1::Point2F(m_titleRect.right, m_titleBorderY),
 			m_d2.pBrush,
@@ -46,14 +46,14 @@ void MessageScrollBox::Paint(D2D1_RECT_F updateRect)
 			m_d2.pHairlineStyle
 		);
 		m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
-		m_d2.pRenderTarget->DrawTextW(L" Output:", 7, m_d2.pTextFormats[D2Objects::Formats::Segoe12], m_titleRect, m_d2.pBrush);
+		m_d2.pD2DContext->DrawTextW(L" Output:", 7, m_d2.pTextFormats[D2Objects::Formats::Segoe12], m_titleRect, m_d2.pBrush);
 
 		
 		// Text
 		if (m_pTextLayout)
 		{
-			m_d2.pRenderTarget->PushAxisAlignedClip(m_layoutRect, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
-			m_d2.pRenderTarget->SetTransform(D2D1::Matrix3x2F::Translation(0, -m_linePos[m_currLine]));
+			m_d2.pD2DContext->PushAxisAlignedClip(m_layoutRect, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+			m_d2.pD2DContext->SetTransform(D2D1::Matrix3x2F::Translation(0, -m_linePos[m_currLine]));
 
 			// Highlight
 			if (m_iSelectStart != m_iSelectEnd)
@@ -61,7 +61,7 @@ void MessageScrollBox::Paint(D2D1_RECT_F updateRect)
 				m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
 				for (auto const & metric : m_selectionMetrics)
 				{
-					m_d2.pRenderTarget->FillRectangle(
+					m_d2.pD2DContext->FillRectangle(
 						D2D1::RectF(metric.left, metric.top, metric.left + metric.width, metric.top + metric.height),
 						m_d2.pBrush
 					);
@@ -69,11 +69,11 @@ void MessageScrollBox::Paint(D2D1_RECT_F updateRect)
 			}
 
 			m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
-			m_d2.pRenderTarget->DrawTextLayout(D2D1::Point2F(m_layoutRect.left, m_layoutRect.top), m_pTextLayout, m_d2.pBrush);
+			m_d2.pD2DContext->DrawTextLayout(D2D1::Point2F(m_layoutRect.left, m_layoutRect.top), m_pTextLayout, m_d2.pBrush);
 
 
-			m_d2.pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
-			m_d2.pRenderTarget->PopAxisAlignedClip();
+			m_d2.pD2DContext->SetTransform(D2D1::Matrix3x2F::Identity());
+			m_d2.pD2DContext->PopAxisAlignedClip();
 		}
 	}
 	m_scrollBar.Paint(updateRect);
