@@ -10,8 +10,10 @@ void Axes::Clear()
 	m_xTicks.clear();
 	m_yTicks.clear();
 	m_dates.clear();
+	m_userXLabels.clear();
 	m_grid_lines[0].clear();
 	m_grid_lines[1].clear();
+	SafeRelease(&m_hoverLayout);
 	m_graphObjects.clear();
 	m_ismade = true;
 	m_imade = 0;
@@ -131,6 +133,26 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 	for (auto graph : m_graphObjects)
 		graph->Paint(m_d2);
 
+	// Crosshairs
+	if (m_hoverOn >= 0)
+	{
+		m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
+		if (m_hoverStyle == HoverStyle::crosshairs) // draw horizontal line
+		{
+			m_d2.pRenderTarget->DrawLine(
+				D2D1::Point2F(m_axesRect.left, m_hoverLoc.y),
+				D2D1::Point2F(m_axesRect.right, m_hoverLoc.y),
+				m_d2.pBrush, 1.0f, m_d2.pDashedStyle
+			);
+		}
+		// draw vertical line
+		m_d2.pRenderTarget->DrawLine(
+			D2D1::Point2F(m_hoverLoc.x, m_axesRect.top),
+			D2D1::Point2F(m_hoverLoc.x, m_axesRect.bottom),
+			m_d2.pBrush, 1.0f, m_d2.pDashedStyle
+		);
+	}
+
 	// Axes
 	m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
 	if (!std::isnan(m_xAxisPos))
@@ -153,6 +175,100 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 						 D2D1::Point2F(m_axesRect.right, m_axesRect.top) };
 		m_d2.pRenderTarget->DrawLine(yaxis.start, yaxis.end, m_d2.pBrush, DPIScale::px());
 	}
+
+	// Hover text
+	if (m_hoverOn >= 0)
+	{
+		m_d2.pBrush->SetColor(Colors::MENU_BACKGROUND);
+		m_d2.pRenderTarget->FillRectangle(m_hoverRect, m_d2.pBrush);
+		m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
+		m_d2.pRenderTarget->DrawTextLayout(
+			D2D1::Point2F(m_hoverRect.left + m_labelPad, m_hoverRect.top + m_labelPad),
+			m_hoverLayout,
+			m_d2.pBrush
+		);
+	}
+}
+
+bool Axes::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
+{
+	if (handeled || m_hoverStyle == HoverStyle::none || m_graphObjects.empty() ||
+		!inRect(cursor, m_axesRect))
+	{
+		if (m_hoverOn >= 0)
+		{
+			m_hoverOn = -1;
+			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+		}
+		return false;
+	}
+
+	// Get x position
+	double x = round(DIPtoX(cursor.x));
+	if (x < 0) x = 0; // occurs from padding so that xmin < 0
+	double n = max(m_dates.size(), m_userXLabels.size());
+	if (x > n - 1) x = n - 1;
+	size_t xind = static_cast<size_t>(x); // all x values are [0, n)
+	m_hoverLoc = cursor;
+	m_hoverLoc.x = XtoDIP(x);
+
+	if (m_hoverOn != (int)xind || m_hoverStyle == HoverStyle::crosshairs) 
+	{
+		// Calculate new text and layout
+		m_hoverOn = (int)xind;
+		std::wstring xlabel, ylabel;
+
+		// Get x label
+		if (xind < m_dates.size()) xlabel = DateToWString(m_dates[xind]);
+		else if (xind < m_userXLabels.size()) xlabel = m_userXLabels[xind];
+
+		// Get y label (and adjust crosshairs for HoverStyle::snap)
+		ylabel = (m_hoverStyle == HoverStyle::snap) ? m_graphObjects[0]->GetYLabel(xind) : std::to_wstring(DIPtoY(cursor.y));
+
+		// Make layout
+		std::wstring label = xlabel + L"\n" + ylabel;
+		SafeRelease(&m_hoverLayout);
+		m_d2.pTextFormats[D2Objects::Formats::Segoe12]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
+		HRESULT hr = m_d2.pDWriteFactory->CreateTextLayout(
+			label.c_str(),	// The string to be laid out and formatted.
+			label.size(),	// The length of the string.
+			m_d2.pTextFormats[D2Objects::Formats::Segoe12],	// The text format to apply to the string
+			200.0f,			// The width of the layout box.
+			200.0f,			// The height of the layout box.
+			&m_hoverLayout	// The IDWriteTextLayout interface pointer.
+		);
+		m_d2.pTextFormats[D2Objects::Formats::Segoe12]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+	}
+
+	// Calculate bounding box
+	if (m_hoverLayout)
+	{
+		DWRITE_TEXT_METRICS metrics;
+		m_hoverLayout->GetMetrics(&metrics);
+		if (cursor.x + metrics.width + 10.0f > m_dipRect.right) // go left of cursor
+		{
+			m_hoverRect.left = cursor.x - metrics.width - 2.0f * m_labelPad;
+			m_hoverRect.right = cursor.x;
+		}
+		else
+		{
+			m_hoverRect.left = cursor.x;
+			m_hoverRect.right = cursor.x + metrics.width + 2.0f * m_labelPad;
+		}
+		if (cursor.y + metrics.height + 20.0f > m_dipRect.bottom) // go above cursor
+		{
+			m_hoverRect.top = cursor.y - (metrics.height + 2.0f * m_labelPad);
+			m_hoverRect.bottom = cursor.y;
+		}
+		else
+		{
+			m_hoverRect.top = cursor.y + 12.0f; // TODO height of cursor?
+			m_hoverRect.bottom = cursor.y + 12.0f + metrics.height + 2.0f * m_labelPad;
+		}
+	}
+
+	::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+	return true;
 }
 
 void Axes::Candlestick(OHLC const * ohlc, int n)
@@ -161,7 +277,7 @@ void Axes::Candlestick(OHLC const * ohlc, int n)
 	if (!get_dates)
 	{
 		if (m_dates.size() != n || m_dates.front() != ohlc[0].date || m_dates.back() != ohlc[n - 1].date)
-			OutputMessage(L"Error: Dates don't line up\n");
+			return OutputMessage(L"Error: Dates don't line up\n");
 	}
 	else
 	{
@@ -223,8 +339,6 @@ void Axes::Line(date_t const * dates, double const * ydata, int n,
 
 void Axes::Bar(std::pair<double, D2D1_COLOR_F> const * data, int n, std::vector<std::wstring> const & labels)
 {
-	m_drawxLabels = false;
-
 	// get min/max of data to scale data appropriately. x values [0,n)
 	double xmin = -0.5; // extra padding
 	double xmax = n - 0.5;
@@ -266,8 +380,15 @@ void Axes::Rescale()
 	m_rescaled = false;
 }
 
-
 void Axes::CalculateXTicks()
+{
+	if (!m_dates.empty()) CalculateXTicks_Dates();
+	else if (!m_userXLabels.empty()) CalculateXTicks_User();
+}
+
+// Calculates human-friendly formatted dates. Auto sets spacing and labels.
+// Populates m_grid_lines[0] and m_xTicks.
+void Axes::CalculateXTicks_Dates()
 {
 	size_t nmax = static_cast<size_t>(m_rect_xdiff / (3.0f * m_labelHeight));
 	size_t step = (m_dates.size() + nmax - 1) / nmax; // round up
@@ -315,7 +436,7 @@ void Axes::CalculateXTicks()
 		}
 
 
-		m_xTicks.push_back({ xdip, m_dates[i], std::wstring(buffer) });
+		m_xTicks.push_back({ xdip, static_cast<double>(i), std::wstring(buffer) });
 		m_grid_lines[0].push_back(
 			{ D2D1::Point2F(xdip, m_axesRect.top),
 			D2D1::Point2F(xdip, m_axesRect.bottom) }
@@ -331,6 +452,17 @@ void Axes::CalculateXTicks()
 			D2D1::Point2F(xdip, m_axesRect.bottom) }
 		);
 		xdip += spacing;
+	}
+}
+
+// Clears m_grid_lines[0] and populates m_xTicks.
+void Axes::CalculateXTicks_User()
+{
+	m_xTicks.clear();
+	m_grid_lines[0].clear();
+	for (size_t i = 0; i < m_userXLabels.size(); i++)
+	{
+		m_xTicks.push_back({ XtoDIP((double)i), (double)i, m_userXLabels[i] });
 	}
 }
 
@@ -411,20 +543,22 @@ void Axes::CalculateYTicks()
 	}
 }
 
-///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////
+// --- LineGraph ---
 
 // Caculates the DIP coordinates for in_data (setting x values to [0,n) )
 // and adds line segments connecting the points
 void LineGraph::Make()
 {	
 	double const * data = reinterpret_cast<double const *>(m_data);
+	if (m_n == 0) return;
 	m_lines.resize(m_n - 1);
 
 	float x = m_axes->XtoDIP(static_cast<double>(0));
 	float y = m_axes->YtoDIP(data[0]);
 	D2D1_POINT_2F start;
 	D2D1_POINT_2F end = D2D1::Point2F(x, y);
-	for (int i = 1; i < m_n; i++)
+	for (size_t i = 1; i < m_n; i++)
 	{
 		start = end;
 		x = m_axes->XtoDIP(static_cast<double>(i));
@@ -443,6 +577,13 @@ void LineGraph::Paint(D2Objects const & d2)
 	}
 }
 
+std::wstring LineGraph::GetYLabel(size_t i) const
+{
+	double const * data = reinterpret_cast<double const *>(m_data);
+	if (i < m_n) return std::to_wstring(data[i]);
+	return std::wstring();
+}
+
 void LineGraph::SetLineProperties(D2D1_COLOR_F color, float stroke_width, ID2D1StrokeStyle * pStyle)
 {
 	m_color = color;
@@ -450,6 +591,8 @@ void LineGraph::SetLineProperties(D2D1_COLOR_F color, float stroke_width, ID2D1S
 	m_pStyle = pStyle;
 }
 
+///////////////////////////////////////////////////////////
+// --- CandlestickGraph ---
 
 void CandlestickGraph::Make()
 {
@@ -466,7 +609,7 @@ void CandlestickGraph::Make()
 	float x_diff = m_axes->GetDataRectXDiff();
 	float boxHalfWidth = min(15.0f, 0.4f * x_diff / m_n);
 
-	for (int i = 0; i < m_n; i++)
+	for (size_t i = 0; i < m_n; i++)
 	{
 		float x = m_axes->XtoDIP(static_cast<double>(i));
 		float y1 = m_axes->YtoDIP(ohlc[i].low);
@@ -521,19 +664,30 @@ void CandlestickGraph::Paint(D2Objects const & d2)
 
 }
 
+std::wstring CandlestickGraph::GetYLabel(size_t i) const
+{
+	OHLC const * ohlc = reinterpret_cast<OHLC const *>(m_data);
+	if (i < m_n) return ohlc[i].to_wstring(true);
+	return std::wstring();
+}
+
+
+///////////////////////////////////////////////////////////
+// --- BarGraph ---
+
 void BarGraph::Make()
 {
 	std::pair<double, D2D1_COLOR_F> const * data = reinterpret_cast<std::pair<double, D2D1_COLOR_F> const *>(m_data);
 	
 	m_bars.resize(m_n);
-	m_labelLayouts.resize(min(m_labels.size(), (size_t)m_n));
+	m_labelLayouts.resize(min(m_labels.size(), m_n));
 
 	float x_diff = m_axes->GetDataRectXDiff();
 	float boxHalfWidth = 0.4f * x_diff / m_n;
 	float textHalfWidth = 0.5f * x_diff / m_n;
 	float textMinWidth = 20.0f;
 	if (textHalfWidth < textMinWidth) m_labelLayouts.clear();
-	for (int i = 0; i < m_n; i++)
+	for (size_t i = 0; i < m_n; i++)
 	{
 		float x = m_axes->XtoDIP(static_cast<double>(i));
 		float y1, y2; // y1 = bottom, y2 = top
@@ -555,7 +709,7 @@ void BarGraph::Make()
 			y1
 		);
 
-		if ((size_t)i < m_labels.size() && textHalfWidth >= textMinWidth)
+		if (i < m_labels.size() && textHalfWidth >= textMinWidth)
 		{
 			m_labelLayouts[i] = D2D1::RectF(
 				x - textHalfWidth,
@@ -570,7 +724,7 @@ void BarGraph::Make()
 void BarGraph::Paint(D2Objects const & d2)
 {
 	std::pair<double, D2D1_COLOR_F> const * data = reinterpret_cast<std::pair<double, D2D1_COLOR_F> const *>(m_data);
-	for (int i = 0; i < m_n; i++)
+	for (size_t i = 0; i < m_n; i++)
 	{
 		d2.pBrush->SetColor(data[i].second);
 		d2.pRenderTarget->FillRectangle(m_bars[i], d2.pBrush);
@@ -589,4 +743,11 @@ void BarGraph::Paint(D2Objects const & d2)
 		);
 	}
 	d2.pTextFormats[D2Objects::Formats::Segoe12]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+}
+
+std::wstring BarGraph::GetYLabel(size_t i) const
+{
+	std::pair<double, D2D1_COLOR_F> const * data = reinterpret_cast<std::pair<double, D2D1_COLOR_F> const *>(m_data);
+	if (i < m_n) return std::to_wstring(data[i].first);
+	return std::wstring();
 }

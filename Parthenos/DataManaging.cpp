@@ -1406,6 +1406,28 @@ inline double GetAPY(double gain, double cost_in, date_t start_date, date_t end_
 ///////////////////////////////////////////////////////////
 // --- Struct Printing Functions ---
 
+std::wstring OHLC_struct::to_wstring(bool mini) const
+{
+	if (mini)
+	{
+		wchar_t buffer[300];
+		swprintf_s(buffer, _countof(buffer),
+			L"Open: %s\nHigh: %s\nLow: %s\nClose: %s",
+			FormatDollar(open).c_str(), FormatDollar(high).c_str(), FormatDollar(low).c_str(), FormatDollar(close).c_str()
+		);
+		return std::wstring(buffer);
+	}
+	else
+	{
+		return L"Date: " + DateToWString(date)
+			+ L", Open: " + std::to_wstring(open)
+			+ L", High: " + std::to_wstring(high)
+			+ L", Low: " + std::to_wstring(low)
+			+ L", Close: " + std::to_wstring(close)
+			+ L", Volume: " + std::to_wstring(volume)
+			+ L"\n";
+	}
+}
 
 std::wstring Transaction_struct::to_wstring() const
 {
@@ -1428,3 +1450,4 @@ std::wstring Transaction_struct::to_wstring(std::vector<std::wstring> const & ac
 	);
 	return std::wstring(buffer);
 }
+

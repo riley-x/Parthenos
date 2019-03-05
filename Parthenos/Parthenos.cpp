@@ -810,6 +810,8 @@ void Parthenos::UpdatePortfolioPlotters(char account, bool init)
 
 	m_returnsAxes->Clear();
 	m_returnsPercAxes->Clear();
+	m_returnsAxes->SetXLabels(m_accounts[account].tickers, false);
+	m_returnsPercAxes->SetXLabels(m_accounts[account].tickers, false);
 	m_returnsAxes->Bar(
 		m_accounts[account].returnsBarData.data(), 
 		m_accounts[account].returnsBarData.size(), 
@@ -921,9 +923,12 @@ LRESULT Parthenos::OnCreate()
 	
 	m_returnsAxes->SetXAxisPos(0.0f);
 	m_returnsAxes->SetYAxisPos(std::nanf(""));
+	m_returnsAxes->SetHoverStyle(Axes::HoverStyle::snap);
 	m_returnsPercAxes->SetXAxisPos(0.0f);
 	m_returnsPercAxes->SetYAxisPos(std::nanf(""));
+	m_returnsPercAxes->SetHoverStyle(Axes::HoverStyle::snap);
 	m_eqHistoryAxes->SetYAxisPos(std::nanf(""));
+	m_eqHistoryAxes->SetHoverStyle(Axes::HoverStyle::snap);
 
 	UpdatePortfolioPlotters(m_currAccount, true);
 

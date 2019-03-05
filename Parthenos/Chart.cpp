@@ -32,6 +32,8 @@ Chart::Chart(HWND hwnd, D2Objects const & d2)
 
 	m_timeframeButton.SetItems({ L"1M", L"3M", L"6M", L"1Y", L"2Y", L"5Y" });
 	m_timeframeButton.SetActive(3); // default 1 year
+
+	m_axes.SetHoverStyle(Axes::HoverStyle::crosshairs);
 }
 
 void Chart::SetSize(D2D1_RECT_F dipRect)
@@ -165,6 +167,7 @@ bool Chart::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 {
 	handeled = m_timeframeButton.OnMouseMove(cursor, wParam, handeled) || handeled;
 	handeled = m_tickerBox.OnMouseMove(cursor, wParam, handeled) || handeled;
+	handeled = m_axes.OnMouseMove(cursor, wParam, handeled) || handeled;
 	//ProcessCTPMessages(); // not needed
 	return handeled;
 }

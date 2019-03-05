@@ -27,16 +27,7 @@ typedef struct OHLC_struct
 	date_t date;
 	uint32_t volume;
 
-	std::wstring to_wstring() const
-	{
-		return L"Date: "	+ DateToWString(date)
-			+ L", Open: "	+ std::to_wstring(open)
-			+ L", High: "	+ std::to_wstring(high)
-			+ L", Low: "	+ std::to_wstring(low)
-			+ L", Close: "	+ std::to_wstring(close)
-			+ L", Volume: " + std::to_wstring(volume)
-			+ L"\n";
-	}
+	std::wstring to_wstring(bool mini = false) const;
 } OHLC;
 
 typedef struct Quote_struct 
