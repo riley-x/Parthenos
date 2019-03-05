@@ -58,6 +58,7 @@ private:
 	Axes				m_axes;
 	TextBox				m_tickerBox;
 	ButtonGroup			m_chartTypeButtons;
+	ButtonGroup			m_mouseTypeButtons;
 	DropMenuButton		m_timeframeButton;
 
 	// Painting

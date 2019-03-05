@@ -11,8 +11,13 @@ float const Chart::m_timeframeWidth = 60.0f;
 
 Chart::Chart(HWND hwnd, D2Objects const & d2)
 	: AppItem(hwnd, d2), m_axes(hwnd, d2), m_tickerBox(hwnd, d2, this), 
-	m_chartTypeButtons(hwnd, d2), m_timeframeButton(hwnd, d2, this)
+	m_timeframeButton(hwnd, d2, this), m_chartTypeButtons(hwnd, d2), m_mouseTypeButtons(hwnd, d2)
 {
+	// Timeframe button
+	m_timeframeButton.SetItems({ L"1M", L"3M", L"6M", L"1Y", L"2Y", L"5Y" });
+	m_timeframeButton.SetActive(3); // default 1 year
+
+	// Chart type buttons
 	auto temp = new IconButton(hwnd, d2);
 	temp->SetName(L"Candlestick");
 	temp->SetIcon(GetResourceIndex(IDB_CANDLESTICK));
@@ -30,10 +35,23 @@ Chart::Chart(HWND hwnd, D2Objects const & d2)
 
 	m_chartTypeButtons.SetActive(0);
 
-	m_timeframeButton.SetItems({ L"1M", L"3M", L"6M", L"1Y", L"2Y", L"5Y" });
-	m_timeframeButton.SetActive(3); // default 1 year
+	// Mouse type buttons
+	temp = new IconButton(hwnd, d2);
+	temp->SetName(L"Arrow");
+	temp->SetIcon(GetResourceIndex(IDB_ARROWCURSOR));
+	m_mouseTypeButtons.Add(temp);
 
-	m_axes.SetHoverStyle(Axes::HoverStyle::crosshairs);
+	temp = new IconButton(hwnd, d2);
+	temp->SetName(L"Snap");
+	temp->SetIcon(GetResourceIndex(IDB_SNAPLINE));
+	m_mouseTypeButtons.Add(temp);
+
+	temp = new IconButton(hwnd, d2);
+	temp->SetName(L"Cross");
+	temp->SetIcon(GetResourceIndex(IDB_CROSSHAIRS));
+	m_mouseTypeButtons.Add(temp);
+
+	m_mouseTypeButtons.SetActive(0);
 }
 
 void Chart::SetSize(D2D1_RECT_F dipRect)
@@ -107,6 +125,28 @@ void Chart::SetSize(D2D1_RECT_F dipRect)
 		// Divison
 		m_divisions.push_back(DPIScale::SnapToPixelX(left + m_commandHPad) + DPIScale::hpx());
 		left += 3 * m_commandHPad;
+
+		// Mouse type buttons
+		for (size_t i = 0; i < m_mouseTypeButtons.Size(); i++)
+		{
+			m_mouseTypeButtons.SetSize(i, D2D1::RectF(
+				left,
+				top,
+				left + m_commandSize,
+				top + m_commandSize
+			));
+			m_mouseTypeButtons.SetClickRect(i, D2D1::RectF(
+				left - m_commandHPad / 2.0f,
+				m_menuRect.top,
+				left + m_commandSize + m_commandHPad / 2.0f,
+				m_menuRect.bottom
+			));
+			left += m_commandSize + m_commandHPad;
+		}
+
+		// Divison
+		m_divisions.push_back(DPIScale::SnapToPixelX(left + m_commandHPad) + DPIScale::hpx());
+		left += 3 * m_commandHPad;
 	}
 }
 
@@ -125,16 +165,17 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 		// Timeframe menu
 		m_timeframeButton.Paint(m_menuRect);
 
-		// Chart type button highlight
+		// Button highlights
 		m_d2.pBrush->SetColor(Colors::HIGHLIGHT);
 		D2D1_RECT_F iconRect;
 		if (m_chartTypeButtons.GetActiveClickRect(iconRect))
-		{
 			m_d2.pRenderTarget->FillRectangle(iconRect, m_d2.pBrush);
-		}
+		if (m_mouseTypeButtons.GetActiveClickRect(iconRect))
+			m_d2.pRenderTarget->FillRectangle(iconRect, m_d2.pBrush);
 
-		// Chart type buttons
+		// Icon buttons
 		m_chartTypeButtons.Paint(m_menuRect);
+		m_mouseTypeButtons.Paint(m_menuRect);
 
 		// Menu division lines
 		m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
@@ -196,7 +237,18 @@ bool Chart::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 				m_currentMChart = newType;
 				DrawCurrentState();
 			}
-			return true;
+			handeled = true;
+		}
+		else if (m_mouseTypeButtons.OnLButtonDown(cursor, name, handeled))
+		{
+			if (name == L"Arrow")
+				m_axes.SetHoverStyle(Axes::HoverStyle::none);
+			else if (name == L"Snap")
+				m_axes.SetHoverStyle(Axes::HoverStyle::snap);
+			else if (name == L"Cross")
+				m_axes.SetHoverStyle(Axes::HoverStyle::crosshairs);
+			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+			handeled = true;
 		}
 	}
 
@@ -303,20 +355,6 @@ void Chart::Load(std::wstring ticker, int range)
 	m_OHLC = GetOHLC(ticker, apiSource::alpha, range);
 	m_tickerBox.SetText(ticker);
 	m_ticker = ticker;
-
-	//if (m_OHLC.size() >= 5)
-	//{
-	//	for (int i = 0; i < 5; i++)
-	//	{
-	//		OutputDebugString(m_OHLC[i].to_wstring().c_str());
-	//	}
-	//	OutputMessage(L"Size: %u\n", m_OHLC.size());
-	//	for (size_t i = m_OHLC.size() - 5; i < m_OHLC.size(); i++)
-	//	{
-	//		OutputDebugString(m_OHLC[i].to_wstring().c_str());
-	//	}
-	//	OutputMessage(L"\n");
-	//}
 }
 
 
@@ -436,12 +474,10 @@ int Chart::FindStart(Timeframe timeframe, OHLC* & data)
 	return n;
 }
 
-
 void Chart::Candlestick(OHLC const *data, int n)
 {
 	m_axes.Candlestick(data, n); 
 }
-
 
 void Chart::Line(OHLC const *data, int n)
 { 

@@ -215,12 +215,15 @@
   <ItemGroup>
     <Image Include="Command Icons\Candlestick.png" />
     <Image Include="Command Icons\Close.png" />
+    <Image Include="Command Icons\Crosshairs.png" />
+    <Image Include="Command Icons\Cursor.png" />
     <Image Include="Command Icons\DownArrowHead.png" />
     <Image Include="Command Icons\Envelope.png" />
     <Image Include="Command Icons\Line.png" />
     <Image Include="Command Icons\Maximize.png" />
     <Image Include="Command Icons\Minimize.png" />
     <Image Include="Command Icons\Restore.png" />
+    <Image Include="Command Icons\SnapLine.png" />
     <Image Include="Command Icons\UpArrowHead.png" />
     <Image Include="Parthenos.ico" />
     <Image Include="Parthenos_white.png" />

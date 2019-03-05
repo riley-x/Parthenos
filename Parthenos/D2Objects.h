@@ -15,9 +15,11 @@ public:
 	enum Formats { Segoe10, Segoe12, Segoe14, Segoe18 };
 
 	// WIC
-	static const int nIcons = 10;
+	static const int nIcons = 13;
 	int resource_ids[nIcons] = { IDB_CLOSE, IDB_MAXIMIZE, IDB_MINIMIZE, IDB_RESTORE, IDB_PARTHENOS_WHITE,
-		IDB_CANDLESTICK, IDB_LINE, IDB_ENVELOPE, IDB_DOWNARROWHEAD, IDB_UPARROWHEAD };
+		IDB_CANDLESTICK, IDB_LINE, IDB_ENVELOPE, IDB_DOWNARROWHEAD, IDB_UPARROWHEAD, IDB_ARROWCURSOR, 
+		IDB_SNAPLINE, IDB_CROSSHAIRS	
+	};
 
 	////////////////////////////////////////////////////////
 	// Pointers
@@ -75,6 +77,12 @@ inline int GetResourceIndex(int resource)
 		return 8;
 	case IDB_UPARROWHEAD:
 		return 9;
+	case IDB_ARROWCURSOR:
+		return 10;
+	case IDB_SNAPLINE:
+		return 11;
+	case IDB_CROSSHAIRS:
+		return 12;
 	default:
 		return -1;
 	}
