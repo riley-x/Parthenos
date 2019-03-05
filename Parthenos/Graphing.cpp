@@ -391,6 +391,7 @@ void Axes::CalculateXTicks()
 void Axes::CalculateXTicks_Dates()
 {
 	size_t nmax = static_cast<size_t>(m_rect_xdiff / (3.0f * m_labelHeight));
+	if (nmax == 0) return;
 	size_t step = (m_dates.size() + nmax - 1) / nmax; // round up
 	if (step == 0) return;
 

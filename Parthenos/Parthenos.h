@@ -40,7 +40,7 @@ public:
 
 private:
 	// Data
-	int	m_currAccount = 0;
+	char									m_currAccount = 0;
 	std::vector<std::wstring>				m_accountNames;
 	std::vector<Account>					m_accounts; // same order as m_accountNames; extra entry at end for 'All'
 	std::vector<std::wstring>				m_tickers; // tickers in all accounts, sorted by name

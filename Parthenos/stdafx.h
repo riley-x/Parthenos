@@ -34,6 +34,14 @@
 #include <d2d1.h>
 #pragma comment(lib, "d2d1")
 #include <d2d1_1.h>
-#include <dwrite.h>
+#include <d2d1_1helper.h>
+#include <d3d11_1.h>
+#pragma comment(lib, "d3d11")
+#include <d2d1effects.h>
+#include <d2d1effecthelpers.h>
+#include <dwrite_1.h>
 #pragma comment(lib, "dwrite")
+#include <wrl/client.h>
 #include <wincodec.h>
+
+using Microsoft::WRL::ComPtr;

@@ -302,6 +302,9 @@ public:
 		fullPY = PixelsToDipsY(1);
 	}
 
+	static inline float DPIX() { return dpiX; }
+	static inline float DPIY() { return dpiY; }
+
 	static inline D2D1_POINT_2F PixelsToDips(POINT p)
 	{
 		return D2D1::Point2F(static_cast<float>(p.x) / scaleX, static_cast<float>(p.y) / scaleY);

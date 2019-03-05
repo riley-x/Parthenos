@@ -26,30 +26,36 @@ public:
 
 	// Rendering 
 	ID2D1Factory1           *pFactory				= NULL;
-	ID2D1HwndRenderTarget   *pRenderTarget			= NULL;
-	ID2D1SolidColorBrush    *pBrush					= NULL;
+	ID3D11Device1			*pDirect3DDevice		= NULL;
+	ID3D11DeviceContext1	*pDirect3DContext		= NULL;
+	ID2D1Device				*pDirect2DDevice		= NULL;
+	ID2D1DeviceContext		*pRenderTarget			= NULL;
+	IDXGISwapChain1			*pDXGISwapChain			= NULL;
+	ID2D1Bitmap1			*pDirect2DBackBuffer	= NULL;
+
+	// Drawing
 	ID2D1StrokeStyle		*pDashedStyle			= NULL;
 	ID2D1StrokeStyle1		*pFixedTransformStyle	= NULL;
 	ID2D1StrokeStyle1		*pHairlineStyle			= NULL;
+	ID2D1SolidColorBrush    *pBrush					= NULL;
 
 	// Direct Write pointers
-	IDWriteFactory          *pDWriteFactory			= NULL;
+	IDWriteFactory1			*pDWriteFactory			= NULL;
 	IDWriteTextFormat		*pTextFormats[nFormats] = {};
 
 	// WIC pointers
-	IWICImagingFactory      *pIWICFactory						= NULL;
+	IWICImagingFactory2     *pIWICFactory						= NULL;
 	IWICFormatConverter		*pConvertedSourceBitmaps[nIcons]	= {}; 
 	ID2D1Bitmap				*pD2DBitmaps[nIcons]				= {};
 	
 	////////////////////////////////////////////////////////
 	// Functions
 
-	HRESULT CreateDeviceIndependentResources();
+	HRESULT CreateLifetimeResources(HWND hwnd);
 	HRESULT LoadResourcePNG(int resource, IWICFormatConverter * pConvertedSourceBitmap);
 	HRESULT	CreateGraphicsResources(HWND hwnd);
-	void	DiscardDeviceIndependentResources();
+	void	DiscardLifetimeResources();
 	void	DiscardGraphicsResources();
-
 };
 
 

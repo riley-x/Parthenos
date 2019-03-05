@@ -22,25 +22,25 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 Parthenos::Parthenos(PCWSTR szClassName)
 	: BorderlessWindow(szClassName), m_accountNames({ L"Robinhood", L"Arista" })
 {
-	// Read Holdings
-	FileIO holdingsFile;
-	holdingsFile.Init(ROOTDIR + L"port.hold");
-	holdingsFile.Open(GENERIC_READ);
-	std::vector<Holdings> out = holdingsFile.Read<Holdings>();
-	holdingsFile.Close();
+	//// Read Holdings
+	//FileIO holdingsFile;
+	//holdingsFile.Init(ROOTDIR + L"port.hold");
+	//holdingsFile.Open(GENERIC_READ);
+	//std::vector<Holdings> out = holdingsFile.Read<Holdings>();
+	//holdingsFile.Close();
 
-	NestedHoldings holdings = FlattenedHoldingsToTickers(out);
-	m_tickers = GetTickers(holdings); // all tickers
-	m_stats = GetBatchQuoteStats(m_tickers);
+	//NestedHoldings holdings = FlattenedHoldingsToTickers(out);
+	//m_tickers = GetTickers(holdings); // all tickers
+	//m_stats = GetBatchQuoteStats(m_tickers);
 
-	m_accounts.resize(m_accountNames.size() + 1);
-	for (size_t i = 0; i < m_accountNames.size(); i++)
-		m_accounts[i].name = m_accountNames[i];
-	m_accounts.back().name = L"All Accounts";
-	
-	CalculatePositions(holdings);
-	CalculateReturns();
-	CalculateHistories();
+	//m_accounts.resize(m_accountNames.size() + 1);
+	//for (size_t i = 0; i < m_accountNames.size(); i++)
+	//	m_accounts[i].name = m_accountNames[i];
+	//m_accounts.back().name = L"All Accounts";
+	//
+	//CalculatePositions(holdings);
+	//CalculateReturns();
+	//CalculateHistories();
 }
 
 Parthenos::~Parthenos()
@@ -98,7 +98,7 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	}
 	case WM_DESTROY:
 		m_d2.DiscardGraphicsResources();
-		m_d2.DiscardDeviceIndependentResources();
+		m_d2.DiscardLifetimeResources();
 		CoUninitialize();
 		PostQuitMessage(0);
 		return 0;
@@ -836,7 +836,7 @@ LRESULT Parthenos::OnCreate()
 
 	if (SUCCEEDED(hr))
 	{
-		hr = m_d2.CreateDeviceIndependentResources();
+		hr = m_d2.CreateLifetimeResources(m_hwnd);
 		m_d2.hwndParent = m_hwnd;
 	}
 	if (FAILED(hr))
@@ -902,11 +902,6 @@ LRESULT Parthenos::OnCreate()
 
 	m_titleBar->SetTabs({ L"Portfolio", L"Returns", L"Chart" });
 
-	std::vector<std::wstring> tickers = GetTickers(m_accounts[m_currAccount].positions);
-	std::vector<std::pair<Quote, Stats>> stats = FilterByKeyMatch(m_tickers, m_stats, tickers);
-	m_watchlist->SetColumns(); // use defaults
-	m_watchlist->Load(tickers, m_accounts[m_currAccount].positions, stats);
-	
 	std::vector<Column> portColumns = {
 		{60.0f, Column::Ticker, L""},
 		{60.0f, Column::Last, L"%.2lf"},
@@ -919,8 +914,9 @@ LRESULT Parthenos::OnCreate()
 		{60.0f, Column::APY, L"%.2lf"},
 		{60.0f, Column::ExDiv, L""},
 	};
+	m_watchlist->SetColumns(); // use defaults
 	m_portfolioList->SetColumns(portColumns);
-	
+
 	m_returnsAxes->SetXAxisPos(0.0f);
 	m_returnsAxes->SetYAxisPos(std::nanf(""));
 	m_returnsAxes->SetHoverStyle(Axes::HoverStyle::snap);
@@ -930,7 +926,13 @@ LRESULT Parthenos::OnCreate()
 	m_eqHistoryAxes->SetYAxisPos(std::nanf(""));
 	m_eqHistoryAxes->SetHoverStyle(Axes::HoverStyle::snap);
 
-	UpdatePortfolioPlotters(m_currAccount, true);
+	if ((size_t)m_currAccount < m_accounts.size())
+	{
+		std::vector<std::wstring> tickers = GetTickers(m_accounts[m_currAccount].positions);
+		std::vector<std::pair<Quote, Stats>> stats = FilterByKeyMatch(m_tickers, m_stats, tickers);
+		m_watchlist->Load(tickers, m_accounts[m_currAccount].positions, stats);
+		UpdatePortfolioPlotters(m_currAccount, true);
+	}
 
 	return 0;
 }
@@ -961,8 +963,13 @@ LRESULT Parthenos::OnSize(WPARAM wParam)
 		RECT rc;
 		GetClientRect(m_hwnd, &rc);
 
-		D2D1_SIZE_U size = D2D1::SizeU(rc.right, rc.bottom);
-		m_d2.pRenderTarget->Resize(size);
+		m_d2.DiscardGraphicsResources();
+		HRESULT hr = m_d2.CreateGraphicsResources(m_hwnd);
+		if (FAILED(hr))
+		{
+			OutputError(L"CreateGraphicsResources failed");
+			return 0;
+		}
 
 		D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
 		m_halfBelowMenu = DPIScale::SnapToPixelY((dipRect.bottom + m_menuBarBottom) / 2.0f);
@@ -1007,13 +1014,27 @@ LRESULT Parthenos::OnPaint()
 			m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
 			m_d2.pRenderTarget->DrawLine(l.start, l.end, m_d2.pBrush, 1.0f, m_d2.pHairlineStyle);
 		}
-
+	
 		hr = m_d2.pRenderTarget->EndDraw();
+		
+		// Present
+		DXGI_PRESENT_PARAMETERS parameters = { 0 };
+		parameters.DirtyRectsCount = 0;
+		parameters.pDirtyRects = nullptr;
+		parameters.pScrollRect = nullptr;
+		parameters.pScrollOffset = nullptr;
+		if (SUCCEEDED(hr))
+			hr = m_d2.pDXGISwapChain->Present1(1, 0, &parameters);
+
 		if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
 		{
 			m_d2.DiscardGraphicsResources();
 		}
 		EndPaint(m_hwnd, &ps);
+	}
+	else
+	{
+		OutputError(L"CreateGraphicsResources failed");
 	}
 
 	return 0;

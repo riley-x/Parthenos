@@ -2,10 +2,9 @@
 #include "D2Objects.h"
 #include "utilities.h"
 
-HRESULT D2Objects::CreateDeviceIndependentResources()
+HRESULT D2Objects::CreateLifetimeResources(HWND hwnd)
 {
 	// Create a Direct2D factory
-	//HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &pFactory);
 	HRESULT hr = D2D1CreateFactory(
 		D2D1_FACTORY_TYPE_SINGLE_THREADED, 
 		__uuidof(ID2D1Factory1),
@@ -18,6 +17,102 @@ HRESULT D2Objects::CreateDeviceIndependentResources()
 	{
 		DPIScale::Initialize(pFactory);
 	}
+
+	// This flag adds support for surfaces with a different color channel ordering than the API default.
+		// You need it for compatibility with Direct2D.
+	UINT creationFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+
+
+	// This array defines the set of DirectX hardware feature levels this app supports.
+	// The ordering is important and you should preserve it.
+	// Don't forget to declare your app's minimum required feature level in its
+	// description.  All apps are assumed to support 9.1 unless otherwise stated.
+	D3D_FEATURE_LEVEL featureLevels[] =
+	{
+		D3D_FEATURE_LEVEL_11_1,
+		D3D_FEATURE_LEVEL_11_0,
+		D3D_FEATURE_LEVEL_10_1,
+		D3D_FEATURE_LEVEL_10_0,
+		D3D_FEATURE_LEVEL_9_3,
+		D3D_FEATURE_LEVEL_9_2,
+		D3D_FEATURE_LEVEL_9_1
+	};
+
+
+	// Create the DX11 API device object, and get a corresponding context.
+	ComPtr<ID3D11Device> device;
+	ComPtr<ID3D11DeviceContext> context;
+	D3D_FEATURE_LEVEL returnedFeatureLevel;
+	if (SUCCEEDED(hr))
+		hr = D3D11CreateDevice(
+			nullptr,                    // specify null to use the default adapter
+			D3D_DRIVER_TYPE_HARDWARE,
+			0,
+			creationFlags,              // optionally set debug and Direct2D compatibility flags
+			featureLevels,              // list of feature levels this app can support
+			ARRAYSIZE(featureLevels),   // number of possible feature levels
+			D3D11_SDK_VERSION,
+			&device,                    // returns the Direct3D device created
+			&returnedFeatureLevel,      // returns feature level of device created
+			&context                    // returns the device immediate context
+		);
+
+	// Get underlying interfaces for D3D device
+	// so device is a ComPtr...do we need to keep in scope?
+	// do we need this pointers?
+	if (SUCCEEDED(hr))
+		hr = device->QueryInterface(__uuidof(ID3D11Device1), (void **)&pDirect3DDevice);
+	if (SUCCEEDED(hr))
+		hr = context->QueryInterface(__uuidof(ID3D11DeviceContext1), (void **)&pDirect3DContext);
+
+	// Obtain the underlying DXGI device of the Direct3D11 device.
+	ComPtr<IDXGIDevice> dxgiDevice;
+	if (SUCCEEDED(hr))
+		hr = device.As(&dxgiDevice);
+
+	// Obtain the Direct2D device for 2-D rendering.
+	if (SUCCEEDED(hr))
+		hr = pFactory->CreateDevice(dxgiDevice.Get(), &pDirect2DDevice);
+
+	// Get Direct2D device's corresponding device context object.
+	if (SUCCEEDED(hr))
+		hr = pDirect2DDevice->CreateDeviceContext(
+			D2D1_DEVICE_CONTEXT_OPTIONS_NONE,
+			&pRenderTarget
+		);
+	
+	// Set the DPI
+	if (SUCCEEDED(hr))
+		pRenderTarget->SetDpi(DPIScale::DPIX(), DPIScale::DPIY());
+
+	// Identify the physical adapter (GPU or card) this device is runs on.
+	ComPtr<IDXGIAdapter> dxgiAdapter;
+	if (SUCCEEDED(hr))
+		hr = dxgiDevice->GetAdapter(&dxgiAdapter);
+
+	// Get the factory object that created the DXGI device.
+	ComPtr<IDXGIFactory2> dxgiFactory;
+	if (SUCCEEDED(hr))
+		hr = dxgiAdapter->GetParent(IID_PPV_ARGS(&dxgiFactory));
+
+	// Allocate a descriptor.
+	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = { 0 };
+	swapChainDesc.Width = 0;                           // use automatic sizing
+	swapChainDesc.Height = 0;
+	swapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM; // this is the most common swapchain format
+	swapChainDesc.Stereo = false;
+	swapChainDesc.SampleDesc.Count = 1;                // don't use multi-sampling
+	swapChainDesc.SampleDesc.Quality = 0;
+	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	swapChainDesc.BufferCount = 2;                     // use double buffering to enable flip
+	swapChainDesc.Scaling = DXGI_SCALING_NONE;
+	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL; // all apps must use this SwapEffect
+	swapChainDesc.Flags = 0;
+
+	// Create DXGI swap chain targeting a window handle
+	if (SUCCEEDED(hr))
+		hr = dxgiFactory->CreateSwapChainForHwnd(pDirect3DDevice, hwnd, &swapChainDesc, nullptr, nullptr, &pDXGISwapChain);
+
 	// Create dashed stroke style
 	if (SUCCEEDED(hr))
 	{
@@ -122,19 +217,31 @@ HRESULT D2Objects::CreateDeviceIndependentResources()
 		);
 	}
 	// Create source bitmaps for icons
-	// This contains the converted bitmap data (?) and should be kept
+	// This contains the converted bitmap data and should be kept
 	for (int i = 0; i < nIcons; i++)
 	{
 		if (SUCCEEDED(hr))
 			hr = pIWICFactory->CreateFormatConverter(&pConvertedSourceBitmaps[i]);
 	}
-	
 	// Initialize the converted bitmaps
 	for (int i = 0; i < nIcons; i++)
 	{
 		if (SUCCEEDED(hr))
 			hr = LoadResourcePNG(resource_ids[i], pConvertedSourceBitmaps[i]);
 	}
+
+	if (SUCCEEDED(hr))
+	{
+		const D2D1_COLOR_F color = D2D1::ColorF(0.15f, 0.15f, 0.16f);
+		hr = pRenderTarget->CreateSolidColorBrush(color, &pBrush);
+	}
+	// Re-create D2DBitmap it from the source bitmap.
+	for (int i = 0; i < nIcons; i++)
+	{
+		if (SUCCEEDED(hr))
+			hr = pRenderTarget->CreateBitmapFromWicBitmap(pConvertedSourceBitmaps[i], NULL, &pD2DBitmaps[i]);
+	}
+
 	return hr;
 }
 
@@ -216,65 +323,86 @@ HRESULT D2Objects::LoadResourcePNG(int resource, IWICFormatConverter *pConverted
 }
 
 
-// Creates pRenderTarget, pBrush, and pD2DBitmaps
+// Creates pDXGISwapChain, pDirect2DBackBuffer
 HRESULT D2Objects::CreateGraphicsResources(HWND hwnd)
 {
 	HRESULT hr = S_OK;
-	if (pRenderTarget == NULL)
+	if (pDirect2DBackBuffer == NULL)
 	{
 		RECT rc;
 		GetClientRect(hwnd, &rc);
+		D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
 
-		D2D1_SIZE_U size = D2D1::SizeU(rc.right, rc.bottom);
+		hr = pDXGISwapChain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
 
-		hr = pFactory->CreateHwndRenderTarget(
-			D2D1::RenderTargetProperties(),
-			D2D1::HwndRenderTargetProperties(hwnd, size), &pRenderTarget);
+		// Now we set up the Direct2D render target bitmap linked to the swapchain. 
+	    // Whenever we render to this bitmap, it is directly rendered to the 
+	    // swap chain associated with the window.
+		D2D1_BITMAP_PROPERTIES1 bitmapProperties = D2D1::BitmapProperties1(
+			D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW,
+			D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE),
+			DPIScale::DPIX(),
+			DPIScale::DPIY()
+		);
 
+		// Direct2D needs the dxgi version of the backbuffer surface pointer.
+		ComPtr<IDXGISurface> dxgiBackBuffer;
 		if (SUCCEEDED(hr))
-		{
-			const D2D1_COLOR_F color = D2D1::ColorF(0.15f, 0.15f, 0.16f);
-			hr = pRenderTarget->CreateSolidColorBrush(color, &pBrush);
-		}
-		// Re-create D2DBitmap it from the source bitmap.
-		for (int i = 0; i < nIcons; i++)
-		{
-			if (SUCCEEDED(hr))
-				hr = pRenderTarget->CreateBitmapFromWicBitmap(pConvertedSourceBitmaps[i], NULL, &pD2DBitmaps[i]);
-		}
+			hr = pDXGISwapChain->GetBuffer(0, IID_PPV_ARGS(&dxgiBackBuffer));
+
+		// Get a D2D surface from the DXGI back buffer to use as the D2D render target.
+		if (SUCCEEDED(hr))
+			hr = pRenderTarget->CreateBitmapFromDxgiSurface(
+				dxgiBackBuffer.Get(),
+				&bitmapProperties,
+				&pDirect2DBackBuffer
+			);
+
+		// Now we can set the Direct2D render target.
+		if (SUCCEEDED(hr))
+			pRenderTarget->SetTarget(pDirect2DBackBuffer);
 	}
 
 	return hr;
 }
 
 
-void D2Objects::DiscardDeviceIndependentResources()
+
+void D2Objects::DiscardLifetimeResources()
 {
+	SafeRelease(&pDXGISwapChain);
+	SafeRelease(&pRenderTarget);
+	SafeRelease(&pDirect2DDevice);
+	SafeRelease(&pDirect3DContext);
+	SafeRelease(&pDirect3DDevice);
 	SafeRelease(&pFactory);
+	
+	SafeRelease(&pDashedStyle);
+	SafeRelease(&pFixedTransformStyle);
+	SafeRelease(&pHairlineStyle);
+
 	SafeRelease(&pDWriteFactory);
 	for (int i = 0; i < nFormats; i++)
 	{
 		SafeRelease(&pTextFormats[i]);
 	}
-	SafeRelease(&pIWICFactory);
-	SafeRelease(&pDashedStyle);
-	SafeRelease(&pFixedTransformStyle);
-	SafeRelease(&pHairlineStyle);
 
+	SafeRelease(&pIWICFactory);
 	for (int i = 0; i < nIcons; i++)
 	{
 		SafeRelease(&pConvertedSourceBitmaps[i]);
+	}
+
+	SafeRelease(&pBrush);
+	for (int i = 0; i < nIcons; i++)
+	{
+		SafeRelease(&pD2DBitmaps[i]);
 	}
 }
 
 void D2Objects::DiscardGraphicsResources()
 {
-	SafeRelease(&pRenderTarget);
-	SafeRelease(&pBrush);
-	
-	for (int i = 0; i < nIcons; i++)
-	{
-		SafeRelease(&pD2DBitmaps[i]);
-	}
+	pRenderTarget->SetTarget(NULL);
+	SafeRelease(&pDirect2DBackBuffer);
 }
 

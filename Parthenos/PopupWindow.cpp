@@ -36,7 +36,7 @@ LRESULT PopupWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return OnCreate();
 	case WM_DESTROY:
 		m_d2.DiscardGraphicsResources();
-		m_d2.DiscardDeviceIndependentResources();
+		m_d2.DiscardLifetimeResources();
 		m_created = FALSE;
 		m_parent->SendClientMessage(reinterpret_cast<AppItem*>(this), m_name, CTPMessage::WINDOW_CLOSED);
 		PostMessage(m_phwnd, WM_APP, 0, 0);
@@ -95,7 +95,7 @@ LRESULT PopupWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 LRESULT PopupWindow::OnCreate()
 {
 	m_d2.hwndParent = m_hwnd;
-	HRESULT hr = m_d2.CreateDeviceIndependentResources();
+	HRESULT hr = m_d2.CreateLifetimeResources(m_hwnd);
 	if (FAILED(hr))
 	{
 		throw Error(L"OnCreate failed!");

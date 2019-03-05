@@ -146,7 +146,7 @@ void TitleBar::Paint(D2D1_RECT_F updateRect)
 	}
 
 	// restore DIPs
-	m_d2.pRenderTarget->SetDpi(0, 0); 
+	m_d2.pRenderTarget->SetDpi(DPIScale::DPIX(), DPIScale::DPIY()); 
 }
 
 bool TitleBar::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
