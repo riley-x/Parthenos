@@ -8,8 +8,8 @@ MenuBar::MenuBar(HWND hwnd, D2Objects const & d2, CTPMessageReceiver * parent,
 {
 	DropMenuButton *temp = new DropMenuButton(hwnd, d2, this, false);
 	temp->SetText(m_texts[0], m_widths[0], height);
-	temp->SetItems({ L"TODO", L"Print Holdings" });
-	temp->GetMenu().SetDivisions({ 1 });
+	temp->SetItems({ L"Print History", L"Print Holdings", L"Print Equity History", L"Update Last Equity History Entry" });
+	temp->GetMenu().SetDivisions({ 3 });
 	m_buttons.push_back(temp);
 
 	accounts.push_back(L"All");
@@ -21,8 +21,7 @@ MenuBar::MenuBar(HWND hwnd, D2Objects const & d2, CTPMessageReceiver * parent,
 
 	temp = new DropMenuButton(hwnd, d2, this, false);
 	temp->SetText(m_texts[2], m_widths[2], height);
-	temp->SetItems({ L"Add...", L"Print History", L"Recalculate All" });
-	temp->GetMenu().SetDivisions({ 1 });
+	temp->SetItems({ L"Add...", L"Recalculate All" });
 	m_buttons.push_back(temp);
 }
 
@@ -110,14 +109,18 @@ void MenuBar::ProcessCTPMessages()
 		if (msg.imsg != CTPMessage::DROPMENU_SELECTED); // clear below
 		else if (msg.sender == m_buttons[1]) // Account
 			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_ACCOUNT);
+		else if (msg.msg == L"Print Transaction History") // File->Print History
+			m_parent->PostClientMessage(this, L"", CTPMessage::MENUBAR_PRINTTRANSACTIONS);
 		else if (msg.msg == L"Print Holdings") // File->Print Holdings
-			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_PRINTHOLDINGS);
+			m_parent->PostClientMessage(this, L"", CTPMessage::MENUBAR_PRINTHOLDINGS);
+		else if (msg.msg == L"Print Equity History") // File->Print Equity History
+			m_parent->PostClientMessage(this, L"", CTPMessage::MENUBAR_PRINTEQHIST);
+		else if (msg.msg == L"Update Last Equity History Entry") // File->
+			m_parent->PostClientMessage(this, L"", CTPMessage::MENUBAR_UPDATELASTEQHIST);
 		else if (msg.msg == L"Add...") // Transaction->Add...
-			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_ADDTRANSACTION);
-		else if (msg.msg == L"Print History") // Transaction->Print History
-			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_PRINTTRANSACTIONS);
+			m_parent->PostClientMessage(this, L"", CTPMessage::MENUBAR_ADDTRANSACTION);
 		else if (msg.msg == L"Recalculate All") // Transaction->Recalculate All
-			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_CALCHOLDINGS);
+			m_parent->PostClientMessage(this, L"", CTPMessage::MENUBAR_CALCHOLDINGS);
 	}
 	if (!m_messages.empty()) m_messages.clear();
 }

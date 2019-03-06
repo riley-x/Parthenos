@@ -430,16 +430,16 @@ void Parthenos::ProcessCTPMessages()
 			m_activeItems.push_back(m_titleBar);
 			if (msg.msg == L"Portfolio")
 			{
-				m_activeItems.push_back(m_portfolioList);
 				m_activeItems.push_back(m_menuBar);
+				m_activeItems.push_back(m_portfolioList);
 				m_activeItems.push_back(m_pieChart);
 				m_activeItems.push_back(m_msgBox);
 				m_tab = TPortfolio;
 			}
 			else if (msg.msg == L"Returns")
 			{
-				m_activeItems.push_back(m_eqHistoryAxes);
 				m_activeItems.push_back(m_menuBar);
+				m_activeItems.push_back(m_eqHistoryAxes);
 				m_activeItems.push_back(m_returnsAxes);
 				m_activeItems.push_back(m_returnsPercAxes);
 				m_tab = TReturns;
@@ -499,29 +499,6 @@ void Parthenos::ProcessCTPMessages()
 			}
 			break;
 		}
-		case CTPMessage::MENUBAR_PRINTHOLDINGS:
-		{
-			// Read Holdings
-			FileIO holdingsFile;
-			holdingsFile.Init(ROOTDIR + L"port.hold");
-			holdingsFile.Open(GENERIC_READ);
-			std::vector<Holdings> out = holdingsFile.Read<Holdings>();
-			holdingsFile.Close();
-
-			NestedHoldings holdings = FlattenedHoldingsToTickers(out);
-			if (m_msgBox) m_msgBox->Overwrite(NestedHoldingsToWString(holdings));
-			break;
-		}
-		case CTPMessage::MENUBAR_ACCOUNT:
-		{
-			int account = AccountToIndex(msg.msg);
-			if (account < 0) account = m_accounts.size() - 1; // last entry is 'all'
-			if (account == m_currAccount) break;
-
-			m_currAccount = account;
-			UpdatePortfolioPlotters(account);
-			break;
-		}
 		case CTPMessage::MENUBAR_PRINTTRANSACTIONS:
 		{
 			// Read transaction history
@@ -535,7 +512,57 @@ void Parthenos::ProcessCTPMessages()
 			for (Transaction const & t : trans)
 				out.append(t.to_wstring(m_accountNames));
 			m_msgBox->Overwrite(out);
-			
+
+			break;
+		}
+		case CTPMessage::MENUBAR_PRINTHOLDINGS:
+		{
+			// Read Holdings
+			FileIO holdingsFile;
+			holdingsFile.Init(ROOTDIR + L"port.hold");
+			holdingsFile.Open(GENERIC_READ);
+			std::vector<Holdings> out = holdingsFile.Read<Holdings>();
+			holdingsFile.Close();
+
+			NestedHoldings holdings = FlattenedHoldingsToTickers(out);
+			if (m_msgBox) m_msgBox->Overwrite(NestedHoldingsToWString(holdings));
+			break;
+		}
+		case CTPMessage::MENUBAR_PRINTEQHIST:
+		{
+			std::wstring out;
+			Account & acc = m_accounts[m_currAccount];
+			for (size_t i = 0; i < acc.histDate.size(); i++)
+				out.append(FormatMsg(L"%s: %s\n", DateToWString(acc.histDate[i]).c_str(), FormatDollar(acc.histEquity[i]).c_str()));
+			if (m_msgBox) m_msgBox->Overwrite(out);
+			else OutputDebugStringW(out.c_str());
+			break;
+		}
+		case CTPMessage::MENUBAR_UPDATELASTEQHIST:
+		{
+			Account & acc = m_accounts[m_currAccount];
+			if (FileExists((ROOTDIR + acc.name + L".hist").c_str()))
+			{
+				FileIO histFile;
+				histFile.Init(ROOTDIR + acc.name + L".hist");
+				histFile.Open();
+				std::vector<TimeSeries> portHist;
+				portHist = histFile.Read<TimeSeries>();
+				portHist.erase(portHist.end() - 1);
+				histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
+				histFile.Close();
+			}
+			CalculateHistories();
+			break;
+		}
+		case CTPMessage::MENUBAR_ACCOUNT:
+		{
+			int account = AccountToIndex(msg.msg);
+			if (account < 0) account = m_accounts.size() - 1; // last entry is 'all'
+			if (account == m_currAccount) break;
+
+			m_currAccount = account;
+			UpdatePortfolioPlotters(account);
 			break;
 		}
 		case CTPMessage::MENUBAR_ADDTRANSACTION:
@@ -1006,8 +1033,9 @@ LRESULT Parthenos::OnPaint()
 			m_d2.pD2DContext->Clear(Colors::MAIN_BACKGROUND);
 		}
 
-		for (auto item : m_activeItems)
-			item->Paint(dipRect);
+		// reverse loop since stored in z-order == front needs to be painted last
+		for (auto it = m_activeItems.rbegin(); it != m_activeItems.rend(); it++)
+			(*it)->Paint(dipRect);
 
 		for (Line_t const & l : m_dividingLines)
 		{
@@ -1015,13 +1043,10 @@ LRESULT Parthenos::OnPaint()
 			m_d2.pD2DContext->DrawLine(l.start, l.end, m_d2.pBrush, 1.0f, m_d2.pHairlineStyle);
 		}
 	
+
 		hr = m_d2.pD2DContext->EndDraw();
 		
-		if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
-		{
-			m_d2.DiscardGraphicsResources();
-		}
-		else
+		if (SUCCEEDED(hr))
 		{
 			// Present
 			DXGI_PRESENT_PARAMETERS parameters = { 0 };
@@ -1035,10 +1060,7 @@ LRESULT Parthenos::OnPaint()
 		
 		EndPaint(m_hwnd, &ps);
 	}
-	if (FAILED(hr))
-	{
-		OutputError(L"CreateGraphicsResources failed");
-	}
+	if (FAILED(hr)) OutputHRerr(hr, L"OnPaint failed");
 
 	return 0;
 }

@@ -3,7 +3,8 @@
 #include "resource.h"
 
 
-class D2Objects {
+class D2Objects 
+{
 public:
 	HWND					hwndParent				= NULL;
 

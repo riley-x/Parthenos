@@ -43,5 +43,6 @@
 #pragma comment(lib, "dwrite")
 #include <wrl/client.h>
 #include <wincodec.h>
+#include <comdef.h>
 
 using Microsoft::WRL::ComPtr;

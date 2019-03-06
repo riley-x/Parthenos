@@ -98,13 +98,17 @@ public:
 	void Clear();
 
 	// Data pointers to these functions should remain valid until the next Clear() call
-	void Candlestick(OHLC const * ohlc, int n);
+	void Candlestick(OHLC const * ohlc, int n, size_t group = 0);
 	void Line(date_t const * dates, double const * ydata, int n, 
 		D2D1_COLOR_F color = D2D1::ColorF(0.8f, 0.0f, 0.5f, 1.0f), 
 		float stroke_width = 1.0f,
-		ID2D1StrokeStyle * pStyle = NULL);
+		ID2D1StrokeStyle * pStyle = NULL,
+		size_t group = 0
+	);
 	void Bar(std::pair<double, D2D1_COLOR_F> const * data, int n, 
-		std::vector<std::wstring> const & labels = {});
+		std::vector<std::wstring> const & labels = {},
+		size_t group = 0
+	);
 
 	// Convert between an x/y value and the dip coordinate (relative to window)
 	inline float XtoDIP(double val) const
@@ -150,7 +154,12 @@ public:
 
 private:
 	// Objects
-	std::vector<Graph*> m_graphObjects; // THESE NEED TO BE REMADE WHEN RENDER TARGET CHANGES
+
+	size_t static const nGraphGroups = 3;
+	// individual graphs to plot. [0] contains primary graphs, and are cached in m_primaryCache.
+	// these need to be remade when the size of the window changes
+	std::vector<Graph*>		m_graphObjects[nGraphGroups]; 
+	ComPtr<ID2D1Bitmap1>	m_primaryCache = nullptr; // caches graph groups 0 and 1, grids, labels, etc.
 
 	// Parameters
 	float m_ylabelWidth = 40.0f; // width of y tick labels in DIPs.
@@ -163,10 +172,10 @@ private:
 
 	// Flags and state variables
 	bool m_ismade		= true;  // check to make sure everything is made
+	size_t m_imade[nGraphGroups] = {}; // index into m_graphObjects. Objects < i are already made
 	bool m_rescaled		= false; // data ranges changed, so need to call Rescale()
 	bool m_drawxLabels	= true;  // set before SetSize()
 	int m_hoverOn		= -1;	 // current hover position in terms of x-position [0, n) (when snapping), or -1 for no hover
-	size_t m_imade		= 0;	 // stores an index into m_graphObjects. Objects < i are already made
 	HoverStyle m_hoverStyle = HoverStyle::none;
 
 	// Data
@@ -225,6 +234,7 @@ private:
 	void CalculateXTicks_Dates();
 	void CalculateXTicks_User();
 	void CalculateYTicks();
+	void CreateCachedImage();
 
 };
 

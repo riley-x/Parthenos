@@ -24,6 +24,11 @@ inline void OutputMessage(const std::wstring format, ...)
 
 	OutputDebugString(msg);
 }
+inline void OutputHRerr(HRESULT hr, const std::wstring & msg)
+{
+	_com_error err(hr);
+	OutputMessage(msg + L": (0x%lx) %s\n", hr, err.ErrorMessage());
+}
 
 ///////////////////////////////////////////////////////////
 // --- Datetime --- 

@@ -318,7 +318,6 @@ HRESULT D2Objects::LoadResourcePNG(int resource, IWICFormatConverter *pConverted
 	return hr;
 }
 
-
 // Creates pDXGISwapChain, pDirect2DBackBuffer
 HRESULT D2Objects::CreateGraphicsResources(HWND hwnd)
 {

@@ -1,12 +1,18 @@
 #include "stdafx.h"
 #include "Graphing.h"
-
+#include "utilities.h"
 
 void Axes::Clear()
 {
-	for (Graph *item : m_graphObjects) {
-		if (item) delete item;
+	for (size_t i = 0; i < nGraphGroups; i++)
+	{
+		for (Graph *item : m_graphObjects[i]) {
+			if (item) delete item;
+		}
+		m_graphObjects[i].clear();
+		m_imade[i] = 0;
 	}
+	m_primaryCache.Reset();
 	m_xTicks.clear();
 	m_yTicks.clear();
 	m_dates.clear();
@@ -14,30 +20,33 @@ void Axes::Clear()
 	m_grid_lines[0].clear();
 	m_grid_lines[1].clear();
 	SafeRelease(&m_hoverLayout);
-	m_graphObjects.clear();
+
 	m_ismade = true;
-	m_imade = 0;
 	for (int i = 0; i < 4; i++)
 		m_dataRange[i] = nan("");
 	m_rescaled = false;
 }
 
-// Converts all graph objects into DIPs. Call when axes are rescaled.
+// Converts all graph objects into DIPs. Creates a cached image for the first two graph groups and labels.
+// Call when axes are rescaled or graphs are changed.
 void Axes::Make()
 {
-	if (m_rescaled) Rescale(); // sets m_imade = 0
+	if (m_rescaled) Rescale(); // sets m_imade = 0, and also creates the labels and grids
 
-	for (m_imade; m_imade < m_graphObjects.size(); m_imade++)
-		m_graphObjects[m_imade]->Make();
-
+	for (size_t i = 0; i < nGraphGroups; i++)
+	{
+		for (m_imade[i]; m_imade[i] < m_graphObjects[i].size(); m_imade[i]++)
+			m_graphObjects[i][m_imade[i]]->Make();
+	}
 	m_ismade = true;
+	CreateCachedImage();
 }
 
 // May want to call clear before this
 void Axes::SetSize(D2D1_RECT_F dipRect)
 {
 	m_ismade = false;
-	m_imade = 0;
+	for (size_t i = 0; i < nGraphGroups; i++) m_imade[i] = 0;
 	m_rescaled = true;
 
 	m_dipRect = dipRect;
@@ -62,75 +71,11 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 {
 	if (!m_ismade) Make();
 
-	// Background
-	m_d2.pBrush->SetColor(Colors::AXES_BACKGROUND);
-	m_d2.pD2DContext->FillRectangle(m_dipRect, m_d2.pBrush);
+	// Cached bitmap
+	if (m_primaryCache) m_d2.pD2DContext->DrawBitmap(m_primaryCache.Get());
 
-	// Grid lines
-	m_d2.pBrush->SetColor(Colors::DULL_LINE);
-	for (auto line : m_grid_lines[0]) // x lines
-	{
-		m_d2.pD2DContext->DrawLine(line.start, line.end, m_d2.pBrush, 0.8f, m_d2.pDashedStyle);
-	}
-	for (auto line : m_grid_lines[1]) // y lines
-	{
-		m_d2.pD2DContext->DrawLine(line.start, line.end, m_d2.pBrush, 0.8f, m_d2.pDashedStyle);
-	}
-
-	// Title
-	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
-	if (!m_title.empty())
-	{
-		m_d2.pTextFormats[m_titleFormat]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
-			m_d2.pD2DContext->DrawTextW(
-			m_title.c_str(),
-			m_title.size(),
-			m_d2.pTextFormats[m_titleFormat],
-			D2D1::RectF(m_dipRect.left, m_dipRect.top, m_dipRect.right, m_axesRect.top),
-			m_d2.pBrush
-		);
-		m_d2.pTextFormats[m_titleFormat]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
-	}
-
-	// Labels
-	if (m_drawxLabels)
-	{
-		for (auto tick : m_xTicks)
-		{
-			float loc = std::get<0>(tick);
-			std::wstring label = std::get<2>(tick);
-
-			m_d2.pD2DContext->DrawText(
-				label.c_str(),
-				label.size(),
-				m_d2.pTextFormats[D2Objects::Segoe10],
-				D2D1::RectF(loc,
-					m_axesRect.bottom + m_labelPad,
-					loc + 4.0f * m_labelHeight,
-					m_axesRect.bottom + m_labelPad + 2.0f * m_labelHeight),
-				m_d2.pBrush
-			);
-		}
-	}
-	for (auto tick : m_yTicks)
-	{
-		float loc = std::get<0>(tick);
-		std::wstring label = std::get<2>(tick);
-
-		m_d2.pD2DContext->DrawText(
-			label.c_str(),
-			label.size(),
-			m_d2.pTextFormats[D2Objects::Segoe10],
-			D2D1::RectF(m_axesRect.right + m_labelPad,
-				loc - m_labelHeight/2.0f,
-				m_dipRect.right,
-				loc + m_labelHeight/2.0f),
-			m_d2.pBrush
-		);
-	}
-
-	// Graphs
-	for (auto graph : m_graphObjects)
+	// Ancillary graphs
+	for (Graph* const & graph : m_graphObjects[nGraphGroups - 1])
 		graph->Paint(m_d2);
 
 	// Crosshairs
@@ -192,7 +137,7 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 
 bool Axes::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 {
-	if (handeled || m_hoverStyle == HoverStyle::none || m_graphObjects.empty() ||
+	if (handeled || m_hoverStyle == HoverStyle::none || m_graphObjects[0].empty() ||
 		!inRect(cursor, m_axesRect))
 	{
 		if (m_hoverOn >= 0)
@@ -222,8 +167,8 @@ bool Axes::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 		if (xind < m_dates.size()) xlabel = DateToWString(m_dates[xind]);
 		else if (xind < m_userXLabels.size()) xlabel = m_userXLabels[xind];
 
-		// Get y label (and adjust crosshairs for HoverStyle::snap)
-		ylabel = (m_hoverStyle == HoverStyle::snap) ? m_graphObjects[0]->GetYLabel(xind) : std::to_wstring(DIPtoY(cursor.y));
+		// Get y label (and adjust crosshairs for HoverStyle::snap) from first graph object
+		ylabel = (m_hoverStyle == HoverStyle::snap) ? m_graphObjects[0][0]->GetYLabel(xind) : std::to_wstring(DIPtoY(cursor.y));
 
 		// Make layout
 		std::wstring label = xlabel + L"\n" + ylabel;
@@ -271,8 +216,10 @@ bool Axes::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 	return true;
 }
 
-void Axes::Candlestick(OHLC const * ohlc, int n)
+void Axes::Candlestick(OHLC const * ohlc, int n, size_t group)
 {
+	if (group >= nGraphGroups) group = nGraphGroups - 1;
+	
 	bool get_dates = m_dates.empty();
 	if (!get_dates)
 	{
@@ -297,19 +244,18 @@ void Axes::Candlestick(OHLC const * ohlc, int n)
 		else if (ohlc[i].high > high_max) high_max = ohlc[i].high;
 	}
 
-	m_rescaled = setDataRange(dataRange::xmin, xmin) || m_rescaled;
-	m_rescaled = setDataRange(dataRange::xmax, xmax) || m_rescaled;
-	m_rescaled = setDataRange(dataRange::ymin, low_min) || m_rescaled;
-	m_rescaled = setDataRange(dataRange::ymax, high_max) || m_rescaled;
+	m_rescaled = setDataRange(xmin, xmax, low_min, high_max) || m_rescaled;
 
 	auto graph = new CandlestickGraph(this, ohlc, n);
-	m_graphObjects.push_back(graph);
+	m_graphObjects[group].push_back(graph);
 	m_ismade = false;
 }
 
 void Axes::Line(date_t const * dates, double const * ydata, int n, 
-	D2D1_COLOR_F color, float stroke_width, ID2D1StrokeStyle * pStyle)
+	D2D1_COLOR_F color, float stroke_width, ID2D1StrokeStyle * pStyle, size_t group)
 {
+	if (group >= nGraphGroups) group = nGraphGroups - 1;
+	
 	if (m_dates.empty()) m_dates = std::vector<date_t>(dates, dates + n);
 	else if (m_dates.size() != n || m_dates.front() != dates[0] || m_dates.back() != dates[n - 1])
 		OutputMessage(L"Error: Dates don't line up\n");
@@ -326,19 +272,19 @@ void Axes::Line(date_t const * dates, double const * ydata, int n,
 		else if (ydata[i] > ymax) ymax = ydata[i];
 	}
 
-	m_rescaled = setDataRange(dataRange::xmin, xmin) || m_rescaled;
-	m_rescaled = setDataRange(dataRange::xmax, xmax) || m_rescaled;
-	m_rescaled = setDataRange(dataRange::ymin, ymin) || m_rescaled;
-	m_rescaled = setDataRange(dataRange::ymax, ymax) || m_rescaled;
+	m_rescaled = setDataRange(xmin, xmax, ymin, ymax) || m_rescaled;
 
 	auto graph = new LineGraph(this, ydata, n);
 	graph->SetLineProperties(color, stroke_width, pStyle);
-	m_graphObjects.push_back(graph);
+	m_graphObjects[group].push_back(graph);
 	m_ismade = false;
 }
 
-void Axes::Bar(std::pair<double, D2D1_COLOR_F> const * data, int n, std::vector<std::wstring> const & labels)
+void Axes::Bar(std::pair<double, D2D1_COLOR_F> const * data, int n, 
+	std::vector<std::wstring> const & labels, size_t group)
 {
+	if (group >= nGraphGroups) group = nGraphGroups - 1;
+
 	// get min/max of data to scale data appropriately. x values [0,n)
 	double xmin = -0.5; // extra padding
 	double xmax = n - 0.5;
@@ -354,7 +300,7 @@ void Axes::Bar(std::pair<double, D2D1_COLOR_F> const * data, int n, std::vector<
 
 	auto graph = new BarGraph(this, data, n);
 	graph->SetLabels(labels);
-	m_graphObjects.push_back(graph);
+	m_graphObjects[group].push_back(graph);
 	m_ismade = false;
 }
 
@@ -376,7 +322,7 @@ void Axes::Rescale()
 	if (m_drawxLabels) CalculateXTicks();
 	CalculateYTicks();
 
-	m_imade = 0; // remake everything
+	for (size_t i = 0; i < nGraphGroups; i++) m_imade[i] = 0; // remake everything
 	m_rescaled = false;
 }
 
@@ -542,6 +488,121 @@ void Axes::CalculateYTicks()
 		y -= step;
 		ydip -= diff;
 	}
+}
+
+// Creates the cached image containing the background, graph groups 0 and 1, the title, 
+// gridlines, and axes labels.
+// Does not contain graph group 2, the actual axes lines (need to be painted on top), 
+// or the hover artifacts.
+void Axes::CreateCachedImage()
+{
+	RECT rc;
+	GetClientRect(m_hwnd, &rc);
+
+	m_primaryCache.Reset();
+	// Create a bitmap.
+	HRESULT hr = m_d2.pD2DContext->CreateBitmap(
+		D2D1::SizeU(rc.right - rc.left, rc.bottom - rc.top),
+		nullptr, 0,
+		D2D1::BitmapProperties1(
+			D2D1_BITMAP_OPTIONS_TARGET,
+			D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED),
+			DPIScale::DPIX(), 
+			DPIScale::DPIY()),
+		&m_primaryCache
+	);
+	if (FAILED(hr)) return OutputHRerr(hr, L"Axes::CreateCachedImage failed");
+	
+
+	// This function should always be called from OnPaint(), i.e. inside the current paint loop,
+	// so end the current draw.
+	m_d2.pD2DContext->EndDraw();
+
+	// Preserve the pre-existing target.
+	ComPtr<ID2D1Image> oldTarget;
+	m_d2.pD2DContext->GetTarget(&oldTarget);
+
+	// Render static content to the sceneBitmap.
+	m_d2.pD2DContext->SetTarget(m_primaryCache.Get());
+	m_d2.pD2DContext->BeginDraw();
+
+	// Background
+	m_d2.pBrush->SetColor(Colors::AXES_BACKGROUND);
+	m_d2.pD2DContext->FillRectangle(m_dipRect, m_d2.pBrush);
+
+	// Grid lines
+	m_d2.pBrush->SetColor(Colors::DULL_LINE);
+	for (auto line : m_grid_lines[0]) // x lines
+	{
+		m_d2.pD2DContext->DrawLine(line.start, line.end, m_d2.pBrush, 0.8f, m_d2.pDashedStyle);
+	}
+	for (auto line : m_grid_lines[1]) // y lines
+	{
+		m_d2.pD2DContext->DrawLine(line.start, line.end, m_d2.pBrush, 0.8f, m_d2.pDashedStyle);
+	}
+
+	// Title
+	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
+	if (!m_title.empty())
+	{
+		m_d2.pTextFormats[m_titleFormat]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+		m_d2.pD2DContext->DrawTextW(
+			m_title.c_str(),
+			m_title.size(),
+			m_d2.pTextFormats[m_titleFormat],
+			D2D1::RectF(m_dipRect.left, m_dipRect.top, m_dipRect.right, m_axesRect.top),
+			m_d2.pBrush
+		);
+		m_d2.pTextFormats[m_titleFormat]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+	}
+
+	// Labels
+	if (m_drawxLabels)
+	{
+		for (auto tick : m_xTicks)
+		{
+			float loc = std::get<0>(tick);
+			std::wstring label = std::get<2>(tick);
+
+			m_d2.pD2DContext->DrawText(
+				label.c_str(),
+				label.size(),
+				m_d2.pTextFormats[D2Objects::Segoe10],
+				D2D1::RectF(loc,
+					m_axesRect.bottom + m_labelPad,
+					loc + 4.0f * m_labelHeight,
+					m_axesRect.bottom + m_labelPad + 2.0f * m_labelHeight),
+				m_d2.pBrush
+			);
+		}
+	}
+	for (auto tick : m_yTicks)
+	{
+		float loc = std::get<0>(tick);
+		std::wstring label = std::get<2>(tick);
+
+		m_d2.pD2DContext->DrawText(
+			label.c_str(),
+			label.size(),
+			m_d2.pTextFormats[D2Objects::Segoe10],
+			D2D1::RectF(m_axesRect.right + m_labelPad,
+				loc - m_labelHeight / 2.0f,
+				m_dipRect.right,
+				loc + m_labelHeight / 2.0f),
+			m_d2.pBrush
+		);
+	}
+
+	// Primary and secondary graphs
+	for (size_t group = 0; group < nGraphGroups - 2; group++)
+		for (Graph* const & graph : m_graphObjects[group])
+			graph->Paint(m_d2);
+
+	m_d2.pD2DContext->EndDraw();
+
+	// Restore old target
+	m_d2.pD2DContext->SetTarget(oldTarget.Get());
+	m_d2.pD2DContext->BeginDraw();
 }
 
 ///////////////////////////////////////////////////////////
