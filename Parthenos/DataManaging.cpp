@@ -852,18 +852,6 @@ std::vector<OHLC> GetOHLC_Alpha(std::wstring ticker, size_t last_n, date_t & las
 
 	// Write to file
 	DWORD nBytes = sizeof(OHLC) * extra.size();
-
-	// AlphaVantage adds the current trading day to the time series, even if not closed yet.
-	// Pass on this data, but don't write it to file.
-	SYSTEMTIME utc, now;
-	GetSystemTime(&utc);
-	if (!SystemTimeToEasternTime(&utc, &now)) OutputMessage(L"SystemTimeToEasternTime failed\n");
-	if (extra.back().date == MkDate(now.wYear, now.wMonth, now.wDay) &&
-		(now.wHour < 16 || (now.wHour == 16 && now.wMinute < 1))) // give 1 minute leway
-	{
-		nBytes -= sizeof(OHLC);
-	}
-
 	if (days_to_get == -1)
 	{
 		ohlcData = extra;
@@ -914,26 +902,37 @@ std::vector<OHLC> parseAlphaChart(std::string json, date_t latestDate)
 	std::vector<OHLC> out;
 	std::string delim = "},\n";
 
-	size_t start = 1; // skip opening {
+	size_t start = 0;
 	size_t end = 0;
-	for (int i = 0; i < 2; i++)
+	
+	// AlphaVantage adds the current trading day to the time series, even if not closed yet.
+	std::string key = R"("3. Last Refreshed": ")";
+	start = json.find(key, start) + key.length();
+	end = json.find('",', start);
+	int year, month, date, hour, min, sec;
+	int n = sscanf_s(json.substr(start, end).c_str(), "%d-%d-%d %d:%d:%d", &year, &month, &date, &hour, &min, &sec);
+	if (n != 6)
 	{
-		start = json.find('{', start) + 1; // next { for meta data, next { for time series
-		end = json.find(delim, start); // first }, closes meta data, next }, closes first date data
+		OutputMessage(L"parseAlphaChart sscanf_s failed! Only read %d/%d\n", n, 6);
+		throw std::invalid_argument("praseIEXChart failed");
 	}
+	date_t refreshDate = MkDate(year, month, date);
+
+	start = json.find('{', start) + 1; // next { for time series
+	end = json.find(delim, start); // closes first date data
 	
 	while (end != std::string::npos)
 	{
 		OHLC temp = parseAlphaChartItem(json.substr(start, end - start));
-		if (latestDate == 0 || temp.date > latestDate)
+		if ((latestDate == 0 || temp.date > latestDate) && !(temp.date == refreshDate && hour < 16))
 			out.push_back(temp);
 		else // done reading new data
 			return out;
 		start = end + delim.length();
 		end = json.find(delim, start);
 	}
-	OHLC temp = parseAlphaChartItem(json.substr(start, json.size()));
-	if (latestDate == 0 || temp.date > latestDate)
+	OHLC temp = parseAlphaChartItem(json.substr(start, json.size() - start));
+	if ((latestDate == 0 || temp.date > latestDate) && !(temp.date == refreshDate && hour < 16))
 		out.push_back(temp);
 
 	return out;
