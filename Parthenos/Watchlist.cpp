@@ -13,16 +13,16 @@ Watchlist::~Watchlist()
 	for (auto layout : m_pTextLayouts) SafeRelease(&layout);
 }
 
-// TODO don't need to re-calculate layouts each set size, i.e. making the table larger?
 void Watchlist::SetSize(D2D1_RECT_F dipRect)
 {
 	if (equalRect(m_dipRect, dipRect)) return;
+
+	bool same_topleft = m_dipRect.left == dipRect.left && m_dipRect.top == dipRect.top;
 	m_dipRect = dipRect;
 	m_pixRect = DPIScale::DipsToPixels(m_dipRect);
 
-	m_headerBorder = DPIScale::SnapToPixelY(m_dipRect.top + m_headerHeight) - DPIScale::hpy();
-
-	CreateTextLayouts();
+	// TODO what if right shrinks / grows?
+	if (!same_topleft) Refresh();
 }
 
 void Watchlist::Paint(D2D1_RECT_F updateRect)
@@ -351,6 +351,45 @@ void Watchlist::Load(std::vector<std::wstring> const & tickers, std::vector<Posi
 	}
 }
 
+void Watchlist::CalculatePositions()
+{
+	m_headerBorder = DPIScale::SnapToPixelY(m_dipRect.top + m_headerHeight) - DPIScale::hpy();
+
+	// Set size of WatchlistItems, horizontal divider lines
+	m_hLines.resize(m_items.size());
+	float top = m_dipRect.top + m_headerHeight;
+	for (size_t i = 0; i < m_items.size(); i++)
+	{
+		if (top + m_rowHeight > m_dipRect.bottom)
+		{
+			OutputMessage(L"Warning: Watchlist too many items\n");
+			if (i > 0)
+			{
+				m_hLines.resize(i - 1);
+				for (size_t j = i; j < m_items.size(); j++) if (m_items[j]) delete m_items[j];
+				m_items.resize(i - 1);
+			}
+			else
+			{
+				m_hLines.clear();
+				for (auto x : m_items) if (x) delete x;
+				m_items.clear();
+			}
+			break;
+		}
+
+		m_items[i]->SetSize(D2D1::RectF(
+			m_dipRect.left,
+			top,
+			m_dipRect.right,
+			top + m_rowHeight
+		));
+
+		top += m_rowHeight;
+		m_hLines[i] = top; // i.e. bottom of item i
+	}
+}
+
 void Watchlist::CreateTextLayouts()
 {
 	// Create column headers, vertical divider lines
@@ -395,38 +434,9 @@ void Watchlist::CreateTextLayouts()
 		m_vLines[i] = left; // i.e. right sisde of column i
 	}
 
-	// Set size of WatchlistItems, horizontal divider lines
-	m_hLines.resize(m_items.size());
-	float top = m_dipRect.top + m_headerHeight;
-	for (size_t i = 0; i < m_items.size(); i++)
+	for (WatchlistItem *item : m_items)
 	{
-		if (top + m_rowHeight > m_dipRect.bottom)
-		{
-			OutputMessage(L"Warning: Watchlist too many items\n");
-			if (i > 0)
-			{
-				m_hLines.resize(i - 1);
-				for (size_t j = i; j < m_items.size(); j++) if (m_items[j]) delete m_items[j];
-				m_items.resize(i - 1);
-			}
-			else
-			{
-				m_vLines.clear();
-				for (auto x : m_items) if (x) delete x;
-				m_items.clear();
-			}
-			break;
-		}
-
-		m_items[i]->SetSize(D2D1::RectF(
-			m_dipRect.left,
-			top,
-			m_dipRect.right,
-			top + m_rowHeight
-		));
-
-		top += m_rowHeight;
-		m_hLines[i] = top; // i.e. bottom of item i
+		item->CreateTextLayouts();
 	}
 }
 
@@ -532,16 +542,12 @@ WatchlistItem::WatchlistItem(HWND hwnd, D2Objects const & d2, AppItem *parent, b
 	m_ticker.SetParameters(Watchlist::m_hTextPad, false, 7);
 }
 
-
 void WatchlistItem::SetSize(D2D1_RECT_F dipRect)
 {
-	bool same_height = false;
-	if (m_dipRect.bottom - m_dipRect.top == dipRect.bottom - dipRect.top) same_height = true;
-
+	if (equalRect(dipRect, m_dipRect)) return;
 	m_dipRect = dipRect;
 	m_pixRect = DPIScale::DipsToPixels(m_dipRect);
-
-	CreateTextLayouts(same_height);
+	CreateTextLayouts();
 }
 
 void WatchlistItem::Paint(D2D1_RECT_F updateRect)
@@ -587,7 +593,6 @@ void WatchlistItem::ProcessCTPMessages()
 				if (m_currTicker.empty()) m_parent->PostClientMessage(this, L"", CTPMessage::WATCHLISTITEM_NEW);
 				else if (msg.msg.empty()) m_parent->PostClientMessage(this, L"", CTPMessage::WATCHLISTITEM_EMPTY);
 				Load(msg.msg, m_columns, nullptr, nullptr, true);
-				CreateTextLayouts(false); // force recreate
 				::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 			}
 			break;
@@ -700,9 +705,7 @@ void WatchlistItem::TruncateColumns(size_t i)
 	if (m_data.size() > i) m_data.resize(i);
 }
 
-
-// If same_height, don't recreate the layouts, just the textbox
-void WatchlistItem::CreateTextLayouts(bool same_height)
+void WatchlistItem::CreateTextLayouts()
 {
 	float left = m_dipRect.left;
 	
@@ -716,16 +719,17 @@ void WatchlistItem::CreateTextLayouts(bool same_height)
 	m_ticker.SetText(m_currTicker);
 	left += m_columns[0].width;
 
-	if (same_height) return;
-
+	// Column text
 	for (auto item : m_pTextLayouts) SafeRelease(&item);
 	m_pTextLayouts.resize(m_data.size());
 	m_origins.resize(m_data.size());
-
 	for (size_t i = 0; i < m_data.size(); i++)
 	{
+		// Origins
 		m_origins[i] = left + Watchlist::m_hTextPad;
+		left += m_columns[i + 1].width; // Shift index into columns by 1 to skip Ticker
 
+		// Layouts
 		HRESULT hr = m_d2.pDWriteFactory->CreateTextLayout(
 			m_data[i].second.c_str(),				// The string to be laid out and formatted.
 			m_data[i].second.size(),				// The length of the string.
@@ -735,9 +739,6 @@ void WatchlistItem::CreateTextLayouts(bool same_height)
 			&m_pTextLayouts[i]						// The IDWriteTextLayout interface pointer.
 		);
 		if (FAILED(hr)) throw Error(L"CreateTextLayout failed");
-
-		// Shift index into columns by 1 to skip Ticker
-		left += m_columns[i+1].width;
 	}
 }
 

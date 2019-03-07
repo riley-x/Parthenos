@@ -246,7 +246,6 @@ CTPMessage TitleBar::ButtonToCTPMessage(Buttons button)
 	}
 }
 
-
 // Create bracket geometries. Create at x=0; shift on paint
 void TitleBar::CreateBracketGeometry(int i)
 {

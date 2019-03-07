@@ -20,27 +20,10 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 // --- Interface functions ---
 
 Parthenos::Parthenos(PCWSTR szClassName)
-	: BorderlessWindow(szClassName), m_accountNames({ L"Robinhood", L"Arista" })
-{
-	// Read Holdings
-	FileIO holdingsFile;
-	holdingsFile.Init(ROOTDIR + L"port.hold");
-	holdingsFile.Open(GENERIC_READ);
-	std::vector<Holdings> out = holdingsFile.Read<Holdings>();
-	holdingsFile.Close();
-
-	NestedHoldings holdings = FlattenedHoldingsToTickers(out);
-	m_tickers = GetTickers(holdings); // all tickers
-	m_stats = GetBatchQuoteStats(m_tickers);
-
-	m_accounts.resize(m_accountNames.size() + 1);
-	for (size_t i = 0; i < m_accountNames.size(); i++)
-		m_accounts[i].name = m_accountNames[i];
-	m_accounts.back().name = L"All Accounts";
+	: BorderlessWindow(szClassName)
+{	
 	
-	CalculatePositions(holdings);
-	CalculateReturns();
-	CalculateHistories();
+
 }
 
 Parthenos::~Parthenos()
@@ -106,7 +89,6 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return OnPaint();
 	case WM_SIZE:
 		return OnSize(wParam);
-
 	case WM_MOUSEMOVE:
 		return OnMouseMove(
 			POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) },
@@ -163,26 +145,61 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 void Parthenos::PreShow()
 {
+	// Calculate size-dependent layouts
 	RECT rc;
-	BOOL bErr = GetClientRect(m_hwnd, &rc);
-	if (bErr == 0) OutputError(L"GetClientRect failed");
+	if (!GetClientRect(m_hwnd, &rc)) OutputError(L"GetClientRect failed");
 	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
+
 	m_halfBelowMenu = DPIScale::SnapToPixelY((dipRect.bottom + m_menuBarBottom) / 2.0f);
 	m_centerX = DPIScale::SnapToPixelX(dipRect.right / 2.0f);
 	CalculateDividingLines(dipRect);
 
+	// Initialize AppItem size (WM_SIZE is received before this, but need to initialize size
+	// of inactive items too).
 	for (auto item : m_allItems)
-	{
 		item->SetSize(CalculateItemRect(item, dipRect));
-	}
 
-	m_titleBar->SetActive(L"Chart");
+	// Calculate data
+	InitData();
+
+	// Data dependent initializations
+	InitItemsWithData();
+
+	// Size-dependent initializations
 	m_chart->Draw(L"AAPL");
 }
 
 
 ///////////////////////////////////////////////////////////
 // --- Data Management ---
+
+void Parthenos::InitData()
+{
+	// TODO hardcoded
+	m_accountNames = { L"Robinhood", L"Arista" };
+	m_currAccount = 0;
+
+	// Read Holdings
+	FileIO holdingsFile;
+	holdingsFile.Init(ROOTDIR + L"port.hold");
+	holdingsFile.Open(GENERIC_READ);
+	std::vector<Holdings> out = holdingsFile.Read<Holdings>();
+	holdingsFile.Close();
+	NestedHoldings holdings = FlattenedHoldingsToTickers(out);
+
+	// Populate data members
+	m_tickers = GetTickers(holdings); // all tickers
+	m_stats = GetBatchQuoteStats(m_tickers);
+
+	m_accounts.resize(m_accountNames.size() + 1);
+	for (size_t i = 0; i < m_accountNames.size(); i++)
+		m_accounts[i].name = m_accountNames[i];
+	m_accounts.back().name = L"All Accounts";
+
+	CalculatePositions(holdings);
+	CalculateReturns();
+	CalculateHistories();
+}
 
 int Parthenos::AccountToIndex(std::wstring account)
 {
@@ -408,12 +425,71 @@ void Parthenos::AddTransaction(Transaction t)
 ///////////////////////////////////////////////////////////
 // --- Child Management ---
 
+// Size independent initializations
+void Parthenos::InitItems()
+{
+	m_titleBar->SetTabs({ L"Portfolio", L"Returns", L"Chart" });
+	m_titleBar->SetActive(L"Chart");
+
+	std::vector<Column> portColumns = {
+		{60.0f, Column::Ticker, L""},
+		{60.0f, Column::Last, L"%.2lf"},
+		{60.0f, Column::ChangeP, L"%.2lf"},
+		{50.0f, Column::Shares, L"%d"},
+		{60.0f, Column::AvgCost, L"%.2lf"},
+		{60.0f, Column::Equity, L"%.2lf"},
+		{60.0f, Column::ReturnsT, L"%.2lf"},
+		{60.0f, Column::ReturnsP, L"%.2lf"},
+		{60.0f, Column::APY, L"%.2lf"},
+		{60.0f, Column::ExDiv, L""},
+	};
+	m_watchlist->SetColumns(); // use defaults
+	m_portfolioList->SetColumns(portColumns);
+
+	m_returnsAxes->SetXAxisPos(0.0f);
+	m_returnsAxes->SetYAxisPos(std::nanf(""));
+	m_returnsAxes->SetHoverStyle(Axes::HoverStyle::snap);
+	m_returnsPercAxes->SetXAxisPos(0.0f);
+	m_returnsPercAxes->SetYAxisPos(std::nanf(""));
+	m_returnsPercAxes->SetHoverStyle(Axes::HoverStyle::snap);
+	m_eqHistoryAxes->SetYAxisPos(std::nanf(""));
+	m_eqHistoryAxes->SetHoverStyle(Axes::HoverStyle::snap);
+
+}
+
+void Parthenos::InitItemsWithData()
+{
+	std::vector<std::wstring> menus = { L"File", L"Account", L"Transactions", L"Stocks" };
+	std::vector<std::vector<std::wstring>> items = {
+		{ L"Print Transaction History", L"Print Holdings", L"Print Equity History", L"Update Last Equity History Entry" },
+		m_accountNames, // Add "all" below
+		{ L"Add...", L"Recalculate All" },
+		{ L"Print OHLC", L"Delete Last OHLC Entry" }
+	};
+	items[1].push_back(L"All Accounts");
+	std::vector<std::vector<size_t>> divisions = { {3}, {m_accountNames.size()}, {}, {} };
+
+	m_menuBar->SetMenus(menus, items, divisions);
+	m_menuBar->Refresh();
+
+	if ((size_t)m_currAccount < m_accounts.size())
+	{
+		std::vector<std::wstring> tickers = GetTickers(m_accounts[m_currAccount].positions);
+		std::vector<std::pair<Quote, Stats>> stats = FilterByKeyMatch(m_tickers, m_stats, tickers);
+		m_watchlist->Load(tickers, m_accounts[m_currAccount].positions, stats);
+		m_watchlist->Refresh();
+		UpdatePortfolioPlotters(m_currAccount, false);
+	}
+}
+
 void Parthenos::ProcessCTPMessages()
 {
-	for (ClientMessage msg : m_messages)
+	for (ClientMessage & msg : m_messages)
 	{
 		switch (msg.imsg)
 		{
+		case CTPMessage::NONE:
+			break;
 		case CTPMessage::TITLEBAR_CLOSE:
 			SendMessage(m_hwnd, WM_CLOSE, 0, 0);
 			break;
@@ -472,111 +548,9 @@ void Parthenos::ProcessCTPMessages()
 			}
 			break;
 		}
-		case CTPMessage::MENUBAR_CALCHOLDINGS:
+		case CTPMessage::MENUBAR_SELECTED:
 		{
-			if (msg.iData == 0) // sent by menubar -> ask confirmation
-			{
-				if (!m_okWin) // shouldn't already exist
-				{
-					m_okWin = new ConfirmationWindow();
-					BOOL ok = m_okWin->Create(m_hInstance);
-					if (!ok) OutputError(L"Create AddTransaction window failed");
-
-					m_okWin->SetParent(this, m_hwnd);
-					m_okWin->SetText(L"Recalculate holdings from full transaction history?");
-					msg.iData = 1;
-					m_okWin->SetMessage(msg);
-					m_okWin->PreShow();
-
-					ShowWindow(m_okWin->Window(), SW_SHOW);
-				}
-			}
-			else if (msg.iData == 1) // sent from confirmation window
-			{
-				if (m_msgBox) m_msgBox->Print(L"Recalculating holdings\n");
-				NestedHoldings holdings = CalculateHoldings();
-				CalculatePositions(holdings);
-			}
-			break;
-		}
-		case CTPMessage::MENUBAR_PRINTTRANSACTIONS:
-		{
-			// Read transaction history
-			FileIO transFile;
-			transFile.Init(ROOTDIR + L"hist.trans");
-			transFile.Open(GENERIC_READ);
-			std::vector<Transaction> trans = transFile.Read<Transaction>();;
-			transFile.Close();
-
-			std::wstring out;
-			for (Transaction const & t : trans)
-				out.append(t.to_wstring(m_accountNames));
-			m_msgBox->Overwrite(out);
-
-			break;
-		}
-		case CTPMessage::MENUBAR_PRINTHOLDINGS:
-		{
-			// Read Holdings
-			FileIO holdingsFile;
-			holdingsFile.Init(ROOTDIR + L"port.hold");
-			holdingsFile.Open(GENERIC_READ);
-			std::vector<Holdings> out = holdingsFile.Read<Holdings>();
-			holdingsFile.Close();
-
-			NestedHoldings holdings = FlattenedHoldingsToTickers(out);
-			if (m_msgBox) m_msgBox->Overwrite(NestedHoldingsToWString(holdings));
-			break;
-		}
-		case CTPMessage::MENUBAR_PRINTEQHIST:
-		{
-			std::wstring out;
-			Account & acc = m_accounts[m_currAccount];
-			for (size_t i = 0; i < acc.histDate.size(); i++)
-				out.append(FormatMsg(L"%s: %s\n", DateToWString(acc.histDate[i]).c_str(), FormatDollar(acc.histEquity[i]).c_str()));
-			if (m_msgBox) m_msgBox->Overwrite(out);
-			else OutputDebugStringW(out.c_str());
-			break;
-		}
-		case CTPMessage::MENUBAR_UPDATELASTEQHIST:
-		{
-			Account & acc = m_accounts[m_currAccount];
-			if (FileExists((ROOTDIR + acc.name + L".hist").c_str()))
-			{
-				FileIO histFile;
-				histFile.Init(ROOTDIR + acc.name + L".hist");
-				histFile.Open();
-				std::vector<TimeSeries> portHist;
-				portHist = histFile.Read<TimeSeries>();
-				portHist.erase(portHist.end() - 1);
-				histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
-				histFile.Close();
-			}
-			CalculateHistories();
-			break;
-		}
-		case CTPMessage::MENUBAR_ACCOUNT:
-		{
-			int account = AccountToIndex(msg.msg);
-			if (account < 0) account = m_accounts.size() - 1; // last entry is 'all'
-			if (account == m_currAccount) break;
-
-			m_currAccount = account;
-			UpdatePortfolioPlotters(account);
-			break;
-		}
-		case CTPMessage::MENUBAR_ADDTRANSACTION:
-		{
-			if (!m_addTWin)
-			{
-				m_addTWin = new AddTransactionWindow();
-				BOOL ok = m_addTWin->Create(m_hInstance);
-				if (!ok) OutputError(L"Create AddTransaction window failed");
-				m_addTWin->SetParent(this, m_hwnd);
-				m_addTWin->SetAccounts(m_accountNames);
-				m_addTWin->PreShow();
-				ShowWindow(m_addTWin->Window(), SW_SHOW);
-			}
+			ProcessMenuMessage(msg);
 			break;
 		}
 		case CTPMessage::WINDOW_CLOSED:
@@ -622,6 +596,150 @@ void Parthenos::ProcessCTPMessages()
 		}
 	}
 	if (!m_messages.empty()) m_messages.clear();
+}
+
+void Parthenos::ProcessMenuMessage(ClientMessage & msg)
+{
+	if (msg.iData == 0) // File
+	{
+		if (msg.msg == L"Print Transaction History")
+		{
+			// Read transaction history
+			FileIO transFile;
+			transFile.Init(ROOTDIR + L"hist.trans");
+			transFile.Open(GENERIC_READ);
+			std::vector<Transaction> trans = transFile.Read<Transaction>();;
+			transFile.Close();
+
+			std::wstring out;
+			for (Transaction const & t : trans)
+				out.append(t.to_wstring(m_accountNames));
+			m_msgBox->Overwrite(out);
+		}
+		else if (msg.msg == L"Print Holdings")
+		{
+			// Read Holdings
+			FileIO holdingsFile;
+			holdingsFile.Init(ROOTDIR + L"port.hold");
+			holdingsFile.Open(GENERIC_READ);
+			std::vector<Holdings> out = holdingsFile.Read<Holdings>();
+			holdingsFile.Close();
+
+			NestedHoldings holdings = FlattenedHoldingsToTickers(out);
+			m_msgBox->Overwrite(NestedHoldingsToWString(holdings));
+		}
+		else if (msg.msg == L"Print Equity History")
+		{
+			std::wstring out;
+			Account & acc = m_accounts[m_currAccount];
+			for (size_t i = 0; i < acc.histDate.size(); i++)
+				out.append(FormatMsg(L"%s: %s\n", DateToWString(acc.histDate[i]).c_str(), FormatDollar(acc.histEquity[i]).c_str()));
+			m_msgBox->Overwrite(out);
+		}
+		else if (msg.msg == L"Update Last Equity History Entry")
+		{
+			Account & acc = m_accounts[m_currAccount];
+			if (FileExists((ROOTDIR + acc.name + L".hist").c_str()))
+			{
+				FileIO histFile;
+				histFile.Init(ROOTDIR + acc.name + L".hist");
+				histFile.Open();
+				std::vector<TimeSeries> portHist;
+				portHist = histFile.Read<TimeSeries>();
+				portHist.erase(portHist.end() - 1);
+				histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
+				histFile.Close();
+			}
+			CalculateHistories();
+		}
+	}
+	else if (msg.iData == 1) // Account
+	{
+		int account = AccountToIndex(msg.msg);
+		if (account < 0) account = m_accounts.size() - 1; // last entry is 'all'
+		if (account != m_currAccount)
+		{
+			m_currAccount = account;
+			UpdatePortfolioPlotters(account);
+		}
+	}
+	else if (msg.iData == 2) // Transactions
+	{
+		if (msg.msg == L"Add...")
+		{
+			if (!m_addTWin)
+			{
+				m_addTWin = new AddTransactionWindow();
+				BOOL ok = m_addTWin->Create(m_hInstance);
+				if (!ok) OutputError(L"Create AddTransaction window failed");
+				m_addTWin->SetParent(this, m_hwnd);
+				m_addTWin->SetAccounts(m_accountNames);
+				m_addTWin->PreShow();
+				ShowWindow(m_addTWin->Window(), SW_SHOW);
+			}
+		}
+		else if (msg.msg == L"Recalculate All")
+		{
+			if (msg.sender) // sent by menubar -> ask confirmation
+			{
+				if (!m_okWin) // shouldn't already exist
+				{
+					m_okWin = new ConfirmationWindow();
+					BOOL ok = m_okWin->Create(m_hInstance);
+					if (!ok) OutputError(L"Create AddTransaction window failed");
+
+					m_okWin->SetParent(this, m_hwnd);
+					m_okWin->SetText(L"Recalculate holdings from full transaction history?");
+					msg.sender = nullptr;
+					m_okWin->SetMessage(msg);
+					m_okWin->PreShow();
+
+					ShowWindow(m_okWin->Window(), SW_SHOW);
+				}
+			}
+			else if (!msg.sender) // sent from confirmation window
+			{
+				m_msgBox->Print(L"Recalculating holdings\n");
+				NestedHoldings holdings = CalculateHoldings();
+				CalculatePositions(holdings);
+			}
+		}
+	}
+	else if (msg.iData == 3) // Stocks
+	{
+		if (msg.msg == L"Print OHLC")
+		{
+			msg.imsg = CTPMessage::NONE; // "delete" this message but don't mess up the for loop
+			std::wstring file = LaunchFileDialog();
+
+			FileIO ohlcFile;
+			ohlcFile.Init(file);
+			ohlcFile.Open(GENERIC_READ);
+			std::vector<OHLC> ohlcData = ohlcFile.ReadEnd<OHLC>(100); // Get last 100 for now
+
+			std::wstring out;
+			for (OHLC const & x : ohlcData) out.append(x.to_wstring());
+			if (m_msgBox) m_msgBox->Overwrite(out);
+
+		}
+		else if (msg.msg == L"Delete Last OHLC Entry")
+		{
+			msg.imsg = CTPMessage::NONE; // "delete" this message but don't mess up the for loop
+			std::wstring file = LaunchFileDialog();
+
+			FileIO ohlcFile;
+			ohlcFile.Init(file);
+			ohlcFile.Open();
+			std::vector<OHLC> ohlcData = ohlcFile.Read<OHLC>(); // Get last 100 for now
+			ohlcData.erase(ohlcData.end() - 1);
+			ohlcFile.Write(ohlcData.data(), ohlcData.size() * sizeof(OHLC));
+
+			std::wstring out;
+			for (OHLC const & x : ohlcData) out.append(x.to_wstring());
+			if (m_msgBox) m_msgBox->Overwrite(out);
+
+		}
+	}
 }
 
 D2D1_RECT_F Parthenos::CalculateItemRect(AppItem * item, D2D1_RECT_F const & dipRect)
@@ -853,6 +971,47 @@ void Parthenos::UpdatePortfolioPlotters(char account, bool init)
 	::InvalidateRect(m_hwnd, NULL, FALSE);
 }
 
+// WARNING: The Show() method "blocks" but the file dialog window itself
+// runs a message loop which will dispatch messages back to the main window. 
+// Make sure calling function is in a state where it is ready to exit the 
+// current message handling.
+std::wstring Parthenos::LaunchFileDialog(bool save)
+{
+	std::wstring out;
+	CComPtr<IFileOpenDialog> pFileOpen;
+
+	// Create the FileOpenDialog object.
+	HRESULT hr = pFileOpen.CoCreateInstance(__uuidof(FileOpenDialog));
+	if (SUCCEEDED(hr))
+	{
+		// Show the Open dialog box.
+		hr = pFileOpen->Show(NULL);
+
+		// Get the file name from the dialog box.
+		if (SUCCEEDED(hr))
+		{
+			CComPtr<IShellItem> pItem;
+			hr = pFileOpen->GetResult(&pItem);
+			if (SUCCEEDED(hr))
+			{
+				PWSTR pszFilePath;
+				hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+
+				// Display the file name to the user.
+				if (SUCCEEDED(hr))
+				{
+					out = pszFilePath;
+					CoTaskMemFree(pszFilePath);
+				}
+			}
+			// pItem goes out of scope.
+		}
+		// pFileOpen goes out of scope.
+	}
+
+	return out;
+}
+
 
 ///////////////////////////////////////////////////////////
 // --- Message handling functions ---
@@ -875,7 +1034,6 @@ LRESULT Parthenos::OnCreate()
 	// Add timer object to global
 	Timers::WndTimersMap.insert({ m_hwnd, &m_timers });
 
-
 	// Register 'child' windows
 	// Only need to register once. All popups use the same message handler that splits via virtuals
 	WndCreateArgs args;
@@ -891,19 +1049,18 @@ LRESULT Parthenos::OnCreate()
 	delete m_okWin;
 	m_okWin = nullptr;
 
-	// Create AppItems
-
 	// Calculate layouts
 	m_titleBarBottom = DPIScale::SnapToPixelY(m_titleBarHeight);
 	m_menuBarBottom = DPIScale::SnapToPixelY(m_titleBarHeight + m_menuBarHeight);
 	m_watchlistRight = DPIScale::SnapToPixelX(m_watchlistWidth);
 	m_portfolioListRight = DPIScale::SnapToPixelX(m_portfolioListWidth);
 
+	// Create items
 	m_titleBar = new TitleBar(m_hwnd, m_d2, this);
 	m_chart = new Chart(m_hwnd, m_d2);
 	m_watchlist = new Watchlist(m_hwnd, m_d2, this);
 	m_portfolioList = new Watchlist(m_hwnd, m_d2, this, false);
-	m_menuBar = new MenuBar(m_hwnd, m_d2, this, m_accountNames, m_menuBarBottom - m_titleBarBottom);
+	m_menuBar = new MenuBar(m_hwnd, m_d2, this, m_menuBarBottom - m_titleBarBottom);
 	m_pieChart = new PieChart(m_hwnd, m_d2);
 	m_eqHistoryAxes = new Axes(m_hwnd, m_d2);
 	m_returnsAxes = new Axes(m_hwnd, m_d2);
@@ -924,42 +1081,8 @@ LRESULT Parthenos::OnCreate()
 	m_activeItems.push_back(m_chart);
 	m_activeItems.push_back(m_watchlist);
 
-
-	// Initialize any AppItems
-
-	m_titleBar->SetTabs({ L"Portfolio", L"Returns", L"Chart" });
-
-	std::vector<Column> portColumns = {
-		{60.0f, Column::Ticker, L""},
-		{60.0f, Column::Last, L"%.2lf"},
-		{60.0f, Column::ChangeP, L"%.2lf"},
-		{50.0f, Column::Shares, L"%d"},
-		{60.0f, Column::AvgCost, L"%.2lf"},
-		{60.0f, Column::Equity, L"%.2lf"},
-		{60.0f, Column::ReturnsT, L"%.2lf"},
-		{60.0f, Column::ReturnsP, L"%.2lf"},
-		{60.0f, Column::APY, L"%.2lf"},
-		{60.0f, Column::ExDiv, L""},
-	};
-	m_watchlist->SetColumns(); // use defaults
-	m_portfolioList->SetColumns(portColumns);
-
-	m_returnsAxes->SetXAxisPos(0.0f);
-	m_returnsAxes->SetYAxisPos(std::nanf(""));
-	m_returnsAxes->SetHoverStyle(Axes::HoverStyle::snap);
-	m_returnsPercAxes->SetXAxisPos(0.0f);
-	m_returnsPercAxes->SetYAxisPos(std::nanf(""));
-	m_returnsPercAxes->SetHoverStyle(Axes::HoverStyle::snap);
-	m_eqHistoryAxes->SetYAxisPos(std::nanf(""));
-	m_eqHistoryAxes->SetHoverStyle(Axes::HoverStyle::snap);
-
-	if ((size_t)m_currAccount < m_accounts.size())
-	{
-		std::vector<std::wstring> tickers = GetTickers(m_accounts[m_currAccount].positions);
-		std::vector<std::pair<Quote, Stats>> stats = FilterByKeyMatch(m_tickers, m_stats, tickers);
-		m_watchlist->Load(tickers, m_accounts[m_currAccount].positions, stats);
-		UpdatePortfolioPlotters(m_currAccount, true);
-	}
+	// Initialize AppItems
+	InitItems();
 
 	return 0;
 }

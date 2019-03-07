@@ -40,7 +40,7 @@ public:
 
 private:
 	// Data
-	char									m_currAccount = 0;
+	char									m_currAccount = -1;
 	std::vector<std::wstring>				m_accountNames;
 	std::vector<Account>					m_accounts; // same order as m_accountNames; extra entry at end for 'All'
 	std::vector<std::wstring>				m_tickers; // tickers in all accounts, sorted by name
@@ -89,6 +89,7 @@ private:
 	AppItem *m_mouseCaptured = nullptr;
 
 	// Data management
+	void InitData();
 	int AccountToIndex(std::wstring account);
 	NestedHoldings CalculateHoldings() const;
 	void CalculatePositions(NestedHoldings const & holdings);
@@ -97,11 +98,15 @@ private:
 	void AddTransaction(Transaction t);
 
 	// Child management
+	void InitItems();
+	void InitItemsWithData();
 	void ProcessCTPMessages();
+	void ProcessMenuMessage(ClientMessage & msg);
 	D2D1_RECT_F CalculateItemRect(AppItem* item, D2D1_RECT_F const & dipRect);
 	void CalculateDividingLines(D2D1_RECT_F dipRect);
 	void LoadPieChart();
 	void UpdatePortfolioPlotters(char account, bool init = false);
+	std::wstring LaunchFileDialog(bool save = false);
 
 	// Message responses
 	LRESULT	OnCreate();

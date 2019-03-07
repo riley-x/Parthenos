@@ -2,27 +2,9 @@
 #include "MenuBar.h"
 #include "PopupMenu.h"
 
-MenuBar::MenuBar(HWND hwnd, D2Objects const & d2, CTPMessageReceiver * parent, 
-	std::vector<std::wstring> accounts, float height)
-	: AppItem(hwnd, d2), m_parent(parent)
+MenuBar::MenuBar(HWND hwnd, D2Objects const & d2, CTPMessageReceiver * parent, float height)
+	: AppItem(hwnd, d2), m_parent(parent), m_height(height)
 {
-	DropMenuButton *temp = new DropMenuButton(hwnd, d2, this, false);
-	temp->SetText(m_texts[0], m_widths[0], height);
-	temp->SetItems({ L"Print History", L"Print Holdings", L"Print Equity History", L"Update Last Equity History Entry" });
-	temp->GetMenu().SetDivisions({ 3 });
-	m_buttons.push_back(temp);
-
-	accounts.push_back(L"All");
-	temp = new DropMenuButton(hwnd, d2, this, false);
-	temp->SetText(m_texts[1], m_widths[1], height);
-	temp->SetItems(accounts);
-	temp->GetMenu().SetDivisions({ accounts.size() - 1 });
-	m_buttons.push_back(temp);
-
-	temp = new DropMenuButton(hwnd, d2, this, false);
-	temp->SetText(m_texts[2], m_widths[2], height);
-	temp->SetItems({ L"Add...", L"Recalculate All" });
-	m_buttons.push_back(temp);
 }
 
 MenuBar::~MenuBar()
@@ -39,7 +21,7 @@ void MenuBar::Paint(D2D1_RECT_F updateRect)
 		m_d2.pD2DContext->FillRectangle(m_dipRect, m_d2.pBrush);
 
 		// Buttons
-		for (int i = 0; i < m_nButtons; i++)
+		for (size_t i = 0; i < m_buttons.size(); i++)
 		{
 			if (m_buttons[i]->IsActive())
 			{
@@ -50,7 +32,7 @@ void MenuBar::Paint(D2D1_RECT_F updateRect)
 			m_buttons[i]->Paint(updateRect);
 		}
 	}
-	for (int i = 0; i < m_nButtons; i++)
+	for (size_t i = 0; i < m_buttons.size(); i++)
 	{
 		m_buttons[i]->GetMenu().Paint(updateRect);
 	}
@@ -58,29 +40,16 @@ void MenuBar::Paint(D2D1_RECT_F updateRect)
 
 void MenuBar::SetSize(D2D1_RECT_F dipRect)
 {
-	bool same_left = false;
-	bool same_top = false;
 	if (equalRect(m_dipRect, dipRect)) return;
+	
+	bool same_left = false, same_top = false;
 	if (m_dipRect.left == dipRect.left) same_left = true;
 	if (m_dipRect.top == dipRect.top) same_top = true;
 
 	m_dipRect = dipRect;
 	m_pixRect = DPIScale::DipsToPixels(dipRect);
 
-	if (!same_left || !same_top)
-	{
-		float left = m_dipRect.left;
-		for (int i = 0; i < m_nButtons; i++)
-		{
-			m_buttons[i]->SetSize(D2D1::RectF(
-				left,
-				m_dipRect.top,
-				left + m_widths[i],
-				m_dipRect.bottom
-			));
-			left += m_widths[i];
-		}
-	}
+	if (!same_left || !same_top) Refresh();
 }
 
 bool MenuBar::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
@@ -106,21 +75,68 @@ void MenuBar::ProcessCTPMessages()
 {
 	for (ClientMessage msg : m_messages)
 	{
-		if (msg.imsg != CTPMessage::DROPMENU_SELECTED); // clear below
-		else if (msg.sender == m_buttons[1]) // Account
-			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_ACCOUNT);
-		else if (msg.msg == L"Print Transaction History") // File->Print History
-			m_parent->PostClientMessage(this, L"", CTPMessage::MENUBAR_PRINTTRANSACTIONS);
-		else if (msg.msg == L"Print Holdings") // File->Print Holdings
-			m_parent->PostClientMessage(this, L"", CTPMessage::MENUBAR_PRINTHOLDINGS);
-		else if (msg.msg == L"Print Equity History") // File->Print Equity History
-			m_parent->PostClientMessage(this, L"", CTPMessage::MENUBAR_PRINTEQHIST);
-		else if (msg.msg == L"Update Last Equity History Entry") // File->
-			m_parent->PostClientMessage(this, L"", CTPMessage::MENUBAR_UPDATELASTEQHIST);
-		else if (msg.msg == L"Add...") // Transaction->Add...
-			m_parent->PostClientMessage(this, L"", CTPMessage::MENUBAR_ADDTRANSACTION);
-		else if (msg.msg == L"Recalculate All") // Transaction->Recalculate All
-			m_parent->PostClientMessage(this, L"", CTPMessage::MENUBAR_CALCHOLDINGS);
+		if (msg.imsg == CTPMessage::DROPMENU_SELECTED)
+		{
+			size_t i = 0;
+			for (; i < m_buttons.size(); i++) if (msg.sender == m_buttons[i]) break;
+			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_SELECTED, (int)i);
+		}
 	}
 	if (!m_messages.empty()) m_messages.clear();
+}
+
+void MenuBar::SetMenus(std::vector<std::wstring> const & menus, 
+	std::vector<std::vector<std::wstring>> const & items, 
+	std::vector<std::vector<size_t>> const & divisions)
+{
+	if (menus.size() != items.size() || menus.size() != divisions.size()) return;
+	
+	for (auto button : m_buttons) if (button) delete button;
+	m_buttons.clear();
+	m_widths.clear();
+
+	for (size_t i = 0; i < menus.size(); i++)
+	{
+		float width = 100.0f;
+
+		// Create a temp layout to get width
+		IDWriteTextLayout *layout;
+		DWRITE_TEXT_METRICS metrics;
+		HRESULT hr = m_d2.pDWriteFactory->CreateTextLayout(
+			menus[i].c_str(),	// The string to be laid out and formatted.
+			menus[i].size(),	// The length of the string.
+			m_d2.pTextFormats[D2Objects::Formats::Segoe12],	// The text format to apply to the string
+			500,				// The width of the layout box (make extra large since left aligned anyways)
+			m_height,			// The height of the layout box.
+			&layout				// The IDWriteTextLayout interface pointer.
+		);
+		if (SUCCEEDED(hr))
+		{
+			hr = layout->GetMetrics(&metrics);
+			if (SUCCEEDED(hr)) width = metrics.width + 2 * m_hpad;
+			SafeRelease(&layout);
+		}
+
+		DropMenuButton *temp = new DropMenuButton(m_hwnd, m_d2, this, false);
+		temp->SetText(menus[i], width, m_height);
+		temp->SetItems(items[i]);
+		temp->GetMenu().SetDivisions(divisions[i]);
+		m_buttons.push_back(temp);
+		m_widths.push_back(width);
+	}
+}
+
+void MenuBar::Refresh()
+{
+	float left = m_dipRect.left;
+	for (size_t i = 0; i < m_buttons.size(); i++)
+	{
+		m_buttons[i]->SetSize(D2D1::RectF(
+			left,
+			m_dipRect.top,
+			left + m_widths[i],
+			m_dipRect.bottom
+		));
+		left += m_widths[i];
+	}
 }

@@ -44,5 +44,7 @@
 #include <wrl/client.h>
 #include <wincodec.h>
 #include <comdef.h>
+#include <shobjidl.h> 
+#include <atlbase.h> 
 
 using Microsoft::WRL::ComPtr;

@@ -456,10 +456,17 @@ namespace EquityHistoryHelper
 		double out = 0.0;
 		for (auto & x : helper)
 		{
-			if (x.iDate > x.ohlc.size() || x.ohlc[x.iDate].date != curr_date)
+			if (x.iDate >= x.ohlc.size())
 			{
-				OutputMessage(L"Error: GetEquityHistory date mismatch: %s %u\n", x.ticker.c_str(), curr_date);
-				throw std::invalid_argument("EquityHistory transaction date doesn't match VOO");
+				OutputMessage(L"Error: GetEquity date out of bounds: " + x.ticker + L" " + 
+					DateToWString(x.ohlc.back().date) + L" VOO " + DateToWString(curr_date) + L"\n");
+				throw std::invalid_argument("EquityHistory date mismatch with VOO");
+			}
+			else if (x.ohlc[x.iDate].date != curr_date)
+			{
+				OutputMessage(L"Error: GetEquity date mistmatch: " + x.ticker + L" " +
+					DateToWString(x.ohlc[x.iDate].date) + L" VOO " + DateToWString(curr_date) + L"\n");
+				throw std::invalid_argument("EquityHistory date mismatch with VOO");
 			}
 			out += x.n * x.ohlc[x.iDate].close;
 			for (auto & opt : x.opts)
@@ -908,7 +915,7 @@ std::vector<OHLC> parseAlphaChart(std::string json, date_t latestDate)
 	// AlphaVantage adds the current trading day to the time series, even if not closed yet.
 	std::string key = R"("3. Last Refreshed": ")";
 	start = json.find(key, start) + key.length();
-	end = json.find('",', start);
+	end = json.find("\",", start);
 	int year, month, date, hour, min, sec;
 	int n = sscanf_s(json.substr(start, end).c_str(), "%d-%d-%d %d:%d:%d", &year, &month, &date, &hour, &min, &sec);
 	if (n != 6)

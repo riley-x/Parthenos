@@ -75,11 +75,12 @@ public:
 
 
 	// Interface
-	inline std::wstring Ticker() const { return m_currTicker; }
 	void Load(std::wstring const & ticker, std::vector<Column> const & columns, 
 		std::pair<Quote, Stats> const * data = nullptr, Position const * position = nullptr, bool reload = false);
-	// Load should be called before SetSize
-	inline double GetData(size_t iColumn) const 
+	void CreateTextLayouts();
+
+	inline std::wstring Ticker() const { return m_currTicker; }
+	inline double GetData(size_t iColumn) const
 	{ 
 		if (iColumn - 1 < m_data.size())
 			return m_data[iColumn - 1].first;
@@ -104,11 +105,9 @@ private:
 	std::vector<std::pair<double, std::wstring>> m_data; // data, display string
 	std::vector<IDWriteTextLayout*> m_pTextLayouts;
 	std::vector<float> m_origins; // left DIP for the text layouts
-
+	
 	bool m_LButtonDown = false;
 	bool m_editableTickers;
-
-	void CreateTextLayouts(bool same_height);
 };
 
 
@@ -139,7 +138,7 @@ public:
 	void Load(std::vector<std::wstring> const & tickers, std::vector<Position> const & positions);
 	void Load(std::vector<std::wstring> const & tickers, std::vector<Position> const & positions,
 		std::vector<std::pair<Quote, Stats>> const & data);
-	inline void Refresh() { CreateTextLayouts(); } // On a second load, items are created but not with position
+	inline void Refresh() { CalculatePositions(); CreateTextLayouts(); } // On a second load, items are created but not with position
 
 	// Parameters
 	static float const m_hTextPad; // 4.0f
@@ -175,6 +174,7 @@ private:
 
 	// Helpers
 
+	void CalculatePositions();
 	void CreateTextLayouts();
 	// Get top of item i
 	inline float GetHeight(int i) { return m_dipRect.top + m_headerHeight + i * m_rowHeight; }

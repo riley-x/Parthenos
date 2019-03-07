@@ -7,8 +7,7 @@
 class MenuBar : public AppItem
 {
 public:
-	MenuBar(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent, 
-		std::vector<std::wstring> accounts, float height);
+	MenuBar(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent, float height);
 	~MenuBar();
 
 	// AppItem overrides
@@ -18,15 +17,21 @@ public:
 	bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled);
 	void ProcessCTPMessages();
 
+	// Interface
+	void SetMenus(std::vector<std::wstring> const & menus, 
+		std::vector<std::vector<std::wstring>> const & items,
+		std::vector<std::vector<size_t>> const & divisions);
+	void Refresh();
+
 private:
 	// Objects
 	CTPMessageReceiver			 *m_parent;
 	std::vector<DropMenuButton*> m_buttons;
 
-	// Parameters
-	static const int	m_nButtons = 3;
-	const std::wstring  m_texts[m_nButtons] = { L"File", L"Account", L"Transactions" };
-	const float			m_widths[m_nButtons] = { 30.0f, 60.0f, 80.0f };
+	// Layout
+	float const m_height;
+	float const m_hpad = 7.0f;
+	std::vector<float> m_widths;
 
 	// Deleted
 	MenuBar(const MenuBar&) = delete; // non construction-copyable
