@@ -150,16 +150,12 @@ void Parthenos::PreShow()
 	if (!GetClientRect(m_hwnd, &rc)) OutputError(L"GetClientRect failed");
 	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
 
-	m_halfBelowMenu = DPIScale::SnapToPixelY((dipRect.bottom + m_menuBarBottom) / 2.0f);
-	m_centerX = DPIScale::SnapToPixelX(dipRect.right / 2.0f);
-	CalculateDividingLines(dipRect);
-
-	// Initialize AppItem size (WM_SIZE is received before this, but need to initialize size
-	// of inactive items too).
+	// Initialize AppItem size 
+	// (WM_SIZE is received before this, but need to initialize size of inactive items too).
 	for (auto item : m_allItems)
 		item->SetSize(CalculateItemRect(item, dipRect));
 
-	// Calculate data
+	// Get account names, calculate positions, get stats, etc.
 	InitData();
 
 	// Data dependent initializations

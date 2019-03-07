@@ -245,13 +245,13 @@ void Watchlist::ProcessCTPMessages()
 			if (top + m_rowHeight > m_dipRect.bottom) break;
 
 			WatchlistItem *temp = new WatchlistItem(m_hwnd, m_d2, this);
+			temp->Load(L"", m_columns);
 			temp->SetSize(D2D1::RectF(
 				m_dipRect.left,
 				top,
 				m_dipRect.right,
 				top + m_rowHeight
 			));
-			temp->Load(L"", m_columns);
 			m_items.push_back(temp);
 			m_hLines.push_back(top + m_rowHeight);
 			break;
@@ -440,7 +440,6 @@ void Watchlist::CreateTextLayouts()
 	}
 }
 
-
 // Move item iOld to iNew, shifting everything in between appropriately.
 // If iNew < iOld, moves iOld to above the current item at iNew.
 // If iNew > iOld, moves iOld to below the current item at iNew.
@@ -593,6 +592,7 @@ void WatchlistItem::ProcessCTPMessages()
 				if (m_currTicker.empty()) m_parent->PostClientMessage(this, L"", CTPMessage::WATCHLISTITEM_NEW);
 				else if (msg.msg.empty()) m_parent->PostClientMessage(this, L"", CTPMessage::WATCHLISTITEM_EMPTY);
 				Load(msg.msg, m_columns, nullptr, nullptr, true);
+				CreateTextLayouts();
 				::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 			}
 			break;

@@ -36,8 +36,9 @@ private:
 
 	// Data
 	std::vector<std::wstring>	m_shortLabels;
-	std::vector<std::wstring>	m_longLabels = { L"" }; // Text at center, with extra entry at beginning for no mouseOn
+	std::vector<std::wstring>	m_longLabels = { L"", L"" }; // Text at center, with extra entry at beginning for no mouseOn
 	std::vector<D2D1_COLOR_F>	m_colors;
+	std::vector<float>			m_angles; // in degrees
 
 	// Painting
 	float m_trueRadius; // radius in DIPs
@@ -45,7 +46,6 @@ private:
 	float m_longLayoutSize;
 	D2D1_COLOR_F					m_borderColor = Colors::ALMOST_WHITE;
 	D2D1_POINT_2F					m_center;
-	std::vector<float>				m_angles; // in degrees
 	std::vector<ID2D1PathGeometry*> m_wedges; // These have center at (0,0), start at theta = 0, CC, and trueRadius 1
 	std::vector<IDWriteTextLayout*> m_shortLabelLayouts;
 	std::vector<IDWriteTextLayout*> m_longLabelLayouts;

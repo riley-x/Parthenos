@@ -753,19 +753,21 @@ std::vector<OHLC> GetSavedOHLC(std::wstring const & ticker, std::wstring const &
 			ohlcData = ohlcFile.Read<OHLC>();
 		else
 			ohlcData = ohlcFile.ReadEnd<OHLC>(last_n);
-		if (ohlcData.empty()) throw std::invalid_argument("saved data empty");
-		date_t latestDate = ohlcData.back().date;
-
-		if (lastCloseDate == 0)
+		if (!ohlcData.empty())
 		{
-			Quote quote = GetQuote(ticker);
-			lastCloseDate = GetDate(quote.closeTime);
-		}
+			date_t latestDate = ohlcData.back().date;
 
-		if (lastCloseDate > latestDate)
-			days_to_get = ApproxDateDiff(lastCloseDate, latestDate);
-		else
-			days_to_get = 0;
+			if (lastCloseDate == 0)
+			{
+				Quote quote = GetQuote(ticker);
+				lastCloseDate = GetDate(quote.closeTime);
+			}
+
+			if (lastCloseDate > latestDate)
+				days_to_get = ApproxDateDiff(lastCloseDate, latestDate);
+			else
+				days_to_get = 0;
+		}
 	}
 	return ohlcData;
 }
@@ -918,10 +920,14 @@ std::vector<OHLC> parseAlphaChart(std::string json, date_t latestDate)
 	end = json.find("\",", start);
 	int year, month, date, hour, min, sec;
 	int n = sscanf_s(json.substr(start, end).c_str(), "%d-%d-%d %d:%d:%d", &year, &month, &date, &hour, &min, &sec);
-	if (n != 6)
+	if (n == 3) // Late in the day AlphaVantage doesn't display the hour/min/sec
+	{
+		hour = 16; // flag hour to be after close
+	}
+	else if (n != 6)
 	{
 		OutputMessage(L"parseAlphaChart sscanf_s failed! Only read %d/%d\n", n, 6);
-		throw std::invalid_argument("praseIEXChart failed");
+		throw std::invalid_argument("parseAlphaChart failed");
 	}
 	date_t refreshDate = MkDate(year, month, date);
 
@@ -958,7 +964,7 @@ OHLC parseIEXChartItem(std::string json)
 	if (n != 6)
 	{
 		OutputMessage(L"parseIEXChart sscanf_s failed! Only read %d/%d\n", n, 6);
-		throw std::invalid_argument("praseIEXChartItem failed");
+		throw std::invalid_argument("parseIEXChartItem failed");
 	}
 
 	// parse date
@@ -967,7 +973,7 @@ OHLC parseIEXChartItem(std::string json)
 	if (n != 3)
 	{
 		OutputMessage(L"parseIEXChart sscanf_s 2 failed! Only read %d/%d\n", n, 3);
-		throw std::invalid_argument("praseIEXChartItem failed");
+		throw std::invalid_argument("parseIEXChartItem failed");
 	}
 	out.date = MkDate(year, month, date);
 

@@ -103,13 +103,19 @@ bool PieChart::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 	{
 		float degree = std::atan2(point.x, -point.y) * 180.0f / (float)M_PI;
 		if (degree < 0) degree += 360.0f;
-		
-		size_t i = 0;
-		while (degree >= 0) degree -= m_angles[i++];
-		if (m_mouseOn != i - 1)
+
+		for (size_t i = 0; i < m_angles.size(); i++)
 		{
-			m_mouseOn = i - 1;
-			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+			degree -= m_angles[i];
+			if (degree < 0)
+			{
+				if (m_mouseOn != i)
+				{
+					m_mouseOn = i;
+					::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+				}
+				break;
+			}
 		}
 		return true;
 	}

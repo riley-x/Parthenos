@@ -138,7 +138,7 @@ public:
 	void Load(std::vector<std::wstring> const & tickers, std::vector<Position> const & positions);
 	void Load(std::vector<std::wstring> const & tickers, std::vector<Position> const & positions,
 		std::vector<std::pair<Quote, Stats>> const & data);
-	inline void Refresh() { CalculatePositions(); CreateTextLayouts(); } // On a second load, items are created but not with position
+	inline void Refresh() { CalculatePositions(); CreateTextLayouts(); } // Load creates items but not with position, so call refresh
 
 	// Parameters
 	static float const m_hTextPad; // 4.0f
