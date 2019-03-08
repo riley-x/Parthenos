@@ -9,7 +9,6 @@ class Button : public AppItem
 public:
 	// AppItem
 	using AppItem::AppItem;
-	Button(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent) : AppItem(hwnd, d2), m_parent(parent) {}
 	virtual bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled);
 
 	// Interface
@@ -21,7 +20,6 @@ public:
 
 protected:
 	std::wstring m_name;
-	CTPMessageReceiver *m_parent = nullptr;
 };
 
 class IconButton : public Button
@@ -170,7 +168,7 @@ class DropMenuButton : public Button
 public:
 	// Constructors
 	DropMenuButton(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent, bool dynamic = true) :
-		Button(hwnd, d2), m_menu(hwnd, d2), m_dynamic(dynamic) { m_parent = parent; }
+		Button(hwnd, d2, parent), m_menu(hwnd, d2, this), m_dynamic(dynamic) {}
 	~DropMenuButton() { if (!m_dynamic) SafeRelease(&m_activeLayout); }
 	
 	// AppItem overrides

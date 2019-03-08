@@ -7,7 +7,7 @@ class MessageScrollBox : public AppItem
 {
 public:
 	MessageScrollBox(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent)
-		: AppItem(hwnd, d2), m_scrollBar(hwnd, d2, this), m_parent(parent) 
+		: AppItem(hwnd, d2, parent), m_scrollBar(hwnd, d2, this)
 	{
 		// Set 1 line per minStep, 3 lines per detent
 		m_scrollBar.SetMinStep(WHEEL_DELTA / 3);
@@ -32,7 +32,6 @@ public:
 
 private:
 	// Objects
-	CTPMessageReceiver  *m_parent;
 	ScrollBar			m_scrollBar;
 
 	// Text Data

@@ -155,8 +155,15 @@ void Parthenos::PreShow()
 	for (auto item : m_allItems)
 		item->SetSize(CalculateItemRect(item, dipRect));
 
-	// Get account names, calculate positions, get stats, etc.
-	InitData();
+	try {
+		// Get account names, calculate positions, get stats, etc.
+		InitData();
+	}
+	catch (const std::exception & e) {
+		std::wstring out = SPrintException(e);
+		if (m_msgBox) m_msgBox->Print(out);
+		else OutputDebugString(out.c_str());
+	}
 
 	// Data dependent initializations
 	InitItemsWithData();
@@ -252,6 +259,7 @@ void Parthenos::CalculateReturns()
 	{
 		acc.returnsBarData.clear();
 		acc.returnsPercBarData.clear();
+		if (acc.positions.empty()) continue;
 		acc.returnsBarData.reserve(acc.positions.size() - 1); // minus cash
 		acc.returnsPercBarData.reserve(acc.positions.size() - 1); // minus cash
 
@@ -584,6 +592,11 @@ void Parthenos::ProcessCTPMessages()
 				m_mouseCaptured = nullptr;
 			else // Capture (SetCapture() called in OnLButtonDown)
 				m_mouseCaptured = msg.sender;
+			break;
+		}
+		case CTPMessage::PRINT:
+		{
+			m_msgBox->Print(msg.msg);
 			break;
 		}
 		default:
@@ -1053,14 +1066,14 @@ LRESULT Parthenos::OnCreate()
 
 	// Create items
 	m_titleBar = new TitleBar(m_hwnd, m_d2, this);
-	m_chart = new Chart(m_hwnd, m_d2);
-	m_watchlist = new Watchlist(m_hwnd, m_d2, this);
+	m_chart = new Chart(m_hwnd, m_d2, this);
+	m_watchlist = new Watchlist(m_hwnd, m_d2, this, true);
 	m_portfolioList = new Watchlist(m_hwnd, m_d2, this, false);
 	m_menuBar = new MenuBar(m_hwnd, m_d2, this, m_menuBarBottom - m_titleBarBottom);
-	m_pieChart = new PieChart(m_hwnd, m_d2);
-	m_eqHistoryAxes = new Axes(m_hwnd, m_d2);
-	m_returnsAxes = new Axes(m_hwnd, m_d2);
-	m_returnsPercAxes = new Axes(m_hwnd, m_d2);
+	m_pieChart = new PieChart(m_hwnd, m_d2, this);
+	m_eqHistoryAxes = new Axes(m_hwnd, m_d2, this);
+	m_returnsAxes = new Axes(m_hwnd, m_d2, this);
+	m_returnsPercAxes = new Axes(m_hwnd, m_d2, this);
 	m_msgBox = new MessageScrollBox(m_hwnd, m_d2, this);
 
 	m_allItems.push_back(m_titleBar);

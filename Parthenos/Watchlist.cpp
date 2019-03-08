@@ -535,8 +535,8 @@ void Watchlist::SortByColumn(size_t iColumn)
 // --- WatchlistItem ---
 ///////////////////////////////////////////////////////////
 
-WatchlistItem::WatchlistItem(HWND hwnd, D2Objects const & d2, AppItem *parent, bool editable) :
-	AppItem(hwnd, d2), m_parent(parent), m_ticker(hwnd, d2, this), m_editableTickers(editable)
+WatchlistItem::WatchlistItem(HWND hwnd, D2Objects const & d2, Watchlist *parent, bool editable) :
+	AppItem(hwnd, d2, parent), m_parent(parent), m_ticker(hwnd, d2, this), m_editableTickers(editable)
 {
 	m_ticker.SetParameters(Watchlist::m_hTextPad, false, 7);
 }

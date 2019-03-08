@@ -5,7 +5,7 @@
 #include "TextBox.h"
 #include "DataManaging.h"
 
-class Parthenos;
+class Watchlist;
 
 struct Column
 {
@@ -45,7 +45,7 @@ struct Column
 class WatchlistItem : public AppItem
 {
 public:
-	WatchlistItem(HWND hwnd, D2Objects const & d2, AppItem *parent, bool editable = true);
+	WatchlistItem(HWND hwnd, D2Objects const & d2, Watchlist *parent, bool editable = true);
 	~WatchlistItem() { for (auto item : m_pTextLayouts) SafeRelease(&item); }
 
 	// AppItem overrides
@@ -97,7 +97,7 @@ private:
 	WatchlistItem(const WatchlistItem&) = delete; // non construction-copyable
 	WatchlistItem& operator=(const WatchlistItem&) = delete; // non copyable
 
-	AppItem *m_parent;
+	Watchlist *m_parent;
 	TextBox m_ticker;
 
 	std::wstring m_currTicker;
@@ -114,10 +114,8 @@ private:
 class Watchlist : public AppItem
 {
 public:
-	Watchlist(HWND hwnd, D2Objects const & d2, Parthenos * parent)
-		: AppItem(hwnd, d2), m_parent(parent) {}
-	Watchlist(HWND hwnd, D2Objects const & d2, Parthenos * parent, bool editable)
-		: AppItem(hwnd, d2), m_parent(parent), m_editableTickers(editable) {}
+	Watchlist(HWND hwnd, D2Objects const & d2, CTPMessageReceiver * parent, bool editable)
+		: AppItem(hwnd, d2, parent), m_editableTickers(editable) {}
 	~Watchlist();
 
 	// AppItem overrides
@@ -147,8 +145,6 @@ public:
 private:
 	Watchlist(const Watchlist&) = delete;				// non construction-copyable
 	Watchlist& operator=(const Watchlist&) = delete;	// non copyable
-
-	Parthenos *m_parent;
 
 	// Data
 	std::vector<WatchlistItem*>		m_items;

@@ -3,7 +3,7 @@
 #include "PopupMenu.h"
 
 MenuBar::MenuBar(HWND hwnd, D2Objects const & d2, CTPMessageReceiver * parent, float height)
-	: AppItem(hwnd, d2), m_parent(parent), m_height(height)
+	: AppItem(hwnd, d2, parent), m_height(height)
 {
 }
 

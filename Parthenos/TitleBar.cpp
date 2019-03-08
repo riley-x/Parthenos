@@ -220,7 +220,7 @@ void TitleBar::SetTabs(std::vector<std::wstring> const & tabNames)
 	// TODO Should clear tabButtons first
 	for (size_t i = 0; i < tabNames.size(); i++)
 	{
-		TextButton *temp = new TextButton(m_hwnd, m_d2);
+		TextButton *temp = new TextButton(m_hwnd, m_d2, nullptr); // don't need messages from button
 		temp->SetName(tabNames[i]);
 
 		temp->SetBorderColor(false);

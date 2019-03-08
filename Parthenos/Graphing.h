@@ -154,7 +154,6 @@ public:
 
 private:
 	// Objects
-
 	size_t static const nGraphGroups = 3;
 	// individual graphs to plot. [0] contains primary graphs, and are cached in m_primaryCache.
 	// these need to be remade when the size of the window changes

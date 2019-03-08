@@ -20,7 +20,7 @@ public:
 	static const float	m_timeframeWidth;
 
 	// AppItem overrides
-	Chart(HWND hwnd, D2Objects const & d2);
+	Chart(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent);
 	void Paint(D2D1_RECT_F updateRect);
 	void SetSize(D2D1_RECT_F dipRect);
 	bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled);

@@ -39,9 +39,6 @@ public:
 	}
 
 private:
-	// Parent
-	CTPMessageReceiver *m_parent;
-
 	// State
 	enum MouseOn { moNone, moUp, moBar, moDown };
 	int m_minStep = WHEEL_DELTA; // minimum scroll step (fraction of WHEEL_DELTA), i.e. from clicking 

@@ -17,7 +17,8 @@ enum class CTPMessage
 	SCROLLBAR_SCROLL,
 	WATCHLISTITEM_NEW, WATCHLISTITEM_EMPTY, WATCHLIST_SELECTED,
 	MENUBAR_SELECTED,
-	WINDOW_CLOSED, WINDOW_ADDTRANSACTION_P
+	WINDOW_CLOSED, WINDOW_ADDTRANSACTION_P,
+	PRINT
 };
 
 // For WINDOW_*_P messages, use sender as pointer to data to pass, since the window is getting destroyed.
@@ -58,7 +59,7 @@ protected:
 class AppItem : public CTPMessageReceiver
 {
 public:
-	AppItem(HWND hwnd, D2Objects const & d2) : m_hwnd(hwnd), m_d2(d2) {}
+	AppItem(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent) : m_hwnd(hwnd), m_d2(d2), m_parent(parent) {}
 	virtual void SetSize(D2D1_RECT_F dipRect) // provide item's rect
 	{ 
 		m_dipRect = dipRect; 
@@ -84,10 +85,11 @@ public:
 	D2D1_RECT_F GetDIPRect() const { return m_dipRect; }
 
 protected:
-	HWND const		m_hwnd;
-	D2Objects const &m_d2;
+	CTPMessageReceiver	*m_parent;
+	HWND const			m_hwnd;
+	D2Objects const		&m_d2;
 
-	RECT			m_pixRect; // pixels in main window client coordinates
-	D2D1_RECT_F		m_dipRect = D2D1::RectF(-1, -1, -1, -1);
+	RECT				m_pixRect; // pixels in main window client coordinates
+	D2D1_RECT_F			m_dipRect = D2D1::RectF(-1, -1, -1, -1);
 
 };

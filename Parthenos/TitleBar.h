@@ -14,7 +14,7 @@ public:
 
 	// Constructors
 	TitleBar(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent)
-		: AppItem(hwnd, d2), m_parent(parent), m_tabButtons(hwnd, d2) {}
+		: AppItem(hwnd, d2, parent), m_tabButtons(hwnd, d2, this) {}
 	~TitleBar() { SafeRelease(&m_bracketGeometries[0]); SafeRelease(&m_bracketGeometries[1]); }
 
 	// AppItem overides
@@ -42,7 +42,6 @@ public:
 
 private:
 	// Objects
-	CTPMessageReceiver	*m_parent;
 	ButtonGroup			m_tabButtons;
 
 	// Parameters

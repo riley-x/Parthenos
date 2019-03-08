@@ -4,6 +4,16 @@
 // --- Messaging --- 
 std::wstring OutputError(const std::wstring & msg);
 std::system_error Error(const std::wstring & msg);
+inline std::string FormatMsg(const std::string format, ...)
+{
+	char msg[1024];
+	va_list args;
+	va_start(args, format);
+	vsprintf_s(msg, format.c_str(), args);
+	va_end(args);
+
+	return std::string(msg);
+}
 inline std::wstring FormatMsg(const std::wstring format, ...)
 {
 	wchar_t msg[1024];
@@ -29,6 +39,19 @@ inline void OutputHRerr(HRESULT hr, const std::wstring & msg)
 	_com_error err(hr);
 	OutputMessage(msg + L": (0x%lx) %s\n", hr, err.ErrorMessage());
 }
+
+class ws_exception : public std::exception
+{
+	std::wstring m_msg;
+public:
+	ws_exception(std::wstring const & msg) 
+		: std::exception("Wide-string exception"), m_msg(msg) {}
+	virtual inline const char* what() const noexcept { return "Wide-string exception"; }
+	virtual inline std::wstring ws_what() const noexcept { return m_msg; }
+};
+
+std::wstring SPrintException(const std::exception & e);
+
 
 ///////////////////////////////////////////////////////////
 // --- Datetime --- 

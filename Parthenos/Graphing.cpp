@@ -73,6 +73,12 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 
 	// Cached bitmap
 	if (m_primaryCache) m_d2.pD2DContext->DrawBitmap(m_primaryCache.Get());
+	else // can occur if axes are cleared without setting new data
+	{
+		// Background
+		m_d2.pBrush->SetColor(Colors::AXES_BACKGROUND);
+		m_d2.pD2DContext->FillRectangle(m_dipRect, m_d2.pBrush);
+	}
 
 	// Ancillary graphs
 	for (Graph* const & graph : m_graphObjects[nGraphGroups - 1])

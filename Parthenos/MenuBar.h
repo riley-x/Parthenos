@@ -25,7 +25,6 @@ public:
 
 private:
 	// Objects
-	CTPMessageReceiver			 *m_parent;
 	std::vector<DropMenuButton*> m_buttons;
 
 	// Layout

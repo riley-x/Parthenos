@@ -150,10 +150,11 @@ std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source, size_t last_n)
 // uses that as the latest date to estimate how much data to get; otherwise gets
 // the last close date from iex.
 std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source, size_t last_n, date_t & lastCloseDate)
-{
-	std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::tolower);
-	std::vector<OHLC> out;
+{	
 	try {
+		std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::tolower);
+		std::vector<OHLC> out;
+
 		switch (source)
 		{
 		case apiSource::alpha:
@@ -164,11 +165,12 @@ std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source, size_t last_n, 
 			out = GetOHLC_IEX(ticker, last_n, lastCloseDate);
 			break;
 		}
+
+		return out;
 	}
-	catch (const std::invalid_argument& ia) {
-		OutputDebugStringA(ia.what()); OutputDebugStringA("\n");
+	catch (...) {
+		std::throw_with_nested(ws_exception(L"GetOHLC failed: " + ticker));
 	}
-	return out;
 }
 
 
@@ -458,15 +460,17 @@ namespace EquityHistoryHelper
 		{
 			if (x.iDate >= x.ohlc.size())
 			{
-				OutputMessage(L"Error: GetEquity date out of bounds: " + x.ticker + L" " + 
-					DateToWString(x.ohlc.back().date) + L" VOO " + DateToWString(curr_date) + L"\n");
-				throw std::invalid_argument("EquityHistory date mismatch with VOO");
+				throw ws_exception(
+					L"GetEquity date out of bounds: " + x.ticker + L" " +
+						DateToWString(x.ohlc.back().date) + L", VOO " + DateToWString(curr_date)
+				);
 			}
 			else if (x.ohlc[x.iDate].date != curr_date)
 			{
-				OutputMessage(L"Error: GetEquity date mistmatch: " + x.ticker + L" " +
-					DateToWString(x.ohlc[x.iDate].date) + L" VOO " + DateToWString(curr_date) + L"\n");
-				throw std::invalid_argument("EquityHistory date mismatch with VOO");
+				throw ws_exception(
+					L"GetEquity date mistmatch: " + x.ticker + L" " +
+					DateToWString(x.ohlc[x.iDate].date) + L", VOO " + DateToWString(curr_date)
+				);
 			}
 			out += x.n * x.ohlc[x.iDate].close;
 			for (auto & opt : x.opts)
@@ -525,62 +529,57 @@ std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Tra
 	std::vector<TimeSeries> out;
 	if (trans.empty()) return out;
 
-	try {
-
-		// Get start date / transaction
-		date_t curr_date = 0;
-		size_t iTrans = 0;
-		for (iTrans; iTrans < trans.size(); iTrans++)
+	// Get start date / transaction
+	date_t curr_date = 0;
+	size_t iTrans = 0;
+	for (iTrans; iTrans < trans.size(); iTrans++)
+	{
+		if (trans[iTrans].account == account)
 		{
-			if (trans[iTrans].account == account)
-			{
-				curr_date = trans[iTrans].date;
-				break;
-			}
-		}
-		if (curr_date == 0) return out;
-
-		std::vector<EquityHistoryHelper::TickerHelper> helper;
-		EquityHistoryHelper::TickerHelper temp;
-		temp.ticker = L"VOO"; // use VOO to keep track of trading days
-		temp.ohlc = GetOHLC(L"VOO", apiSource::alpha, 1000);
-		temp.iDate = FindDateOHLC(temp.ohlc, curr_date);
-		helper.push_back(temp);
-
-		date_t lastCloseDate = temp.ohlc.back().date;
-		double cash = 0; // net transactions, including options and transfers
-		while (helper[0].iDate < helper[0].ohlc.size())
-		{
-			curr_date = helper[0].ohlc[helper[0].iDate].date;
-
-			// Loop over transactions of the current date
-			while (iTrans < trans.size() && trans[iTrans].date <= curr_date)
-			{
-				Transaction const & t = trans[iTrans];
-				if (t.date < curr_date)
-				{
-					OutputMessage(L"Error: EquityHistory transaction date doesn't match VOO:\n%s", t.to_wstring().c_str());
-					throw std::invalid_argument("EquityHistory transaction date doesn't match VOO");
-				}
-				if (t.account == account)
-				{
-					if (std::wstring(t.ticker) == L"CASH")
-					{
-						if (t.type != TransactionType::Transfer) cash += t.value;
-					}
-					else HelperAddTransaction(helper, trans[iTrans], cash, curr_date, lastCloseDate);
-				}
-				iTrans++;
-			}
-
-			double equity = GetEquity(helper, curr_date) + cash;
-			out.push_back({ curr_date, equity });
-
-			for (auto & x : helper) x.iDate++;
+			curr_date = trans[iTrans].date;
+			break;
 		}
 	}
-	catch (const std::invalid_argument& ia) {
-		OutputDebugStringA(ia.what()); OutputDebugStringA("\n");
+	if (curr_date == 0) return out;
+
+	std::vector<EquityHistoryHelper::TickerHelper> helper;
+	EquityHistoryHelper::TickerHelper temp;
+	temp.ticker = L"VOO"; // use VOO to keep track of trading days
+	temp.ohlc = GetOHLC(L"VOO", apiSource::alpha, 1000);
+	temp.iDate = FindDateOHLC(temp.ohlc, curr_date);
+	helper.push_back(temp);
+
+	date_t lastCloseDate = temp.ohlc.back().date;
+	double cash = 0; // net transactions, including options and transfers
+	while (helper[0].iDate < helper[0].ohlc.size())
+	{
+		curr_date = helper[0].ohlc[helper[0].iDate].date;
+
+		// Loop over transactions of the current date
+		while (iTrans < trans.size() && trans[iTrans].date <= curr_date)
+		{
+			Transaction const & t = trans[iTrans];
+			if (t.date < curr_date)
+			{
+				throw ws_exception(
+					L"CalculateFullEquityHistory transaction date doesn't match VOO:\n" + t.to_wstring()
+				);
+			}
+			if (t.account == account)
+			{
+				if (std::wstring(t.ticker) == L"CASH")
+				{
+					if (t.type != TransactionType::Transfer) cash += t.value;
+				}
+				else HelperAddTransaction(helper, trans[iTrans], cash, curr_date, lastCloseDate);
+			}
+			iTrans++;
+		}
+
+		double equity = GetEquity(helper, curr_date) + cash;
+		out.push_back({ curr_date, equity });
+
+		for (auto & x : helper) x.iDate++;
 	}
 
 	return out;
@@ -588,7 +587,8 @@ std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Tra
 
 void UpdateEquityHistory(std::vector<TimeSeries>& hist, std::vector<Position> const & positions, QStats const & qstats)
 {
-	if (hist.empty() || positions.empty()) return OutputMessage(L"UpdateEquityHistory passed empty vector(s)\n");
+	if (hist.empty() || positions.empty()) 
+		throw std::invalid_argument("UpdateEquityHistory passed empty vector(s)");
 
 	std::vector<EquityHistoryHelper::TickerHelper> helper;
 	helper.reserve(positions.size() - 1);
@@ -596,48 +596,44 @@ void UpdateEquityHistory(std::vector<TimeSeries>& hist, std::vector<Position> co
 	date_t currDate = hist.back().date;
 	date_t lastCloseDate = 0;
 
-	try {
-		for (Position const & p : positions)
+	for (Position const & p : positions)
+	{
+		if (p.ticker == L"CASH")
 		{
-			if (p.ticker == L"CASH")
-			{
-				cash = p.realized_held + p.realized_unheld;
-				continue;
-			}
-			apiSource source = apiSource::alpha;
-			auto it = FindQStat(qstats, p.ticker);
-			if (it != qstats.end())
-			{
-				if (lastCloseDate == 0) lastCloseDate = GetDate(it->first.closeTime);
-				if (currDate > it->second.exDividendDate) source = apiSource::iex;
-				// this is a bit too strict since exDivDate could be in the future, but would have to check
-				// ex div history instead
-			}
-
-			EquityHistoryHelper::TickerHelper temp;
-			temp.ticker = p.ticker;
-			temp.n = p.n;
-			temp.ohlc = GetOHLC(p.ticker, source, 1000, lastCloseDate); // lastCloseDate is updated by reference
-			temp.iDate = FindDateOHLC(temp.ohlc, currDate) + 1; // start with next new day
-			temp.opts = p.options;
-			helper.push_back(temp);
-
-			if (currDate == lastCloseDate) return; // short circuit so we don't have to loop through all the positions
+			cash = p.realized_held + p.realized_unheld;
+			continue;
+		}
+		apiSource source = apiSource::alpha;
+		auto it = FindQStat(qstats, p.ticker);
+		if (it != qstats.end())
+		{
+			if (lastCloseDate == 0) lastCloseDate = GetDate(it->first.closeTime);
+			if (currDate > it->second.exDividendDate) source = apiSource::iex;
+			// this is a bit too strict since exDivDate could be in the future, but would have to check
+			// ex div history instead
 		}
 
-		while (helper[0].iDate < helper[0].ohlc.size())
-		{
-			currDate = helper[0].ohlc[helper[0].iDate].date;
-			double equity = GetEquity(helper, currDate) + cash;
-			hist.push_back({ currDate, equity });
+		EquityHistoryHelper::TickerHelper temp;
+		temp.ticker = p.ticker;
+		temp.n = p.n;
+		temp.ohlc = GetOHLC(p.ticker, source, 1000, lastCloseDate); // lastCloseDate is updated by reference
+		temp.iDate = FindDateOHLC(temp.ohlc, currDate) + 1; // start with next new day
+		temp.opts = p.options;
+		helper.push_back(temp);
 
-			for (auto & x : helper) x.iDate++;
-		}
+		if (currDate == lastCloseDate) return; // short circuit so we don't have to loop through all the positions
 	}
-	catch (const std::invalid_argument& ia) {
-		OutputDebugStringA(ia.what()); OutputDebugStringA("\n");
+
+	while (helper[0].iDate < helper[0].ohlc.size())
+	{
+		currDate = helper[0].ohlc[helper[0].iDate].date;
+		double equity = GetEquity(helper, currDate) + cash;
+		hist.push_back({ currDate, equity });
+
+		for (auto & x : helper) x.iDate++;
 	}
 }
+
 
 
 ///////////////////////////////////////////////////////////
@@ -737,18 +733,17 @@ std::pair<Quote, Stats> parseQuoteStats(std::string const & json, std::wstring c
 //
 // Only returns the 'last_n' entries from file.
 std::vector<OHLC> GetSavedOHLC(std::wstring const & ticker, std::wstring const & filename, 
-	FileIO & ohlcFile, size_t last_n, int & days_to_get, date_t & lastCloseDate)
+	size_t last_n, int & days_to_get, date_t & lastCloseDate)
 {
-	bool exists = FileExists(filename.c_str()); // Check before create file
-
-	ohlcFile.Init(filename);
-	ohlcFile.Open();
-
 	std::vector<OHLC> ohlcData;
 	days_to_get = -1;
 
-	if (exists)
+	if (FileExists(filename.c_str()))
 	{
+		FileIO ohlcFile;
+		ohlcFile.Init(filename);
+		ohlcFile.Open(GENERIC_READ);
+
 		if (last_n == 0)
 			ohlcData = ohlcFile.Read<OHLC>();
 		else
@@ -775,9 +770,8 @@ std::vector<OHLC> GetSavedOHLC(std::wstring const & ticker, std::wstring const &
 std::vector<OHLC> GetOHLC_IEX(std::wstring const ticker, size_t last_n, date_t & lastCloseDate)
 {
 	std::wstring filename = ROOTDIR + ticker + L".iex.ohlc";
-	FileIO ohlcFile;
 	int days_to_get;
-	std::vector<OHLC> ohlcData = GetSavedOHLC(ticker, filename, ohlcFile, last_n, days_to_get, lastCloseDate);
+	std::vector<OHLC> ohlcData = GetSavedOHLC(ticker, filename, last_n, days_to_get, lastCloseDate);
 	std::wstring chart_range;
 
 	if (days_to_get == 0)
@@ -811,16 +805,24 @@ std::vector<OHLC> GetOHLC_IEX(std::wstring const ticker, size_t last_n, date_t &
 
 	std::vector<OHLC> extra = parseIEXChart(json, latestDate);
 
-	if (days_to_get == -1)
+	// Write to file
+	DWORD nBytes = sizeof(OHLC) * extra.size();
+	if (nBytes > 0)
 	{
-		ohlcData = extra;
-		ohlcFile.Write(reinterpret_cast<const void*>(ohlcData.data()), sizeof(OHLC) * ohlcData.size());
-	}
-	else
-	{
-		bool err = ohlcFile.Append(reinterpret_cast<const void*>(extra.data()), extra.size() * sizeof(OHLC));
-		if (!err) OutputMessage(L"Append OHLC failed\n");
-		ohlcData.insert(ohlcData.end(), extra.begin(), extra.end());
+		FileIO ohlcFile;
+		ohlcFile.Init(filename);
+		ohlcFile.Open();
+		if (days_to_get == -1) // no saved data (ohlcData is currently empty)
+		{
+			ohlcFile.Write(reinterpret_cast<const void*>(extra.data()), nBytes);
+			ohlcData = extra;
+		}
+		else
+		{
+			bool err = ohlcFile.Append(reinterpret_cast<const void*>(extra.data()), nBytes);
+			if (!err) OutputMessage(L"Append OHLC failed\n");
+			ohlcData.insert(ohlcData.end(), extra.begin(), extra.end());
+		}
 	}
 
 	return ohlcData;
@@ -829,9 +831,8 @@ std::vector<OHLC> GetOHLC_IEX(std::wstring const ticker, size_t last_n, date_t &
 std::vector<OHLC> GetOHLC_Alpha(std::wstring ticker, size_t last_n, date_t & lastCloseDate)
 {
 	std::wstring filename = ROOTDIR + ticker + L".alpha.ohlc";
-	FileIO ohlcFile;
 	int days_to_get;
-	std::vector<OHLC> ohlcData = GetSavedOHLC(ticker, filename, ohlcFile, last_n, days_to_get, lastCloseDate);
+	std::vector<OHLC> ohlcData = GetSavedOHLC(ticker, filename, last_n, days_to_get, lastCloseDate);
 	
 	std::wstring outputsize;
 	if (days_to_get == 0)
@@ -861,20 +862,22 @@ std::vector<OHLC> GetOHLC_Alpha(std::wstring ticker, size_t last_n, date_t & las
 
 	// Write to file
 	DWORD nBytes = sizeof(OHLC) * extra.size();
-	if (days_to_get == -1)
+	if (nBytes > 0)
 	{
-		ohlcData = extra;
-		if (nBytes > 0)
-			ohlcFile.Write(reinterpret_cast<const void*>(ohlcData.data()), nBytes);
-	}
-	else if (extra.size() > 0)
-	{
-		if (nBytes > 0)
+		FileIO ohlcFile;
+		ohlcFile.Init(filename);
+		ohlcFile.Open();
+		if (days_to_get == -1) // no saved data (ohlcData is currently empty)
+		{
+			ohlcFile.Write(reinterpret_cast<const void*>(extra.data()), nBytes);
+			ohlcData = extra;
+		}
+		else
 		{
 			bool err = ohlcFile.Append(reinterpret_cast<const void*>(extra.data()), nBytes);
 			if (!err) OutputMessage(L"Append OHLC failed\n");
+			ohlcData.insert(ohlcData.end(), extra.begin(), extra.end());
 		}
-		ohlcData.insert(ohlcData.end(), extra.begin(), extra.end());
 	}
 
 	return ohlcData;
@@ -926,8 +929,10 @@ std::vector<OHLC> parseAlphaChart(std::string json, date_t latestDate)
 	}
 	else if (n != 6)
 	{
-		OutputMessage(L"parseAlphaChart sscanf_s failed! Only read %d/%d\n", n, 6);
-		throw std::invalid_argument("parseAlphaChart failed");
+		OutputDebugStringA(("JSON dump:\n" + json + "\n").c_str());
+		throw ws_exception(
+			FormatMsg(L"parseAlphaChart sscanf_s failed! Only read %d/%d\n", n, 6)
+		);
 	}
 	date_t refreshDate = MkDate(year, month, date);
 

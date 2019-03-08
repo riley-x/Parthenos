@@ -13,7 +13,7 @@ class TextBox : public AppItem
 public:
 	TextBox(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent, 
 		D2Objects::Formats format = D2Objects::Segoe12) :
-		AppItem(hwnd, d2), m_parent(parent), m_format(format) {};
+		AppItem(hwnd, d2, parent), m_format(format) {};
 	~TextBox();
 	
 	void SetSize(D2D1_RECT_F dipRect);
@@ -57,7 +57,6 @@ private:
 	D2Objects::Formats	m_format;
 
 	// data
-	CTPMessageReceiver	*m_parent;
 	IDWriteTextLayout	*m_pTextLayout = NULL; // must recreate each edit
 
 	// helpers

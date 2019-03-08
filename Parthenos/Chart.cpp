@@ -9,26 +9,26 @@ float const Chart::m_commandSize = 20.0f;
 float const Chart::m_tickerBoxWidth = 100.0f;
 float const Chart::m_timeframeWidth = 60.0f;
 
-Chart::Chart(HWND hwnd, D2Objects const & d2)
-	: AppItem(hwnd, d2), m_axes(hwnd, d2), m_tickerBox(hwnd, d2, this), 
-	m_timeframeButton(hwnd, d2, this), m_chartTypeButtons(hwnd, d2), m_mouseTypeButtons(hwnd, d2)
+Chart::Chart(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent)
+	: AppItem(hwnd, d2, parent), m_axes(hwnd, d2, this), m_tickerBox(hwnd, d2, this), 
+	m_timeframeButton(hwnd, d2, this), m_chartTypeButtons(hwnd, d2, this), m_mouseTypeButtons(hwnd, d2, this)
 {
 	// Timeframe button
 	m_timeframeButton.SetItems({ L"1M", L"3M", L"6M", L"1Y", L"2Y", L"5Y" });
 	m_timeframeButton.SetActive(3); // default 1 year
 
-	// Chart type buttons
-	auto temp = new IconButton(hwnd, d2);
+	// Chart type buttons (don't need messages so set parent = nullptr)
+	auto temp = new IconButton(hwnd, d2, nullptr);
 	temp->SetName(L"Candlestick");
 	temp->SetIcon(GetResourceIndex(IDB_CANDLESTICK));
 	m_chartTypeButtons.Add(temp);
 	
-	temp = new IconButton(hwnd, d2);
+	temp = new IconButton(hwnd, d2, nullptr);
 	temp->SetName(L"Line");
 	temp->SetIcon(GetResourceIndex(IDB_LINE));
 	m_chartTypeButtons.Add(temp);
 
-	temp = new IconButton(hwnd, d2);
+	temp = new IconButton(hwnd, d2, nullptr);
 	temp->SetName(L"Envelope");
 	temp->SetIcon(GetResourceIndex(IDB_ENVELOPE));
 	m_chartTypeButtons.Add(temp);
@@ -36,17 +36,17 @@ Chart::Chart(HWND hwnd, D2Objects const & d2)
 	m_chartTypeButtons.SetActive(0);
 
 	// Mouse type buttons
-	temp = new IconButton(hwnd, d2);
+	temp = new IconButton(hwnd, d2, nullptr);
 	temp->SetName(L"Arrow");
 	temp->SetIcon(GetResourceIndex(IDB_ARROWCURSOR));
 	m_mouseTypeButtons.Add(temp);
 
-	temp = new IconButton(hwnd, d2);
+	temp = new IconButton(hwnd, d2, nullptr);
 	temp->SetName(L"Snap");
 	temp->SetIcon(GetResourceIndex(IDB_SNAPLINE));
 	m_mouseTypeButtons.Add(temp);
 
-	temp = new IconButton(hwnd, d2);
+	temp = new IconButton(hwnd, d2, nullptr);
 	temp->SetName(L"Cross");
 	temp->SetIcon(GetResourceIndex(IDB_CROSSHAIRS));
 	m_mouseTypeButtons.Add(temp);
@@ -289,7 +289,6 @@ void Chart::OnTimer(WPARAM wParam, LPARAM lParam)
 	//ProcessCTPMessages(); // not needed
 }
 
-
 void Chart::ProcessCTPMessages()
 {
 	for (ClientMessage msg : m_messages)
@@ -340,23 +339,36 @@ void Chart::Draw(std::wstring ticker, MainChartType type, Timeframe tf)
 	DrawMainChart(type, tf);
 }
 
+
 ///////////////////////////////////////////////////////////
 // --- Helpers ---
 
-
-// Clears current data and loads the data for 'ticker'. Sets the text box and 'm_ticker'.
+// Clears stored array data used by axes.
+// Gets data the data for 'ticker'. Sets the text box and 'm_ticker'.
 void Chart::Load(std::wstring ticker, int range)
 {
 	if (ticker == m_ticker && range < static_cast<int>(m_OHLC.size())) return;
+	
+	m_axes.Clear(); // todo FIXME
+	
 	m_dates.clear();
 	m_closes.clear();
 	m_highs.clear();
 	m_lows.clear();
-	m_OHLC = GetOHLC(ticker, apiSource::alpha, range);
 	m_tickerBox.SetText(ticker);
 	m_ticker = ticker;
-}
 
+	try {
+		m_OHLC = GetOHLC(ticker, apiSource::alpha, range);
+	}
+	catch (const std::exception & e) {
+		m_OHLC.clear();
+		InvalidateRect(m_hwnd, &m_pixRect, FALSE); // so button clicks still appear
+
+		std::wstring out = SPrintException(e);
+		m_parent->PostClientMessage(this, out, CTPMessage::PRINT);
+	}
+}
 
 // Sets the current state members.
 void Chart::DrawMainChart(MainChartType type, Timeframe timeframe)
@@ -465,7 +477,7 @@ int Chart::FindStart(Timeframe timeframe, OHLC* & data)
 	it = std::lower_bound(m_OHLC.begin(), m_OHLC.end(), temp, OHLC_Compare);
 	if (it == m_OHLC.end())
 	{
-		OutputMessage(L"Didn't find data for candlestick\n");
+		OutputMessage(L"Didn't find data for main chart\n");
 		return -1;
 	}
 

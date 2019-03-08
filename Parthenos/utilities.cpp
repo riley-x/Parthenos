@@ -54,6 +54,50 @@ std::system_error Error(const std::wstring & msg)
 	return out_error;
 }
 
+void SPrintExceptionHelper(std::wstring & out, const std::exception & e, int level = 0)
+{
+	std::wstring appendee;
+	bool ws_ex = (e.what() == "Wide-string exception");
+	if (ws_ex)
+	{
+		try { // see if exception has wstring message
+			const ws_exception & wse = dynamic_cast<const ws_exception &>(e);
+			appendee = wse.ws_what();
+		}
+		catch (const std::bad_cast &) { 
+			ws_ex = false;
+		}
+	}
+
+	if (!ws_ex) // use what() and convert to wstring
+	{
+		size_t ssize = strlen(e.what());
+		size_t wssize;
+		appendee.resize(ssize, L' ');
+		errno_t err = mbstowcs_s(&wssize, &appendee[0], appendee.size(), e.what(), _TRUNCATE);
+		if (!err) appendee.resize(wssize);
+		else appendee.clear();
+	}
+
+	out.append(std::wstring(level * 3, '-') + appendee + L'\n');
+
+	// Rethrow a nested exception
+	try {
+		std::rethrow_if_nested(e);
+	}
+	catch (const std::exception& e) {
+		SPrintExceptionHelper(out, e, level + 1);
+	}
+	catch (...) {}
+}
+
+std::wstring SPrintException(const std::exception & e)
+{
+	std::wstring out = L"Error: ";
+	SPrintExceptionHelper(out, e);
+	return out;
+}
+
 BOOL SystemTimeToEasternTime(SYSTEMTIME const * sysTime, SYSTEMTIME * eastTime)
 {
 	DYNAMIC_TIME_ZONE_INFORMATION pdtzi; 
