@@ -36,7 +36,7 @@ private:
 
 	// Data
 	std::vector<std::wstring>	m_shortLabels;
-	std::vector<std::wstring>	m_longLabels = { L"", L"" }; // Text at center, with extra entry at beginning for no mouseOn
+	std::vector<std::wstring>	m_longLabels = { L"" }; // Text at center, with extra entry at beginning for no mouseOn
 	std::vector<D2D1_COLOR_F>	m_colors;
 	std::vector<float>			m_angles; // in degrees
 

@@ -891,8 +891,9 @@ inline std::wstring MakeLongLabel(std::wstring const & ticker, double val, doubl
 
 void Parthenos::LoadPieChart()
 {
-	std::vector<double> market_values = GetMarketValues(m_accounts[m_currAccount].positions);
-	std::vector<std::wstring> tickers = GetTickers(m_accounts[m_currAccount].positions);
+	Account const & acc = m_accounts[m_currAccount];
+	std::vector<double> market_values = GetMarketValues(acc.positions);
+	std::vector<std::wstring> tickers = GetTickers(acc.positions);
 
 	std::vector<double> data; 
 	std::vector<std::wstring> short_labels;
@@ -904,13 +905,14 @@ void Parthenos::LoadPieChart()
 	long_labels.reserve(tickers.size() + 2); // Add another for default label
 	colors.reserve(tickers.size() + 1);
 
+	// Get total equity
 	double sum = std::accumulate(market_values.begin(), market_values.end(), 0.0);
-	std::pair<double, double> cash = GetCash(m_accounts[m_currAccount].positions);
+	std::pair<double, double> cash = GetCash(acc.positions);
 	sum += cash.first;
 
 	// Default long label
 	wchar_t buffer[100];
-	swprintf_s(buffer, _countof(buffer), L"%s\n%s", m_accounts[m_currAccount].name.c_str(), FormatDollar(sum).c_str());
+	swprintf_s(buffer, _countof(buffer), L"%s\n%s", acc.name.c_str(), FormatDollar(sum).c_str());
 	long_labels.push_back(std::wstring(buffer));
 
 	// Sort by market value
@@ -941,40 +943,42 @@ void Parthenos::LoadPieChart()
 void Parthenos::UpdatePortfolioPlotters(char account, bool init)
 {
 	if (m_currAccount != account) return;
-	std::vector<std::wstring> tickers = GetTickers(m_accounts[account].positions);
+	Account const & acc = m_accounts[account];
+	std::vector<std::wstring> tickers = GetTickers(acc.positions);
 
-	m_portfolioList->Load(tickers, m_accounts[account].positions, FilterByKeyMatch(m_tickers, m_stats, tickers));
+	m_portfolioList->Load(tickers, acc.positions, FilterByKeyMatch(m_tickers, m_stats, tickers));
 	if (!init) m_portfolioList->Refresh();
 
 	LoadPieChart();
 	if (!init) m_pieChart->Refresh();
 
 	wchar_t buffer[100];
-	double returns = m_accounts[m_currAccount].histEquity.back() - m_accounts[m_currAccount].histEquity.front();
-	swprintf_s(buffer, _countof(buffer), L"%s: %s (%.2lf%%)", m_accounts[m_currAccount].name.c_str(), 
-		FormatDollar(returns).c_str(), returns / m_accounts[m_currAccount].histEquity.back() * 100.0);
+	double returns = acc.histEquity.back() - acc.histEquity.front();
+	swprintf_s(buffer, _countof(buffer), L"%s: %s (%.2lf%%)", acc.name.c_str(), 
+		FormatDollar(returns).c_str(), returns / acc.histEquity.back() * 100.0);
 	m_eqHistoryAxes->SetTitle(buffer);
-	m_eqHistoryAxes->SetXAxisPos((float)m_accounts[m_currAccount].histEquity[0]);
+	m_eqHistoryAxes->SetXAxisPos((float)acc.histEquity[0]);
 	m_eqHistoryAxes->Clear();
-	m_eqHistoryAxes->Line(m_accounts[account].histDate.data(),
-		m_accounts[account].histEquity.data(),
-		m_accounts[account].histDate.size(),
+	m_eqHistoryAxes->Line(acc.histDate.data(),
+		acc.histEquity.data(),
+		acc.histDate.size(),
 		Colors::ALMOST_WHITE
 	);
 
 	m_returnsAxes->Clear();
 	m_returnsPercAxes->Clear();
-	m_returnsAxes->SetXLabels(m_accounts[account].tickers, false);
-	m_returnsPercAxes->SetXLabels(m_accounts[account].tickers, false);
+	m_returnsAxes->SetXLabels(acc.tickers, false);
+	std::vector<std::wstring> perc_tickers(acc.tickers.begin(), acc.tickers.begin() + acc.returnsPercBarData.size());
+	m_returnsPercAxes->SetXLabels(perc_tickers, false);
 	m_returnsAxes->Bar(
-		m_accounts[account].returnsBarData.data(), 
-		m_accounts[account].returnsBarData.size(), 
-		m_accounts[account].tickers
+		acc.returnsBarData.data(), 
+		acc.returnsBarData.size(), 
+		acc.tickers
 	);
 	m_returnsPercAxes->Bar(
-		m_accounts[account].returnsPercBarData.data(),
-		m_accounts[account].returnsPercBarData.size(),
-		m_accounts[account].tickers
+		acc.returnsPercBarData.data(),
+		acc.returnsPercBarData.size(),
+		perc_tickers
 	);
 
 	::InvalidateRect(m_hwnd, NULL, FALSE);
