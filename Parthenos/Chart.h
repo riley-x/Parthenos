@@ -12,15 +12,14 @@
 class Chart : public AppItem
 {
 public:
-	// Statics
+	// Enums
 	enum class MainChartType { none, line, candlestick, envelope };
 	enum class Timeframe { none, month1, month3, month6, year1, year2, year5 };
-	static const float	m_commandSize;
-	static const float	m_tickerBoxWidth;
-	static const float	m_timeframeWidth;
+	enum Markers : size_t { MARK_HISTORY, MARK_NMARKERS };
 
 	// AppItem overrides
 	Chart(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent);
+	~Chart();
 	void Paint(D2D1_RECT_F updateRect);
 	void SetSize(D2D1_RECT_F dipRect);
 	bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled);
@@ -38,15 +37,21 @@ public:
 	inline void LoadHistory(std::vector<Transaction> const & hist) { m_history = hist; }
 
 private:
+	// Statics
+	static const float	m_commandSize;
+	static const float	m_tickerBoxWidth;
+	static const float	m_timeframeWidth;
 
 	// Parameters
 	float				m_menuHeight	= 26.0f;
 	float				m_commandHPad	= 5.0f;
+	const std::wstring  m_markerNames[MARK_NMARKERS] = { L"H" };
 
 	// State
 	std::wstring		m_ticker;
 	MainChartType		m_currentMChart = MainChartType::none;
 	Timeframe			m_currentTimeframe = Timeframe::none;
+	bool				m_markerActive[MARK_NMARKERS] = {};
 
 	// Data
 	std::vector<OHLC>			m_OHLC;
@@ -55,13 +60,15 @@ private:
 	std::vector<double>			m_highs;
 	std::vector<double>			m_lows;
 	std::vector<Transaction>	m_history;
+	std::vector<PointProps>		m_points[MARK_NMARKERS];
 
 	// Child objects
 	Axes				m_axes;
 	TextBox				m_tickerBox;
+	DropMenuButton		m_timeframeButton;
 	ButtonGroup			m_chartTypeButtons;
 	ButtonGroup			m_mouseTypeButtons;
-	DropMenuButton		m_timeframeButton;
+	TextButton*			m_markerButtons[MARK_NMARKERS];
 
 	// Painting
 	D2D1_RECT_F			m_menuRect;
@@ -75,6 +82,7 @@ private:
 	void Candlestick(OHLC const *data, int n);
 	void Line(OHLC const *data, int n);
 	void Envelope(OHLC const *data, int n);
+	void DrawMarker(Markers i);
 	void DrawHistory();
 };
 

@@ -45,12 +45,33 @@ void Axes::Clear()
 
 void Axes::Clear(GraphGroup group)
 {
-	if (group == GG_PRI) return Clear();
+	if (group == GG_PRI)
+	{
+		for (int i = 0; i < 4; i++) m_dataRange[i] = nan("");
+		m_dates.clear();
+		m_hoverOn = -1;
+		m_nPoints = 0;
+	}
 
 	for (Graph *item : m_graphObjects[group]) if (item) delete item;
 	m_graphObjects[group].clear();
 	m_imade[group] = 0;
-	CreateCachedImage();
+	m_ismade = false;
+}
+
+void Axes::Remove(GraphGroup group, std::wstring name)
+{
+	for (auto it = m_graphObjects[group].begin(); it != m_graphObjects[group].end(); it++)
+	{
+		if ((*it)->m_name == name)
+		{
+			delete (*it);
+			m_graphObjects[group].erase(it);
+			m_imade[group] = 0; // excessive
+			if (group != GG_TER) m_ismade = false; // need to remake cached image
+			return;
+		}
+	}
 }
 
 // Converts all graph objects into DIPs. Creates a cached image for the first two graph groups and labels.
@@ -73,7 +94,6 @@ void Axes::Make()
 void Axes::SetSize(D2D1_RECT_F dipRect)
 {
 	m_ismade = false;
-	for (size_t i = 0; i < nGraphGroups; i++) m_imade[i] = 0;
 	m_rescaled = true;
 
 	m_dipRect = dipRect;
@@ -282,7 +302,7 @@ void Axes::Candlestick(OHLC const * ohlc, size_t n, GraphGroup group)
 		}
 
 		m_rescaled = setDataRange(xmin, xmax, low_min, high_max) || m_rescaled;
-		m_nPoints = max(m_nPoints, n);
+		m_nPoints = n;
 	}
 	else // align dates to primary graphs
 	{
@@ -323,7 +343,7 @@ void Axes::Line(date_t const * dates, double const * ydata, size_t n, LineProps 
 		}
 
 		m_rescaled = setDataRange(xmin, xmax, ymin, ymax) || m_rescaled;
-		m_nPoints = max(m_nPoints, n);
+		m_nPoints = n;
 	}
 	else // align dates to primary graphs
 	{
@@ -347,6 +367,9 @@ void Axes::Bar(std::pair<double, D2D1_COLOR_F> const * data, size_t n,
 	if (!data || n == 0) return;
 	if (group == GG_PRI) // scale axes accordingly
 	{
+		if (m_nPoints > 0 && m_nPoints != n) 
+			return OutputMessage(L"Error: Bar data does not agree with current primary group");
+
 		// sets x values to [0, n-1]
 		double xmin = -0.5; // extra padding
 		double xmax = n - 0.5;
@@ -359,7 +382,7 @@ void Axes::Bar(std::pair<double, D2D1_COLOR_F> const * data, size_t n,
 		}
 
 		m_rescaled = setDataRange(xmin, xmax, ymin, ymax) || m_rescaled;
-		m_nPoints = max(m_nPoints, n);
+		m_nPoints = n;
 	}
 	else
 	{
@@ -373,19 +396,26 @@ void Axes::Bar(std::pair<double, D2D1_COLOR_F> const * data, size_t n,
 	m_ismade = false;
 }
 
-// Points are provided correct except for x values, which are date_ts
-void Axes::DatePoints(std::vector<PointProps> points, GraphGroup group)
+// Points are provided correct except for x values, which are date_t.
+// This function will modify the point x values to the correct coordinate.
+void Axes::DatePoints(std::vector<PointProps>& points, GraphGroup group, std::wstring name)
 {
-	if (group == GG_PRI) return;
+	if (group == GG_PRI || m_dates.empty()) return;
 
 	for (PointProps & p : points)
 	{
-		auto it = std::lower_bound(m_dates.begin(), m_dates.end(), static_cast<date_t>(p.x));
-		if (it == m_dates.end()) p.x = std::nanf("");
-		p.x = static_cast<double>(it - m_dates.begin());
+		date_t d = static_cast<date_t>(p.x);
+		if (d < m_dates.front() || d > m_dates.back()) p.x = std::nan("");
+		else
+		{
+			auto it = std::lower_bound(m_dates.begin(), m_dates.end(), d);
+			if (it == m_dates.end()) p.x = std::nan("");
+			else p.x = static_cast<double>(it - m_dates.begin());
+		}
 	}
 
-	auto graph = new PointsGraph(this, points);
+	auto graph = new PointsGraph(this, points.data(), points.size());
+	graph->m_name = name;
 	m_graphObjects[group].push_back(graph);
 	m_ismade = false;
 }
@@ -938,49 +968,51 @@ std::wstring BarGraph::GetYLabel(size_t i) const
 
 
 ///////////////////////////////////////////////////////////
-// --- PoitnsGraph ---
+// --- PointsGraph ---
 
 void PointsGraph::Make()
 {
+	PointProps const * points = reinterpret_cast<PointProps const *>(m_data);
 	m_locs.resize(m_n);
 	for (size_t i = 0; i < m_n; i++)
 	{
 		m_locs[i] = D2D1::Point2F(
-			m_axes->XtoDIP(m_points[i].x),
-			m_axes->YtoDIP(m_points[i].y)
+			m_axes->XtoDIP(points[i].x),
+			m_axes->YtoDIP(points[i].y)
 		);
 	}
 }
 
 void PointsGraph::Paint(D2Objects const & d2)
 {
+	PointProps const * points = reinterpret_cast<PointProps const *>(m_data);
 	for (size_t i = 0; i < m_n; i++)
 	{
-		d2.pBrush->SetColor(m_points[i].color);
-		switch (m_points[i].style)
+		d2.pBrush->SetColor(points[i].color);
+		switch (points[i].style)
 		{
 		case MarkerStyle::circle:
-			d2.pD2DContext->FillEllipse(D2D1::Ellipse(m_locs[i], m_points[i].scale, m_points[i].scale), d2.pBrush);
+			d2.pD2DContext->FillEllipse(D2D1::Ellipse(m_locs[i], points[i].scale, points[i].scale), d2.pBrush);
 			break;
 		case MarkerStyle::square:
 			d2.pD2DContext->FillRectangle(D2D1::RectF(
-				m_locs[i].x - m_points[i].scale,
-				m_locs[i].y - m_points[i].scale,
-				m_locs[i].x + m_points[i].scale,
-				m_locs[i].y + m_points[i].scale
+				m_locs[i].x - points[i].scale,
+				m_locs[i].y - points[i].scale,
+				m_locs[i].x + points[i].scale,
+				m_locs[i].y + points[i].scale
 			), d2.pBrush);
 			break;
 		case MarkerStyle::up:
 		case MarkerStyle::down:
 		{
 			D2D1_MATRIX_3X2_F scale = D2D1::Matrix3x2F::Scale(
-				m_points[i].scale,
-				m_points[i].scale,
+				points[i].scale,
+				points[i].scale,
 				D2D1::Point2F(0, 0)
 			);
 			D2D1_MATRIX_3X2_F translation = D2D1::Matrix3x2F::Translation(m_locs[i].x, m_locs[i].y);
 			d2.pD2DContext->SetTransform(scale * translation);
-			d2.pD2DContext->FillGeometry(m_axes->GetMarker(m_points[i].style), d2.pBrush);
+			d2.pD2DContext->FillGeometry(m_axes->GetMarker(points[i].style), d2.pBrush);
 			d2.pD2DContext->SetTransform(D2D1::Matrix3x2F::Identity());
 			break;
 		}

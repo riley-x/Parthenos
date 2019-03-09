@@ -10,7 +10,7 @@ float const Chart::m_tickerBoxWidth = 100.0f;
 float const Chart::m_timeframeWidth = 60.0f;
 
 Chart::Chart(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent)
-	: AppItem(hwnd, d2, parent), m_axes(hwnd, d2, this), m_tickerBox(hwnd, d2, this), 
+	: AppItem(hwnd, d2, parent), m_axes(hwnd, d2, this), m_tickerBox(hwnd, d2, this),
 	m_timeframeButton(hwnd, d2, this), m_chartTypeButtons(hwnd, d2, this), m_mouseTypeButtons(hwnd, d2, this)
 {
 	// Timeframe button
@@ -52,6 +52,21 @@ Chart::Chart(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent)
 	m_mouseTypeButtons.Add(temp);
 
 	m_mouseTypeButtons.SetActive(0);
+
+	// Marker buttons
+	for (size_t i = 0; i < MARK_NMARKERS; i++)
+	{
+		TextButton *temp = new TextButton(m_hwnd, m_d2, nullptr); // don't need messages from button
+		temp->SetName(m_markerNames[i]);
+		m_markerButtons[i] = temp;
+	}
+}
+
+
+Chart::~Chart()
+{
+	for (size_t i = 0; i < MARK_NMARKERS; i++)
+		if (m_markerButtons[i]) delete m_markerButtons[i];
 }
 
 void Chart::SetSize(D2D1_RECT_F dipRect)
@@ -147,8 +162,25 @@ void Chart::SetSize(D2D1_RECT_F dipRect)
 		// Divison
 		m_divisions.push_back(DPIScale::SnapToPixelX(left + m_commandHPad) + DPIScale::hpx());
 		left += 3 * m_commandHPad;
+
+		// Marker buttons
+		for (size_t i = 0; i < MARK_NMARKERS; i++)
+		{
+			m_markerButtons[i]->SetSize(D2D1::RectF(
+				left,
+				top,
+				left + m_commandSize,
+				top + m_commandSize
+			));
+			left += m_commandSize + m_commandHPad;
+		}
+
+		// Divison
+		m_divisions.push_back(DPIScale::SnapToPixelX(left + m_commandHPad) + DPIScale::hpx());
+		left += 3 * m_commandHPad;
 	}
 }
+
 
 void Chart::Paint(D2D1_RECT_F updateRect)
 {
@@ -172,10 +204,13 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 			m_d2.pD2DContext->FillRectangle(iconRect, m_d2.pBrush);
 		if (m_mouseTypeButtons.GetActiveClickRect(iconRect))
 			m_d2.pD2DContext->FillRectangle(iconRect, m_d2.pBrush);
+		for (size_t i = 0; i < MARK_NMARKERS; i++)
+			if (m_markerActive[i]) m_d2.pD2DContext->FillRectangle(m_markerButtons[i]->GetDIPRect(), m_d2.pBrush);
 
-		// Icon buttons
+		// Buttons
 		m_chartTypeButtons.Paint(m_menuRect);
 		m_mouseTypeButtons.Paint(m_menuRect);
+		for (size_t i = 0; i < MARK_NMARKERS; i++) m_markerButtons[i]->Paint(m_menuRect);
 
 		// Menu division lines
 		m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
@@ -250,6 +285,21 @@ bool Chart::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 			handeled = true;
 		}
+		else
+		{
+			for (size_t i = 0; i < MARK_NMARKERS; i++)
+			{
+				if (m_markerButtons[i]->OnLButtonDown(cursor, handeled))
+				{
+					m_markerActive[i] = !m_markerActive[i];
+					if (m_markerActive[i]) DrawMarker(static_cast<Markers>(i));
+					else m_axes.Remove(Axes::GG_SEC, m_markerNames[i]);
+					break;
+				}
+			}
+			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+			handeled = true;
+		}
 	}
 
 	ProcessCTPMessages();
@@ -302,8 +352,6 @@ void Chart::ProcessCTPMessages()
 				DrawCurrentState();
 			}
 			break;
-		case CTPMessage::TEXTBOX_DEACTIVATED:
-			break; // Do nothing
 		case CTPMessage::DROPMENU_SELECTED:
 		{
 			Timeframe tf = Timeframe::none;;
@@ -318,6 +366,10 @@ void Chart::ProcessCTPMessages()
 			DrawCurrentState();
 			break;
 		}
+		case CTPMessage::TEXTBOX_DEACTIVATED:
+		case CTPMessage::BUTTON_DOWN:
+		default:
+			break; // Do nothing
 		}
 	}
 	if (!m_messages.empty()) m_messages.clear();
@@ -349,8 +401,8 @@ void Chart::Load(std::wstring ticker, int range)
 {
 	if (ticker == m_ticker && range < static_cast<int>(m_OHLC.size())) return;
 	
-	m_axes.Clear(); // todo FIXME
-	
+	m_axes.Clear();
+
 	m_dates.clear();
 	m_closes.clear();
 	m_highs.clear();
@@ -387,13 +439,12 @@ void Chart::DrawMainChart(MainChartType type, Timeframe timeframe)
 		return;
 	}
 
-	m_axes.Clear(); // todo FIXME
+	m_axes.Clear(Axes::GG_PRI);
 
 	switch (type)
 	{
 	case MainChartType::line:
 		Line(data, n);
-		DrawHistory();
 		break;
 	case MainChartType::envelope:
 		Envelope(data, n);
@@ -407,13 +458,15 @@ void Chart::DrawMainChart(MainChartType type, Timeframe timeframe)
 }
 
 // Call this when the main chart needs to be completely redrawn but nothing else has changed
-// i.e. changing chart type, ticker, or timeframe should preserve technicals and drawings
-// TODO delete drawings when ticker changes
+// i.e. changing chart type, ticker, or timeframe should preserve technicals and markers
 void Chart::DrawCurrentState()
 {
 	DrawMainChart(m_currentMChart, m_currentTimeframe);
 
+	m_axes.Clear(Axes::GG_SEC);
 	// DrawTechnicals(m_currentTechnicals), etc...
+	for (size_t i = 0; i < MARK_NMARKERS; i++)
+		if (m_markerActive[i]) DrawMarker(static_cast<Markers>(i));
 }
 
 // Finds the starting date in OHLC data given 'timeframe', returning the pointer in 'data'.
@@ -536,19 +589,33 @@ void Chart::Envelope(OHLC const *data, int n)
 	m_axes.Line(m_dates.data(), m_lows.data(), n, envelope_props);
 }
 
+void Chart::DrawMarker(Markers i)
+{
+	switch (i)
+	{
+	case MARK_HISTORY:
+		return DrawHistory();
+	case MARK_NMARKERS:
+	default:
+		return;
+	}
+}
+
 void Chart::DrawHistory()
 {
-	std::vector<PointProps> points;
+	m_points[MARK_HISTORY].clear();
 	for (Transaction const & t : m_history)
 	{
 		if (std::wstring(t.ticker) == m_ticker)
 		{
 			if (isOption(t.type));
-			else if (t.n > 0) points.push_back(PointProps(MarkerStyle::up, t.date, t.price));
-			else if (t.n < 0) points.push_back(PointProps(MarkerStyle::down, t.date, t.price));
+			else if (t.n > 0) 
+				m_points[MARK_HISTORY].push_back(PointProps(MarkerStyle::up, t.date, t.price, 5.0f, Colors::SKYBLUE));
+			else if (t.n < 0) 
+				m_points[MARK_HISTORY].push_back(PointProps(MarkerStyle::down, t.date, t.price, 5.0f, Colors::SKYBLUE));
 		}
 	}
 
-	m_axes.DatePoints(points, Axes::GG_SEC);
+	m_axes.DatePoints(m_points[MARK_HISTORY], Axes::GG_SEC, m_markerNames[MARK_HISTORY]);
 }
 

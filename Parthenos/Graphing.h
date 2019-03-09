@@ -35,12 +35,16 @@ class Graph
 {
 protected:
 	Axes *m_axes;
+
 	void const *m_data; // NOT owned by Axes nor Graph. Recast for each derived class
 	size_t m_n; // length of data array
 	size_t m_offset; // x values are set to [m_offset, m_offset + m_n)
+
 public:
 	Graph(Axes *axes, void const *data, size_t n, size_t offset = 0) 
 		: m_axes(axes), m_data(data), m_n(n), m_offset(offset) {};
+	std::wstring m_name;
+
 	virtual void Make() = 0; // Calculate the D2 DIP objects to paint from given data
 	virtual void Paint(D2Objects const & d2) = 0;
 	virtual std::wstring GetYLabel(size_t i) const { return L""; } // i is x value, not index into data
@@ -60,16 +64,14 @@ private:
 	LineProps m_props;
 };
 
-// m_data = PointProps*, but PointsGraph will store in its own vector
+// m_data = PointProps*
 class PointsGraph : public Graph
 {
 public:
-	PointsGraph(Axes *axes, std::vector<PointProps> const & points)
-		: Graph(axes, nullptr, points.size()), m_points(points) {}
+	using Graph::Graph;
 	void Make();
 	void Paint(D2Objects const & d2);
 private:
-	std::vector<PointProps> m_points; 
 	std::vector<D2D1_POINT_2F> m_locs;
 };
 
@@ -114,7 +116,7 @@ public:
 	//	   x values. The first graph is used for mouse hover text. Cached painting.
 	// [1] secondary graphs. These do not scale the axes. Cached painting.
 	// [2] tertiary graphs. These do not scale the axes, and are not cached for painting.
-	// [1-2] cannot exist when [0] is empty.
+	// [1-2] should not exist when [0] is empty.
 	enum GraphGroup : size_t { GG_PRI, GG_SEC, GG_TER, nGraphGroups};
 
 	// Constructor
@@ -129,6 +131,7 @@ public:
 	// Interface
 	void Clear();
 	void Clear(GraphGroup group);
+	void Remove(GraphGroup group, std::wstring name);
 
 	// Data pointers to these functions should remain valid until the next Clear() call
 	void Candlestick(OHLC const * ohlc, size_t n,
@@ -141,7 +144,7 @@ public:
 		std::vector<std::wstring> const & labels = {},
 		GraphGroup group = GG_PRI, size_t offset = 0 // offset of first point from x_min of primary graph(s)
 	);
-	void DatePoints(std::vector<PointProps> points, GraphGroup group);
+	void DatePoints(std::vector<PointProps> & points, GraphGroup group, std::wstring name = L"");
 
 	// Convert between an x/y value and the dip coordinate (relative to window)
 	inline float XtoDIP(double val) const
@@ -217,8 +220,8 @@ private:
 	size_t m_nPoints; // x values are always plotted as [0, n-1]
 	enum class dataRange { xmin, xmax, ymin, ymax };
 	double m_dataRange[4] = { nan(""), nan(""), nan(""), nan("") }; // Numerical range of data: x_min, x_max, y_min, y_max
-	double m_data_xdiff;
-	double m_data_ydiff;
+	double m_data_xdiff; // these are calculated on Rescale(), and are what graph objects use to calculate DIPs
+	double m_data_ydiff; // note xmax, ymax are not used for any other purpose than calculating these diffs
 
 	// Rects and location
 	std::vector<std::tuple<float, double, std::wstring>> m_xTicks; // DIP, value, label
