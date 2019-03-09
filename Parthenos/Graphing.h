@@ -10,12 +10,24 @@ typedef struct LINE_STRUCT {
 	D2D1_POINT_2F end;
 } Line_t;
 
+typedef struct LINE_PROPERTIES {
+	D2D1_COLOR_F color = Colors::ALMOST_WHITE;
+	float stroke_width = 1.0f;
+	ID2D1StrokeStyle * pStyle = NULL;
+} LineProps;
 
-//template <typename T>
-//inline float linScale(T val, T val_min, T val_diff, float new_min, float new_diff)
-//{
-//	return new_min + (static_cast<float>(val - val_min) / static_cast<float>(val_diff)) * new_diff;
-//}
+enum class MarkerStyle {circle, square, up, down};
+
+typedef struct POINTS_PROPERTIES {
+	MarkerStyle style = MarkerStyle::circle;
+	float scale = 5.0f; // approximate radius
+	double x;
+	double y;
+	D2D1_COLOR_F color = Colors::ACCENT;
+
+	struct POINTS_PROPERTIES(MarkerStyle _style, double _x, double _y, float _scale = 5.0f, D2D1_COLOR_F _color = Colors::ACCENT)
+		: style(_style), x(_x), y(_y), scale(_scale), color(_color) {}
+} PointProps;
 
 class Axes;
 
@@ -25,11 +37,13 @@ protected:
 	Axes *m_axes;
 	void const *m_data; // NOT owned by Axes nor Graph. Recast for each derived class
 	size_t m_n; // length of data array
+	size_t m_offset; // x values are set to [m_offset, m_offset + m_n)
 public:
-	Graph(Axes *axes, void const *data, size_t n) : m_axes(axes), m_data(data), m_n(n) {};
+	Graph(Axes *axes, void const *data, size_t n, size_t offset = 0) 
+		: m_axes(axes), m_data(data), m_n(n), m_offset(offset) {};
 	virtual void Make() = 0; // Calculate the D2 DIP objects to paint from given data
 	virtual void Paint(D2Objects const & d2) = 0;
-	virtual std::wstring GetYLabel(size_t i) const = 0;
+	virtual std::wstring GetYLabel(size_t i) const { return L""; } // i is x value, not index into data
 };
 
 // m_data = double* to y values (assumes linear spacing)
@@ -40,12 +54,23 @@ public:
 	void Make();
 	void Paint(D2Objects const & d2);
 	std::wstring GetYLabel(size_t i) const;
-	void SetLineProperties(D2D1_COLOR_F color, float stroke_width, ID2D1StrokeStyle * pStyle);
+	inline void SetLineProperties(LineProps const & props) { m_props = props; }
 private:
 	std::vector<Line_t> m_lines; // line segments
-	D2D1_COLOR_F m_color = D2D1::ColorF(0.8f, 0.0f, 0.5f, 1.0f);
-	float m_stroke_width = 1.0f;
-	ID2D1StrokeStyle * m_pStyle = NULL;
+	LineProps m_props;
+};
+
+// m_data = PointProps*, but PointsGraph will store in its own vector
+class PointsGraph : public Graph
+{
+public:
+	PointsGraph(Axes *axes, std::vector<PointProps> const & points)
+		: Graph(axes, nullptr, points.size()), m_points(points) {}
+	void Make();
+	void Paint(D2Objects const & d2);
+private:
+	std::vector<PointProps> m_points; 
+	std::vector<D2D1_POINT_2F> m_locs;
 };
 
 // m_data = OHLC*
@@ -85,9 +110,16 @@ public:
 	// Statics
 	enum class HoverStyle { none, snap, crosshairs };
 
+	// [0] primary graphs. These graphs affect automatic axes scaling, and should have consistent
+	//	   x values. The first graph is used for mouse hover text. Cached painting.
+	// [1] secondary graphs. These do not scale the axes. Cached painting.
+	// [2] tertiary graphs. These do not scale the axes, and are not cached for painting.
+	// [1-2] cannot exist when [0] is empty.
+	enum GraphGroup : size_t { GG_PRI, GG_SEC, GG_TER, nGraphGroups};
+
 	// Constructor
-	using AppItem::AppItem;
-	~Axes() { Clear(); }
+	Axes(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent);
+	~Axes();
 	
 	// AppItem
 	void SetSize(D2D1_RECT_F dipRect);
@@ -96,19 +128,20 @@ public:
 
 	// Interface
 	void Clear();
+	void Clear(GraphGroup group);
 
 	// Data pointers to these functions should remain valid until the next Clear() call
-	void Candlestick(OHLC const * ohlc, int n, size_t group = 0);
-	void Line(date_t const * dates, double const * ydata, int n, 
-		D2D1_COLOR_F color = D2D1::ColorF(0.8f, 0.0f, 0.5f, 1.0f), 
-		float stroke_width = 1.0f,
-		ID2D1StrokeStyle * pStyle = NULL,
-		size_t group = 0
+	void Candlestick(OHLC const * ohlc, size_t n,
+		GraphGroup group = GG_PRI);
+	void Line(date_t const * dates, double const * ydata, size_t n, 
+		LineProps props = {},
+		GraphGroup group = GG_PRI
 	);
-	void Bar(std::pair<double, D2D1_COLOR_F> const * data, int n, 
+	void Bar(std::pair<double, D2D1_COLOR_F> const * data, size_t n, 
 		std::vector<std::wstring> const & labels = {},
-		size_t group = 0
+		GraphGroup group = GG_PRI, size_t offset = 0 // offset of first point from x_min of primary graph(s)
 	);
+	void DatePoints(std::vector<PointProps> points, GraphGroup group);
 
 	// Convert between an x/y value and the dip coordinate (relative to window)
 	inline float XtoDIP(double val) const
@@ -138,12 +171,12 @@ public:
 		m_ylabelWidth = ylabelWidth;
 		m_labelHeight = labelHeight;
 	}
-	inline void SetXAxisPos(float y) { m_xAxisPos = y; }
-	inline void SetYAxisPos(float x) { m_yAxisPos = x; }
+	inline void SetXAxisPos(double y) { m_xAxisPos = y; }
+	inline void SetYAxisPos(double x) { m_yAxisPos = x; }
 	inline void SetXLabels() { m_drawxLabels = false; } // no labels == no draw
 	inline void SetXLabels(std::vector<std::wstring> const & labels, bool draw = true) 
 	{
-		m_userXLabels = labels; m_dates.clear(); m_drawxLabels = draw;
+		m_userXLabels = labels; m_drawxLabels = draw;
 	}
 
 	void SetTitle(std::wstring const & title, D2Objects::Formats format = D2Objects::Formats::Segoe18);
@@ -151,34 +184,37 @@ public:
 	inline float GetDataRectXDiff() const { return m_rect_xdiff; }
 	inline D2D1_RECT_F GetAxesRect() const { return m_axesRect; }
 	inline float GetDataPad() const { return m_dataPad; }
+	inline size_t GetNPoints() const { return m_nPoints; }
+	ID2D1PathGeometry* GetMarker(MarkerStyle m);
 
 private:
+
 	// Objects
-	size_t static const nGraphGroups = 3;
-	// individual graphs to plot. [0] contains primary graphs, and are cached in m_primaryCache.
-	// these need to be remade when the size of the window changes
+	// individual graphs to plot. these need to be remade when the size of the window changes.
 	std::vector<Graph*>		m_graphObjects[nGraphGroups]; 
 	ComPtr<ID2D1Bitmap1>	m_primaryCache = nullptr; // caches graph groups 0 and 1, grids, labels, etc.
+	ComPtr<ID2D1PathGeometry> m_upMarker = nullptr;
+	ComPtr<ID2D1PathGeometry> m_dnMarker = nullptr;
 
 	// Parameters
 	float m_ylabelWidth = 40.0f; // width of y tick labels in DIPs.
 	float m_labelHeight = 16.0f; // height of tick labels in DIPs.
 	float m_dataPad		= 20.0f; // padding between datapoints and border
-	float m_labelPad	= 2.0f; // padding between axes labels and axes; also for hover text and bounding box
-	float m_titlePad	= 0.0f; // offset between dipRect.top and axesRect.top
-	float m_xAxisPos	= -std::numeric_limits<float>::infinity(); // y position. -inf to draw at m_axesRect.bottom
-	float m_yAxisPos	= std::numeric_limits<float>::infinity(); // y position. +inf to draw at m_axesRect.right
+	float m_labelPad	= 2.0f;  // padding between axes labels and axes; also for hover text and bounding box
+	float m_titlePad	= 0.0f;  // offset between dipRect.top and axesRect.top
+	double m_xAxisPos	= -std::numeric_limits<double>::infinity(); // y position. -inf to draw at m_axesRect.bottom
+	double m_yAxisPos	= std::numeric_limits<double>::infinity();  // x position. +inf to draw at m_axesRect.right
 
 	// Flags and state variables
-	bool m_ismade		= true;  // check to make sure everything is made
-	size_t m_imade[nGraphGroups] = {}; // index into m_graphObjects. Objects < i are already made
-	bool m_rescaled		= false; // data ranges changed, so need to call Rescale()
-	bool m_drawxLabels	= true;  // set before SetSize()
-	int m_hoverOn		= -1;	 // current hover position in terms of x-position [0, n) (when snapping), or -1 for no hover
-	HoverStyle m_hoverStyle = HoverStyle::none;
+	bool	m_ismade				= true;  // check to make sure everything is made
+	size_t	m_imade[nGraphGroups]	= {};	 // index into m_graphObjects. Objects < i are already made
+	bool	m_rescaled				= false; // data ranges changed, so need to call Rescale()
+	bool	m_drawxLabels			= true;  // set before SetSize()
+	int		m_hoverOn				= -1;	 // current mouse position in terms of x-position [0, n), or -1 for no hover
+	HoverStyle	m_hoverStyle		= HoverStyle::none;
 
 	// Data
-	// x values are always plotted as [0, n-1]
+	size_t m_nPoints; // x values are always plotted as [0, n-1]
 	enum class dataRange { xmin, xmax, ymin, ymax };
 	double m_dataRange[4] = { nan(""), nan(""), nan(""), nan("") }; // Numerical range of data: x_min, x_max, y_min, y_max
 	double m_data_xdiff;
@@ -188,19 +224,19 @@ private:
 	std::vector<std::tuple<float, double, std::wstring>> m_xTicks; // DIP, value, label
 	std::vector<std::tuple<float, double, std::wstring>> m_yTicks; // DIP, value, label
 	std::vector<Line_t> m_grid_lines[2]; // x, y
-	D2D1_RECT_F m_axesRect; // rect for the actual axes
-	D2D1_RECT_F m_dataRect; // rect for drawable space for data points
-	float m_rect_xdiff;		// m_dataRect.right - m_dataRect.left
-	float m_rect_ydiff;		// m_dataRect.top - m_dataRect.bottom, flip so origin is bottom-left
-	D2D1_RECT_F m_hoverRect; // background for hover text
-	D2D1_POINT_2F m_hoverLoc; // position of the mouse in DIPs (to paint crosshairs)
+	D2D1_RECT_F			m_axesRect;		// rect for the actual axes
+	D2D1_RECT_F			m_dataRect;		// rect for drawable space for data points
+	float				m_rect_xdiff;	// m_dataRect.right - m_dataRect.left
+	float				m_rect_ydiff;	// m_dataRect.top - m_dataRect.bottom, flip so origin is bottom-left
+	D2D1_RECT_F			m_hoverRect;	// background for hover text
+	D2D1_POINT_2F		m_hoverLoc;		// position of the mouse in DIPs (to paint crosshairs)
 
 	// Labels
-	std::wstring m_title;
-	D2Objects::Formats m_titleFormat;
-	std::vector<date_t> m_dates; // actual date values (plotted as x = [0, n-1)) for making x labels
-	std::vector<std::wstring> m_userXLabels; // if not dates on x axis, user supplies labels (length n)
-	IDWriteTextLayout *m_hoverLayout = NULL; // layout for hover tooltip text. Remake each OnMouseMove
+	std::wstring				m_title;
+	D2Objects::Formats			m_titleFormat;
+	std::vector<date_t>			m_dates; // actual date values (plotted as x = [0, n-1)) for making x labels
+	std::vector<std::wstring>	m_userXLabels; // if not dates on x axis, user supplies labels (length n)
+	IDWriteTextLayout			*m_hoverLayout = NULL; // layout for hover tooltip text. Remake each OnMouseMove
 
 	// Functions
 	inline bool setDataRange(dataRange i, double val)
@@ -234,6 +270,6 @@ private:
 	void CalculateXTicks_User();
 	void CalculateYTicks();
 	void CreateCachedImage();
-
+	void CreateTriangleMarker(ComPtr<ID2D1PathGeometry> & geometry, int parity);
 };
 

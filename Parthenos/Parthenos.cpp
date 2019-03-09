@@ -22,8 +22,6 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 Parthenos::Parthenos(PCWSTR szClassName)
 	: BorderlessWindow(szClassName)
 {	
-	
-
 }
 
 Parthenos::~Parthenos()
@@ -158,6 +156,9 @@ void Parthenos::PreShow()
 	try {
 		// Get account names, calculate positions, get stats, etc.
 		InitData();
+
+		// Data dependent initializations
+		InitItemsWithData();
 	}
 	catch (const std::exception & e) {
 		std::wstring out = SPrintException(e);
@@ -165,8 +166,6 @@ void Parthenos::PreShow()
 		else OutputDebugString(out.c_str());
 	}
 
-	// Data dependent initializations
-	InitItemsWithData();
 
 	// Size-dependent initializations
 	m_chart->Draw(L"AAPL");
@@ -463,6 +462,7 @@ void Parthenos::InitItems()
 
 void Parthenos::InitItemsWithData()
 {
+	// Menu bar
 	std::vector<std::wstring> menus = { L"File", L"Account", L"Transactions", L"Stocks" };
 	std::vector<std::vector<std::wstring>> items = {
 		{ L"Print Transaction History", L"Print Holdings", L"Print Equity History", L"Update Last Equity History Entry" },
@@ -476,6 +476,15 @@ void Parthenos::InitItemsWithData()
 	m_menuBar->SetMenus(menus, items, divisions);
 	m_menuBar->Refresh();
 
+	// Load transaction history into chart
+	FileIO transFile;
+	transFile.Init(ROOTDIR + L"hist.trans");
+	transFile.Open(GENERIC_READ);
+	std::vector<Transaction> trans = transFile.Read<Transaction>();
+	transFile.Close();
+	m_chart->LoadHistory(trans);
+
+	// Set initial watchlist and load portfolio trackers
 	if ((size_t)m_currAccount < m_accounts.size())
 	{
 		std::vector<std::wstring> tickers = GetTickers(m_accounts[m_currAccount].positions);
@@ -961,8 +970,7 @@ void Parthenos::UpdatePortfolioPlotters(char account, bool init)
 	m_eqHistoryAxes->Clear();
 	m_eqHistoryAxes->Line(acc.histDate.data(),
 		acc.histEquity.data(),
-		acc.histDate.size(),
-		Colors::ALMOST_WHITE
+		acc.histDate.size()
 	);
 
 	m_returnsAxes->Clear();

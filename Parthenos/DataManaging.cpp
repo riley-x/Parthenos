@@ -23,7 +23,6 @@ std::vector<OHLC> parseIEXChart(std::string json, date_t latest_date = 0);
 std::vector<OHLC> parseAlphaChart(std::string json, date_t latestDate = 0);
 OHLC parseIEXChartItem(std::string json);
 OHLC parseAlphaChartItem(std::string json);
-size_t FindDateOHLC(std::vector<OHLC> const & ohlc, date_t date); // returns ohlc.size() on fail
 
 Transaction parseTransactionItem(std::string str);
 

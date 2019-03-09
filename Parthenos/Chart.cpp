@@ -393,6 +393,7 @@ void Chart::DrawMainChart(MainChartType type, Timeframe timeframe)
 	{
 	case MainChartType::line:
 		Line(data, n);
+		DrawHistory();
 		break;
 	case MainChartType::envelope:
 		Envelope(data, n);
@@ -529,8 +530,25 @@ void Chart::Envelope(OHLC const *data, int n)
 		}
 	}
 
+	LineProps envelope_props = { Colors::BRIGHT_LINE, 0.6f, m_d2.pDashedStyle };
 	m_axes.Line(m_dates.data(), m_closes.data(), n);
-	m_axes.Line(m_dates.data(), m_highs.data(), n, D2D1::ColorF(0.8f, 0.0f, 0.5f), 0.6f, m_d2.pDashedStyle);
-	m_axes.Line(m_dates.data(), m_lows.data(), n, D2D1::ColorF(0.8f, 0.0f, 0.5f), 0.6f, m_d2.pDashedStyle);
+	m_axes.Line(m_dates.data(), m_highs.data(), n, envelope_props);
+	m_axes.Line(m_dates.data(), m_lows.data(), n, envelope_props);
+}
+
+void Chart::DrawHistory()
+{
+	std::vector<PointProps> points;
+	for (Transaction const & t : m_history)
+	{
+		if (std::wstring(t.ticker) == m_ticker)
+		{
+			if (isOption(t.type));
+			else if (t.n > 0) points.push_back(PointProps(MarkerStyle::up, t.date, t.price));
+			else if (t.n < 0) points.push_back(PointProps(MarkerStyle::down, t.date, t.price));
+		}
+	}
+
+	m_axes.DatePoints(points, Axes::GG_SEC);
 }
 

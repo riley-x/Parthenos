@@ -96,6 +96,7 @@ std::pair<Quote, Stats> GetQuoteStats(std::wstring ticker);
 QStats GetBatchQuoteStats(std::vector<std::wstring> tickers);
 std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source = apiSource::iex, size_t last_n = 0);
 std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source , size_t last_n, date_t & lastCloseDate);
+size_t FindDateOHLC(std::vector<OHLC> const & ohlc, date_t date); // returns ohlc.size() on fail
 
 // returns a.date < b.date
 inline bool OHLC_Compare(const OHLC & a, const OHLC & b)

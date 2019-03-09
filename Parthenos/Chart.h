@@ -35,6 +35,7 @@ public:
 	// Interface
 	void Draw(std::wstring ticker); // uses the chart's saved state
 	void Draw(std::wstring ticker, MainChartType type, Timeframe tf); // TODO pass a state struct or something
+	inline void LoadHistory(std::vector<Transaction> const & hist) { m_history = hist; }
 
 private:
 
@@ -48,11 +49,12 @@ private:
 	Timeframe			m_currentTimeframe = Timeframe::none;
 
 	// Data
-	std::vector<OHLC>	m_OHLC;
-	std::vector<date_t> m_dates;
-	std::vector<double> m_closes;
-	std::vector<double> m_highs;
-	std::vector<double> m_lows;
+	std::vector<OHLC>			m_OHLC;
+	std::vector<date_t>			m_dates;
+	std::vector<double>			m_closes;
+	std::vector<double>			m_highs;
+	std::vector<double>			m_lows;
+	std::vector<Transaction>	m_history;
 
 	// Child objects
 	Axes				m_axes;
@@ -73,6 +75,7 @@ private:
 	void Candlestick(OHLC const *data, int n);
 	void Line(OHLC const *data, int n);
 	void Envelope(OHLC const *data, int n);
+	void DrawHistory();
 };
 
 
