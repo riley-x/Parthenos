@@ -93,8 +93,7 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			wParam
 		);
 	case WM_MOUSELEAVE:
-		// TODO this should really should pass to OnMouseMove or OnMouseLeave...
-		m_titleBar->SetMouseOn(TitleBar::Buttons::NONE);
+		OnMouseMove(POINT{ -1, -1 }, 0);
 		m_mouseTrack.Reset(m_hwnd);
 		return 0;
 	case WM_MOUSEHOVER:

@@ -6,9 +6,10 @@
 Axes::Axes(HWND hwnd, D2Objects const & d2, CTPMessageReceiver * parent)
 	: AppItem(hwnd, d2, parent)
 {
-	// Create the marker geometries
+	// Create marker geometries
 	CreateTriangleMarker(m_upMarker, 1);
 	CreateTriangleMarker(m_dnMarker, -1);
+	CreateXMarker();
 }
 
 Axes::~Axes()
@@ -61,15 +62,14 @@ void Axes::Clear(GraphGroup group)
 
 void Axes::Remove(GraphGroup group, std::wstring name)
 {
-	for (auto it = m_graphObjects[group].begin(); it != m_graphObjects[group].end(); it++)
+	for (int i = m_graphObjects[group].size() - 1; i >= 0; i--)
 	{
-		if ((*it)->m_name == name)
+		if (m_graphObjects[group][i]->m_name == name)
 		{
-			delete (*it);
-			m_graphObjects[group].erase(it);
+			delete m_graphObjects[group][i];
+			m_graphObjects[group].erase(m_graphObjects[group].begin() + i);
 			m_imade[group] = 0; // excessive
 			if (group != GG_TER) m_ismade = false; // need to remake cached image
-			return;
 		}
 	}
 }
@@ -312,6 +312,19 @@ void Axes::Candlestick(std::vector<OHLC> const & ohlc, GraphGroup group)
 
 		if (offset >= m_nPoints) return;
 		else if (offset + n > m_nPoints) n = m_nPoints - offset; // truncate
+
+		if (group == GG_SEC) // scale y axes
+		{
+			double low_min = ohlc[0].low;
+			double high_max = ohlc[0].high;
+			for (size_t i = 0; i < n; i++)
+			{
+				if (ohlc[i].low < low_min) low_min = ohlc[i].low;
+				else if (ohlc[i].high > high_max) high_max = ohlc[i].high;
+			}
+			m_rescaled = setDataRange(dataRange::ymin, low_min) || m_rescaled;
+			m_rescaled = setDataRange(dataRange::ymax, high_max) || m_rescaled;
+		}
 	}
 
 	auto graph = new CandlestickGraph(this, offset);
@@ -351,10 +364,24 @@ void Axes::Line(std::vector<date_t> const & dates, std::vector<double> const & y
 	{
 		auto it = std::lower_bound(m_dates.begin(), m_dates.end(), dates[0]);
 		if (it == m_dates.end()) return OutputMessage(L"Error: Dates don't line up\n");
-		offset = static_cast<date_t>(it - m_dates.begin());
+		offset = static_cast<size_t>(it - m_dates.begin());
 
 		if (offset >= m_nPoints) return;
 		else if (offset + n > m_nPoints) n = m_nPoints - offset; // truncate
+
+		if (group == GG_SEC) // scale y-axes
+		{
+			double ymin = ydata[0];
+			double ymax = ydata[0];
+			for (size_t i = 0; i < n; i++)
+			{
+				if (ydata[i] < ymin) ymin = ydata[i];
+				else if (ydata[i] > ymax) ymax = ydata[i];
+			}
+			m_rescaled = setDataRange(dataRange::ymin, ymin) || m_rescaled;
+			m_rescaled = setDataRange(dataRange::ymax, ymax) || m_rescaled;
+		}
+
 	}
 
 	auto graph = new LineGraph(this, offset);
@@ -394,6 +421,19 @@ void Axes::Bar(std::vector<std::pair<double, D2D1_COLOR_F>> const & data,
 	{
 		if (offset >= m_nPoints) return;
 		else if (offset + n > m_nPoints) n = m_nPoints - offset; // truncate
+
+		if (group == GG_SEC) // scale y-axis
+		{
+			double ymin = 0;
+			double ymax = 0;
+			for (size_t i = 0; i < n; i++)
+			{
+				if (data[i].first < ymin) ymin = data[i].first;
+				else if (data[i].first > ymax) ymax = data[i].first;
+			}
+			m_rescaled = setDataRange(dataRange::ymin, ymin) || m_rescaled;
+			m_rescaled = setDataRange(dataRange::ymax, ymax) || m_rescaled;
+		}
 	}
 
 	auto graph = new BarGraph(this, offset);
@@ -406,8 +446,9 @@ void Axes::Bar(std::vector<std::pair<double, D2D1_COLOR_F>> const & data,
 // Points are provided correct except for x values, which are date_t.
 void Axes::DatePoints(std::vector<PointProps> points, GraphGroup group, std::wstring name)
 {
-	if (group == GG_PRI || m_dates.empty()) return;
+	if (group == GG_PRI || m_dates.empty() || points.empty()) return;
 
+	// fix x values
 	for (PointProps & p : points)
 	{
 		date_t d = static_cast<date_t>(p.x);
@@ -418,6 +459,20 @@ void Axes::DatePoints(std::vector<PointProps> points, GraphGroup group, std::wst
 			if (it == m_dates.end()) p.x = std::nan("");
 			else p.x = static_cast<double>(it - m_dates.begin());
 		}
+	}
+
+	// scale y-axis
+	if (group == GG_SEC)
+	{
+		double ymin = points[0].y;
+		double ymax = points[0].y;
+		for (PointProps const & p : points)
+		{
+			if (p.y < ymin) ymin = p.y;
+			else if (p.y > ymax) ymax = p.y;
+		}
+		m_rescaled = setDataRange(dataRange::ymin, ymin) || m_rescaled;
+		m_rescaled = setDataRange(dataRange::ymax, ymax) || m_rescaled;
 	}
 
 	auto graph = new PointsGraph(this);
@@ -441,8 +496,10 @@ ID2D1PathGeometry* Axes::GetMarker(MarkerStyle m)
 	case MarkerStyle::down:
 		return m_dnMarker.Get();
 	case MarkerStyle::up:
-	default:
 		return m_upMarker.Get();
+	case MarkerStyle::x:
+	default:
+		return m_xxMarker.Get();
 	}
 }
 
@@ -771,6 +828,38 @@ void Axes::CreateTriangleMarker(ComPtr<ID2D1PathGeometry> & geometry, int parity
 	}
 }
 
+void Axes::CreateXMarker()
+{
+	float sqrt1_2 = 0.7071f;
+	ComPtr<ID2D1GeometrySink> pSink;
+
+	HRESULT hr = m_d2.pFactory->CreatePathGeometry(&m_xxMarker);
+	if (SUCCEEDED(hr))
+	{
+		hr = m_xxMarker->Open(&pSink);
+	}
+	if (SUCCEEDED(hr))
+	{
+		pSink->SetFillMode(D2D1_FILL_MODE_WINDING);
+
+		pSink->BeginFigure(
+			D2D1::Point2F(-sqrt1_2, -sqrt1_2), // top-left
+			D2D1_FIGURE_BEGIN_HOLLOW
+		);
+		pSink->AddLine(D2D1::Point2F(sqrt1_2, sqrt1_2)); // bottom-right
+		pSink->EndFigure(D2D1_FIGURE_END_OPEN);
+
+		pSink->BeginFigure(
+			D2D1::Point2F(sqrt1_2, -sqrt1_2), // top-right
+			D2D1_FIGURE_BEGIN_HOLLOW
+		);
+		pSink->AddLine(D2D1::Point2F(-sqrt1_2, sqrt1_2)); // bottom-left
+		pSink->EndFigure(D2D1_FIGURE_END_OPEN);
+
+		hr = pSink->Close();
+	}
+}
+
 ///////////////////////////////////////////////////////////
 // --- LineGraph ---
 
@@ -1013,6 +1102,19 @@ void PointsGraph::Paint(D2Objects const & d2)
 			D2D1_MATRIX_3X2_F translation = D2D1::Matrix3x2F::Translation(m_locs[i].x, m_locs[i].y);
 			d2.pD2DContext->SetTransform(scale * translation);
 			d2.pD2DContext->FillGeometry(m_axes->GetMarker(m_points[i].style), d2.pBrush);
+			d2.pD2DContext->SetTransform(D2D1::Matrix3x2F::Identity());
+			break;
+		}
+		case MarkerStyle::x:
+		{
+			D2D1_MATRIX_3X2_F scale = D2D1::Matrix3x2F::Scale(
+				m_points[i].scale,
+				m_points[i].scale,
+				D2D1::Point2F(0, 0)
+			);
+			D2D1_MATRIX_3X2_F translation = D2D1::Matrix3x2F::Translation(m_locs[i].x, m_locs[i].y);
+			d2.pD2DContext->SetTransform(scale * translation);
+			d2.pD2DContext->DrawGeometry(m_axes->GetMarker(m_points[i].style), d2.pBrush, 1.0f, d2.pHairlineStyle);
 			d2.pD2DContext->SetTransform(D2D1::Matrix3x2F::Identity());
 			break;
 		}

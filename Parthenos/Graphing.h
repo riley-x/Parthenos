@@ -20,7 +20,7 @@ typedef struct LINE_PROPERTIES {
 	ID2D1StrokeStyle * pStyle = NULL;
 } LineProps;
 
-enum class MarkerStyle {circle, square, up, down};
+enum class MarkerStyle {circle, square, up, down, x};
 
 typedef struct POINTS_PROPERTIES {
 	MarkerStyle style = MarkerStyle::circle;
@@ -129,7 +129,7 @@ public:
 
 	// [0] primary graphs. These graphs affect automatic axes scaling, and should have consistent
 	//	   x values. The first graph is used for mouse hover text. Cached painting.
-	// [1] secondary graphs. These do not scale the axes. Cached painting.
+	// [1] secondary graphs. These have x positions dependent on [0], but will scale the y axis. Cached painting.
 	// [2] tertiary graphs. These do not scale the axes, and are not cached for painting.
 	// [1-2] should not exist when [0] is empty.
 	enum GraphGroup : size_t { GG_PRI, GG_SEC, GG_TER, nGraphGroups};
@@ -211,6 +211,7 @@ private:
 	ComPtr<ID2D1Bitmap1>	m_primaryCache = nullptr; // caches graph groups 0 and 1, grids, labels, etc.
 	ComPtr<ID2D1PathGeometry> m_upMarker = nullptr;
 	ComPtr<ID2D1PathGeometry> m_dnMarker = nullptr;
+	ComPtr<ID2D1PathGeometry> m_xxMarker = nullptr;
 
 	// Parameters
 	float m_ylabelWidth = 40.0f; // width of y tick labels in DIPs.
@@ -287,5 +288,6 @@ private:
 	void CalculateYTicks();
 	void CreateCachedImage();
 	void CreateTriangleMarker(ComPtr<ID2D1PathGeometry> & geometry, int parity);
+	void CreateXMarker();
 };
 

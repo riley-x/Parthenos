@@ -384,13 +384,6 @@ void Chart::Draw(std::wstring ticker)
 	}
 }
 
-// Force draw
-void Chart::Draw(std::wstring ticker, MainChartType type, Timeframe tf)
-{
-	Load(ticker);
-	DrawMainChart(type, tf);
-}
-
 
 ///////////////////////////////////////////////////////////
 // --- Helpers ---
@@ -435,8 +428,6 @@ void Chart::DrawMainChart(MainChartType type, Timeframe timeframe)
 		return;
 	}
 
-	m_axes.Clear(Axes::GG_PRI);
-
 	switch (type)
 	{
 	case MainChartType::line:
@@ -457,10 +448,11 @@ void Chart::DrawMainChart(MainChartType type, Timeframe timeframe)
 // i.e. changing chart type, ticker, or timeframe should preserve technicals and markers
 void Chart::DrawCurrentState()
 {
+	m_axes.Clear();
 	DrawMainChart(m_currentMChart, m_currentTimeframe);
 
-	m_axes.Clear(Axes::GG_SEC);
 	// DrawTechnicals(m_currentTechnicals), etc...
+
 	for (size_t i = 0; i < MARK_NMARKERS; i++)
 		if (m_markerActive[i]) DrawMarker(static_cast<Markers>(i));
 }
@@ -592,11 +584,32 @@ void Chart::DrawHistory()
 	{
 		if (std::wstring(t.ticker) == m_ticker)
 		{
-			if (isOption(t.type));
-			else if (t.n > 0) 
-				points.push_back(PointProps(MarkerStyle::up, t.date, t.price, 5.0f, Colors::SKYBLUE));
-			else if (t.n < 0) 
-				points.push_back(PointProps(MarkerStyle::down, t.date, t.price, 5.0f, Colors::SKYBLUE));
+			D2D1_COLOR_F color = D2D1::ColorF(0x472bff); // stocks
+			if (isOption(t.type))
+			{
+				MarkerStyle m;
+				if (t.type == TransactionType::PutLong || t.type == TransactionType::PutShort)
+					color = Colors::PURPLE;
+				else
+					color = Colors::HOTPINK;
+				if (t.n > 0)
+				{
+					if (isShort(t.type)) 
+						m = MarkerStyle::down;
+					else 
+						m = MarkerStyle::up;
+					points.push_back(PointProps(MarkerStyle::x, t.expiration, t.strike, 5.0f, color));
+				}
+				else m = MarkerStyle::circle;
+				points.push_back(PointProps(m, t.date, t.strike, 5.0f, color));
+			}
+			else
+			{
+				if (t.n > 0)
+					points.push_back(PointProps(MarkerStyle::up, t.date, t.price, 5.0f, color));
+				else if (t.n < 0)
+					points.push_back(PointProps(MarkerStyle::down, t.date, t.price, 5.0f, color));
+			}
 		}
 	}
 

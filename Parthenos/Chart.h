@@ -33,7 +33,6 @@ public:
 
 	// Interface
 	void Draw(std::wstring ticker); // uses the chart's saved state
-	void Draw(std::wstring ticker, MainChartType type, Timeframe tf); // TODO pass a state struct or something
 	inline void LoadHistory(std::vector<Transaction> const & hist) { m_history = hist; }
 
 private:
