@@ -54,13 +54,8 @@ private:
 	bool				m_markerActive[MARK_NMARKERS] = {};
 
 	// Data
-	std::vector<OHLC>			m_OHLC;
-	std::vector<date_t>			m_dates;
-	std::vector<double>			m_closes;
-	std::vector<double>			m_highs;
-	std::vector<double>			m_lows;
+	std::vector<OHLC>			m_ohlc;
 	std::vector<Transaction>	m_history;
-	std::vector<PointProps>		m_points[MARK_NMARKERS];
 
 	// Child objects
 	Axes				m_axes;
@@ -78,10 +73,10 @@ private:
 	void Load(std::wstring ticker, int range = 1260); // # datapoints in days. default to 5 years 
 	void DrawMainChart(MainChartType type, Timeframe timeframe);
 	void DrawCurrentState();
-	int FindStart(Timeframe timeframe, OHLC* & data);
-	void Candlestick(OHLC const *data, int n);
-	void Line(OHLC const *data, int n);
-	void Envelope(OHLC const *data, int n);
+	int FindStart(Timeframe timeframe, std::vector<OHLC>::iterator & it);
+	void Candlestick(std::vector<OHLC>::iterator start, int n);
+	void Line(std::vector<OHLC>::iterator start, int n);
+	void Envelope(std::vector<OHLC>::iterator start, int n);
 	void DrawMarker(Markers i);
 	void DrawHistory();
 };

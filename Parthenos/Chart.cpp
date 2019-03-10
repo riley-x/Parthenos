@@ -399,22 +399,18 @@ void Chart::Draw(std::wstring ticker, MainChartType type, Timeframe tf)
 // Gets data the data for 'ticker'. Sets the text box and 'm_ticker'.
 void Chart::Load(std::wstring ticker, int range)
 {
-	if (ticker == m_ticker && range < static_cast<int>(m_OHLC.size())) return;
+	if (ticker == m_ticker && range < static_cast<int>(m_ohlc.size())) return;
 	
 	m_axes.Clear();
 
-	m_dates.clear();
-	m_closes.clear();
-	m_highs.clear();
-	m_lows.clear();
 	m_tickerBox.SetText(ticker);
 	m_ticker = ticker;
 
 	try {
-		m_OHLC = GetOHLC(ticker, apiSource::alpha, range);
+		m_ohlc = GetOHLC(ticker, apiSource::alpha, range);
 	}
 	catch (const std::exception & e) {
-		m_OHLC.clear();
+		m_ohlc.clear();
 		InvalidateRect(m_hwnd, &m_pixRect, FALSE); // so button clicks still appear
 
 		std::wstring out = SPrintException(e);
@@ -431,8 +427,8 @@ void Chart::DrawMainChart(MainChartType type, Timeframe timeframe)
 	m_currentTimeframe = timeframe;
 	m_currentMChart = type;
 
-	OHLC *data;
-	int n = FindStart(timeframe, data);
+	std::vector<OHLC>::iterator start = m_ohlc.begin();
+	int n = FindStart(timeframe, start);
 	if (n <= 0)
 	{
 		InvalidateRect(m_hwnd, &m_pixRect, FALSE); // so button clicks still appear
@@ -444,13 +440,13 @@ void Chart::DrawMainChart(MainChartType type, Timeframe timeframe)
 	switch (type)
 	{
 	case MainChartType::line:
-		Line(data, n);
+		Line(start, n);
 		break;
 	case MainChartType::envelope:
-		Envelope(data, n);
+		Envelope(start, n);
 		break;
 	case MainChartType::candlestick:
-		Candlestick(data, n);
+		Candlestick(start, n);
 		break;
 	}
 
@@ -469,124 +465,111 @@ void Chart::DrawCurrentState()
 		if (m_markerActive[i]) DrawMarker(static_cast<Markers>(i));
 }
 
-// Finds the starting date in OHLC data given 'timeframe', returning the pointer in 'data'.
+// Finds the starting date in OHLC data given 'timeframe', returning the iterator in 'it'.
 // Returns the number of days / data points, or -1 on error.
-int Chart::FindStart(Timeframe timeframe, OHLC* & data)
+int Chart::FindStart(Timeframe timeframe, std::vector<OHLC>::iterator & it)
 {
-	if (m_OHLC.empty())
+	if (m_ohlc.empty())
 	{
 		OutputMessage(L"No data!\n");
 		return -1;
 	}
 
-	data = nullptr;
 	int n;
-	date_t end = m_OHLC.back().date;
-	std::vector<OHLC>::iterator it;
-	OHLC temp;
+	date_t end = m_ohlc.back().date;
+	OHLC start; // store start date in OHLC for easy compare
 
 	switch (timeframe)
 	{
 	case Timeframe::month1:
 		if (GetMonth(end) == 1)
 		{
-			temp.date = end - DATE_T_1YR;
-			SetMonth(temp.date, 12);
+			start.date = end - DATE_T_1YR;
+			SetMonth(start.date, 12);
 		}
 		else
-			temp.date = end - DATE_T_1M;
+			start.date = end - DATE_T_1M;
 		break;
 	case Timeframe::month3:
 		if (GetMonth(end) <= 3)
 		{
-			temp.date = end - DATE_T_1YR;
-			SetMonth(temp.date, 9 + GetMonth(end));
+			start.date = end - DATE_T_1YR;
+			SetMonth(start.date, 9 + GetMonth(end));
 		}
 		else
-			temp.date = end - 3 * DATE_T_1M;
+			start.date = end - 3 * DATE_T_1M;
 		break;
 	case Timeframe::month6:
 		if (GetMonth(end) <= 6)
 		{
-			temp.date = end - DATE_T_1YR;
-			SetMonth(temp.date, 6 + GetMonth(end));
+			start.date = end - DATE_T_1YR;
+			SetMonth(start.date, 6 + GetMonth(end));
 		}
 		else
-			temp.date = end - 6 * DATE_T_1M;
+			start.date = end - 6 * DATE_T_1M;
 		break;
 	case Timeframe::year1:
-		temp.date = end - DATE_T_1YR;
+		start.date = end - DATE_T_1YR;
 		break;
 	case Timeframe::year2:
-		temp.date = end - 2 * DATE_T_1YR;
+		start.date = end - 2 * DATE_T_1YR;
 		break;
 	case Timeframe::year5:
-		temp.date = end - 5 * DATE_T_1YR;
+		start.date = end - 5 * DATE_T_1YR;
 		break;
 	default:
 		OutputMessage(L"Timeframe %s not implemented\n", timeframe);
 		return -1;
 	}
 
-	it = std::lower_bound(m_OHLC.begin(), m_OHLC.end(), temp, OHLC_Compare);
-	if (it == m_OHLC.end())
+	it = std::lower_bound(m_ohlc.begin(), m_ohlc.end(), start, OHLC_Compare);
+	if (it == m_ohlc.end())
 	{
 		OutputMessage(L"Didn't find data for main chart\n");
 		return -1;
 	}
 
-	data = &(*it);
-	n = m_OHLC.end() - it;
+	n = m_ohlc.end() - it;
 	return n;
 }
 
-void Chart::Candlestick(OHLC const *data, int n)
+void Chart::Candlestick(std::vector<OHLC>::iterator start, int n)
 {
-	m_axes.Candlestick(data, n); 
+	m_axes.Candlestick(std::vector<OHLC>(start, start + n)); 
 }
 
-void Chart::Line(OHLC const *data, int n)
+void Chart::Line(std::vector<OHLC>::iterator start, int n)
 { 
-	// data may already exist! TODO: zooming needs to clear
-	if (n != m_closes.size() || n != m_dates.size()) 
+	std::vector<date_t> dates(n);
+	std::vector<double> closes(n);
+	
+	size_t size = m_ohlc.size();
+	for (int i = 0; i < n; i++)
 	{
-		m_dates.resize(n);
-		m_closes.resize(n);
-		int size = m_OHLC.size();
-		for (int i = 0; i < n; i++)
-		{
-			m_dates[i] = m_OHLC[size - n + i].date;
-			m_closes[i] = m_OHLC[size - n + i].close;
-		}
+		dates[i] = (start + i)->date;
+		closes[i] = (start + i)->close;
 	}
 
-	m_axes.Line(m_dates.data(), m_closes.data(), n);
+	m_axes.Line(dates, closes);
 }
 
-void Chart::Envelope(OHLC const *data, int n)
+void Chart::Envelope(std::vector<OHLC>::iterator start, int n)
 {
-	// data may already exist! TODO: zooming needs to clear
-	if (n != m_closes.size() || n != m_highs.size()
-		|| n != m_lows.size() || n != m_dates.size()) 
+	std::vector<date_t> dates(n);
+	std::vector<double> closes(n), highs(n), lows(n);
+
+	for (int i = 0; i < n; i++)
 	{
-		m_dates.resize(n);
-		m_closes.resize(n);
-		m_highs.resize(n);
-		m_lows.resize(n);
-		int size = m_OHLC.size();
-		for (int i = 0; i < n; i++)
-		{
-			m_dates[i] = m_OHLC[size - n + i].date;
-			m_closes[i] = m_OHLC[size - n + i].close;
-			m_highs[i] = m_OHLC[size - n + i].high;
-			m_lows[i] = m_OHLC[size - n + i].low;
-		}
+		dates[i] = (start + i)->date;
+		closes[i] = (start + i)->close;
+		highs[i] = (start + i)->high;
+		lows[i] = (start + i)->low;
 	}
 
 	LineProps envelope_props = { Colors::BRIGHT_LINE, 0.6f, m_d2.pDashedStyle };
-	m_axes.Line(m_dates.data(), m_closes.data(), n);
-	m_axes.Line(m_dates.data(), m_highs.data(), n, envelope_props);
-	m_axes.Line(m_dates.data(), m_lows.data(), n, envelope_props);
+	m_axes.Line(dates, closes);
+	m_axes.Line(dates, highs, envelope_props);
+	m_axes.Line(dates, lows, envelope_props);
 }
 
 void Chart::DrawMarker(Markers i)
@@ -603,19 +586,20 @@ void Chart::DrawMarker(Markers i)
 
 void Chart::DrawHistory()
 {
-	m_points[MARK_HISTORY].clear();
+	std::vector<PointProps> points;
+
 	for (Transaction const & t : m_history)
 	{
 		if (std::wstring(t.ticker) == m_ticker)
 		{
 			if (isOption(t.type));
 			else if (t.n > 0) 
-				m_points[MARK_HISTORY].push_back(PointProps(MarkerStyle::up, t.date, t.price, 5.0f, Colors::SKYBLUE));
+				points.push_back(PointProps(MarkerStyle::up, t.date, t.price, 5.0f, Colors::SKYBLUE));
 			else if (t.n < 0) 
-				m_points[MARK_HISTORY].push_back(PointProps(MarkerStyle::down, t.date, t.price, 5.0f, Colors::SKYBLUE));
+				points.push_back(PointProps(MarkerStyle::down, t.date, t.price, 5.0f, Colors::SKYBLUE));
 		}
 	}
 
-	m_axes.DatePoints(m_points[MARK_HISTORY], Axes::GG_SEC, m_markerNames[MARK_HISTORY]);
+	m_axes.DatePoints(points, Axes::GG_SEC, m_markerNames[MARK_HISTORY]);
 }
 

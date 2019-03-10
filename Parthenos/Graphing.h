@@ -4,6 +4,10 @@
 #include "AppItem.h"
 #include "DataManaging.h"
 
+class Axes;
+
+///////////////////////////////////////////////////////////
+// --- Structs ---
 
 typedef struct LINE_STRUCT {
 	D2D1_POINT_2F start;
@@ -29,20 +33,17 @@ typedef struct POINTS_PROPERTIES {
 		: style(_style), x(_x), y(_y), scale(_scale), color(_color) {}
 } PointProps;
 
-class Axes;
+///////////////////////////////////////////////////////////
+// --- Graph class ---
 
 class Graph
 {
 protected:
 	Axes *m_axes;
-
-	void const *m_data; // NOT owned by Axes nor Graph. Recast for each derived class
-	size_t m_n; // length of data array
 	size_t m_offset; // x values are set to [m_offset, m_offset + m_n)
 
 public:
-	Graph(Axes *axes, void const *data, size_t n, size_t offset = 0) 
-		: m_axes(axes), m_data(data), m_n(n), m_offset(offset) {};
+	Graph(Axes *axes, size_t offset = 0) : m_axes(axes), m_offset(offset) {};
 	std::wstring m_name;
 
 	virtual void Make() = 0; // Calculate the D2 DIP objects to paint from given data
@@ -50,7 +51,6 @@ public:
 	virtual std::wstring GetYLabel(size_t i) const { return L""; } // i is x value, not index into data
 };
 
-// m_data = double* to y values (assumes linear spacing)
 class LineGraph : public Graph
 {
 public:
@@ -58,24 +58,30 @@ public:
 	void Make();
 	void Paint(D2Objects const & d2);
 	std::wstring GetYLabel(size_t i) const;
+
+	inline void SetData(std::vector<double> const & data) { m_y = data; }
 	inline void SetLineProperties(LineProps const & props) { m_props = props; }
+
 private:
+	std::vector<double> m_y;
 	std::vector<Line_t> m_lines; // line segments
 	LineProps m_props;
 };
 
-// m_data = PointProps*
 class PointsGraph : public Graph
 {
 public:
 	using Graph::Graph;
 	void Make();
 	void Paint(D2Objects const & d2);
+
+	inline void SetData(std::vector<PointProps> const & data) { m_points = data; }
+
 private:
+	std::vector<PointProps> m_points;
 	std::vector<D2D1_POINT_2F> m_locs;
 };
 
-// m_data = OHLC*
 class CandlestickGraph : public Graph
 {
 public:
@@ -83,14 +89,17 @@ public:
 	void Make();
 	void Paint(D2Objects const & d2);
 	std::wstring GetYLabel(size_t i) const;
+
+	inline void SetData(std::vector<OHLC> const & ohlc) { m_ohlc = ohlc; }
+
 private:
+	std::vector<OHLC> m_ohlc;
 	std::vector<Line_t> m_lines; // low-high lines
 	std::vector<Line_t> m_no_change; // when open==close
 	std::vector<D2D1_RECT_F> m_up_rects; // green boxes
 	std::vector<D2D1_RECT_F> m_down_rects; // red boxes
 };
 
-// m_data = std::pair<double, D2D1_COLOR_F>* to (y value, color) pairs
 class BarGraph : public Graph
 {
 public:
@@ -100,11 +109,17 @@ public:
 	std::wstring GetYLabel(size_t i) const;
 
 	inline void SetLabels(std::vector<std::wstring> const & labels) { m_labels = labels; }
+	inline void SetData(std::vector<std::pair<double, D2D1_COLOR_F>> const & data) { m_data = data; }
+
 private:
-	std::vector<D2D1_RECT_F> m_bars;
-	std::vector<std::wstring> m_labels;
-	std::vector<D2D1_RECT_F> m_labelLayouts;
+	std::vector<std::pair<double, D2D1_COLOR_F>> m_data; // (y value, color) pairs
+	std::vector<D2D1_RECT_F>	m_bars;
+	std::vector<std::wstring>	m_labels;
+	std::vector<D2D1_RECT_F>	m_labelRects;
 };
+
+///////////////////////////////////////////////////////////
+// --- Axes class ---
 
 class Axes : public AppItem
 {
@@ -134,17 +149,15 @@ public:
 	void Remove(GraphGroup group, std::wstring name);
 
 	// Data pointers to these functions should remain valid until the next Clear() call
-	void Candlestick(OHLC const * ohlc, size_t n,
-		GraphGroup group = GG_PRI);
-	void Line(date_t const * dates, double const * ydata, size_t n, 
-		LineProps props = {},
-		GraphGroup group = GG_PRI
+	void Candlestick(std::vector<OHLC> const & ohlc, GraphGroup group = GG_PRI);
+	void Line(std::vector<date_t> const & dates, std::vector<double> const & ydata,
+		LineProps props = {}, GraphGroup group = GG_PRI
 	);
-	void Bar(std::pair<double, D2D1_COLOR_F> const * data, size_t n, 
+	void Bar(std::vector<std::pair<double, D2D1_COLOR_F>> const & data,
 		std::vector<std::wstring> const & labels = {},
 		GraphGroup group = GG_PRI, size_t offset = 0 // offset of first point from x_min of primary graph(s)
 	);
-	void DatePoints(std::vector<PointProps> & points, GraphGroup group, std::wstring name = L"");
+	void DatePoints(std::vector<PointProps> points, GraphGroup group, std::wstring name = L"");
 
 	// Convert between an x/y value and the dip coordinate (relative to window)
 	inline float XtoDIP(double val) const

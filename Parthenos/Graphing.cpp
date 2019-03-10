@@ -269,15 +269,15 @@ bool Axes::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 	return true;
 }
 
-// Always primary group
-void Axes::Candlestick(OHLC const * ohlc, size_t n, GraphGroup group)
+void Axes::Candlestick(std::vector<OHLC> const & ohlc, GraphGroup group)
 {
-	if (!ohlc || n == 0) return;
+	size_t n = ohlc.size();
+	if (n == 0) return;
 	
 	size_t offset = 0;
 	if (group == GG_PRI) // scale axes accordingly
 	{
-		// scale axes accordingly
+		// check to see if dates already set by another graph
 		bool get_dates = m_dates.empty();
 		if (!get_dates)
 		{
@@ -314,22 +314,24 @@ void Axes::Candlestick(OHLC const * ohlc, size_t n, GraphGroup group)
 		else if (offset + n > m_nPoints) n = m_nPoints - offset; // truncate
 	}
 
-	auto graph = new CandlestickGraph(this, ohlc, n, offset);
+	auto graph = new CandlestickGraph(this, offset);
+	graph->SetData(ohlc);
 	m_graphObjects[GG_PRI].push_back(graph);
 	m_ismade = false;
 }
 
 
-void Axes::Line(date_t const * dates, double const * ydata, size_t n, LineProps props, GraphGroup group)
+void Axes::Line(std::vector<date_t> const & dates, std::vector<double> const & ydata, LineProps props, GraphGroup group)
 {
-	if (!dates || !ydata || n == 0) return;
+	size_t n = dates.size();
+	if (n == 0 || n != ydata.size()) return;
 
 	size_t offset = 0;
 	if (group == GG_PRI) // scale axes accordingly
 	{
-		if (m_dates.empty()) m_dates = std::vector<date_t>(dates, dates + n);
+		if (m_dates.empty()) m_dates = dates;
 		else if (m_dates.size() != n || m_dates.front() != dates[0] || m_dates.back() != dates[n - 1])
-			OutputMessage(L"Error: Dates don't line up\n");
+			return OutputMessage(L"Error: Dates don't line up\n");
 
 		// sets x values to [0, n-1]
 		double xmin = 0;
@@ -355,16 +357,20 @@ void Axes::Line(date_t const * dates, double const * ydata, size_t n, LineProps 
 		else if (offset + n > m_nPoints) n = m_nPoints - offset; // truncate
 	}
 
-	auto graph = new LineGraph(this, ydata, n, offset);
+	auto graph = new LineGraph(this, offset);
+	graph->SetData(ydata);
 	graph->SetLineProperties(props);
 	m_graphObjects[group].push_back(graph);
 	m_ismade = false;
 }
 
-void Axes::Bar(std::pair<double, D2D1_COLOR_F> const * data, size_t n, 
+
+void Axes::Bar(std::vector<std::pair<double, D2D1_COLOR_F>> const & data, 
 	std::vector<std::wstring> const & labels, GraphGroup group, size_t offset)
 {
-	if (!data || n == 0) return;
+	size_t n = data.size();
+	if (n == 0) return;
+
 	if (group == GG_PRI) // scale axes accordingly
 	{
 		if (m_nPoints > 0 && m_nPoints != n) 
@@ -390,15 +396,15 @@ void Axes::Bar(std::pair<double, D2D1_COLOR_F> const * data, size_t n,
 		else if (offset + n > m_nPoints) n = m_nPoints - offset; // truncate
 	}
 
-	auto graph = new BarGraph(this, data, n, offset);
+	auto graph = new BarGraph(this, offset);
+	graph->SetData(data);
 	graph->SetLabels(labels);
 	m_graphObjects[group].push_back(graph);
 	m_ismade = false;
 }
 
 // Points are provided correct except for x values, which are date_t.
-// This function will modify the point x values to the correct coordinate.
-void Axes::DatePoints(std::vector<PointProps>& points, GraphGroup group, std::wstring name)
+void Axes::DatePoints(std::vector<PointProps> points, GraphGroup group, std::wstring name)
 {
 	if (group == GG_PRI || m_dates.empty()) return;
 
@@ -414,8 +420,9 @@ void Axes::DatePoints(std::vector<PointProps>& points, GraphGroup group, std::ws
 		}
 	}
 
-	auto graph = new PointsGraph(this, points.data(), points.size());
+	auto graph = new PointsGraph(this);
 	graph->m_name = name;
+	graph->SetData(points);
 	m_graphObjects[group].push_back(graph);
 	m_ismade = false;
 }
@@ -771,19 +778,19 @@ void Axes::CreateTriangleMarker(ComPtr<ID2D1PathGeometry> & geometry, int parity
 // and adds line segments connecting the points
 void LineGraph::Make()
 {	
-	double const * data = reinterpret_cast<double const *>(m_data);
-	if (m_n == 0) return;
-	m_lines.resize(m_n - 1);
+	size_t n = m_y.size();
+	if (n == 0) return;
+	m_lines.resize(n - 1);
 
 	float x = m_axes->XtoDIP(static_cast<double>(m_offset));
-	float y = m_axes->YtoDIP(data[0]);
+	float y = m_axes->YtoDIP(m_y[0]);
 	D2D1_POINT_2F start;
 	D2D1_POINT_2F end = D2D1::Point2F(x, y);
-	for (size_t i = 1; i < m_n; i++)
+	for (size_t i = 1; i < n; i++)
 	{
 		start = end;
 		x = m_axes->XtoDIP(static_cast<double>(m_offset + i));
-		y = m_axes->YtoDIP(data[i]);
+		y = m_axes->YtoDIP(m_y[i]);
 		end = D2D1::Point2F(x, y);
 		m_lines[i - 1] = { start, end };
 	}
@@ -800,8 +807,7 @@ void LineGraph::Paint(D2Objects const & d2)
 
 std::wstring LineGraph::GetYLabel(size_t i) const
 {
-	double const * data = reinterpret_cast<double const *>(m_data);
-	if (i - m_offset < m_n) return std::to_wstring(data[i - m_offset]);
+	if (i - m_offset < m_y.size()) return std::to_wstring(m_y[i - m_offset]);
 	return std::wstring();
 }
 
@@ -810,24 +816,23 @@ std::wstring LineGraph::GetYLabel(size_t i) const
 
 void CandlestickGraph::Make()
 {
-	OHLC const * ohlc = reinterpret_cast<OHLC const *>(m_data);
+	size_t n = m_ohlc.size();
 
-	// calculate DIP coordiantes
-	m_lines.resize(m_n);
+	m_lines.resize(n);
 	m_up_rects.clear();
 	m_down_rects.clear();
 	m_no_change.clear();
-	m_up_rects.reserve(m_n/2);
-	m_down_rects.reserve(m_n/2);
+	m_up_rects.reserve(n/2);
+	m_down_rects.reserve(n/2);
 
 	float x_diff = m_axes->GetDataRectXDiff();
 	float boxHalfWidth = min(15.0f, 0.4f * x_diff / m_axes->GetNPoints());
 
-	for (size_t i = 0; i < m_n; i++)
+	for (size_t i = 0; i < n; i++)
 	{
 		float x = m_axes->XtoDIP(static_cast<double>(m_offset + i));
-		float y1 = m_axes->YtoDIP(ohlc[i].low);
-		float y2 = m_axes->YtoDIP(ohlc[i].high);
+		float y1 = m_axes->YtoDIP(m_ohlc[i].low);
+		float y2 = m_axes->YtoDIP(m_ohlc[i].high);
 		D2D1_POINT_2F start = D2D1::Point2F(x, y1);
 		D2D1_POINT_2F end = D2D1::Point2F(x, y2);
 		m_lines[i] = { start, end };
@@ -838,16 +843,16 @@ void CandlestickGraph::Make()
 			x + boxHalfWidth,
 			0
 		);
-		if (ohlc[i].close > ohlc[i].open)
+		if (m_ohlc[i].close > m_ohlc[i].open)
 		{
-			temp.top = m_axes->YtoDIP(ohlc[i].close);
-			temp.bottom = m_axes->YtoDIP(ohlc[i].open);
+			temp.top = m_axes->YtoDIP(m_ohlc[i].close);
+			temp.bottom = m_axes->YtoDIP(m_ohlc[i].open);
 			m_up_rects.push_back(temp);
 		}
-		else if (ohlc[i].close < ohlc[i].open)
+		else if (m_ohlc[i].close < m_ohlc[i].open)
 		{
-			temp.top = m_axes->YtoDIP(ohlc[i].open);
-			temp.bottom = m_axes->YtoDIP(ohlc[i].close);
+			temp.top = m_axes->YtoDIP(m_ohlc[i].open);
+			temp.bottom = m_axes->YtoDIP(m_ohlc[i].close);
 			m_down_rects.push_back(temp);
 		}
 		else
@@ -880,8 +885,7 @@ void CandlestickGraph::Paint(D2Objects const & d2)
 
 std::wstring CandlestickGraph::GetYLabel(size_t i) const
 {
-	OHLC const * ohlc = reinterpret_cast<OHLC const *>(m_data);
-	if (i - m_offset < m_n) return ohlc[i - m_offset].to_wstring(true);
+	if (i - m_offset < m_ohlc.size()) return m_ohlc[i - m_offset].to_wstring(true);
 	return std::wstring();
 }
 
@@ -891,29 +895,29 @@ std::wstring CandlestickGraph::GetYLabel(size_t i) const
 
 void BarGraph::Make()
 {
-	std::pair<double, D2D1_COLOR_F> const * data = reinterpret_cast<std::pair<double, D2D1_COLOR_F> const *>(m_data);
-	
-	m_bars.resize(m_n);
-	m_labelLayouts.resize(min(m_labels.size(), m_n));
+	size_t n = m_data.size();
+	m_bars.resize(n);
+	m_labelRects.resize(min(m_labels.size(), n));
 
 	float x_diff = m_axes->GetDataRectXDiff();
 	float boxHalfWidth = 0.4f * x_diff / m_axes->GetNPoints();
 	float textHalfWidth = 0.5f * x_diff / m_axes->GetNPoints();
 	float textMinWidth = 20.0f;
-	if (textHalfWidth < textMinWidth) m_labelLayouts.clear();
-	for (size_t i = 0; i < m_n; i++)
+	if (textHalfWidth < textMinWidth) m_labelRects.clear();
+	
+	for (size_t i = 0; i < n; i++)
 	{
 		float x = m_axes->XtoDIP(static_cast<double>(i + m_offset));
 		float y1, y2; // y1 = bottom, y2 = top
-		if (data[i].first < 0)
+		if (m_data[i].first < 0)
 		{
-			y1 = m_axes->YtoDIP(data[i].first);
+			y1 = m_axes->YtoDIP(m_data[i].first);
 			y2 = m_axes->YtoDIP(0);
 		}
 		else
 		{
 			y1 = m_axes->YtoDIP(0);
-			y2 = m_axes->YtoDIP(data[i].first);
+			y2 = m_axes->YtoDIP(m_data[i].first);
 		}
 
 		m_bars[i] = D2D1::RectF(
@@ -925,7 +929,7 @@ void BarGraph::Make()
 
 		if (i < m_labels.size() && textHalfWidth >= textMinWidth)
 		{
-			m_labelLayouts[i] = D2D1::RectF(
+			m_labelRects[i] = D2D1::RectF(
 				x - textHalfWidth,
 				y2 - m_axes->GetDataPad(), // label always above bar
 				x + textHalfWidth,
@@ -937,22 +941,21 @@ void BarGraph::Make()
 
 void BarGraph::Paint(D2Objects const & d2)
 {
-	std::pair<double, D2D1_COLOR_F> const * data = reinterpret_cast<std::pair<double, D2D1_COLOR_F> const *>(m_data);
-	for (size_t i = 0; i < m_n; i++)
+	for (size_t i = 0; i < m_data.size(); i++)
 	{
-		d2.pBrush->SetColor(data[i].second);
+		d2.pBrush->SetColor(m_data[i].second);
 		d2.pD2DContext->FillRectangle(m_bars[i], d2.pBrush);
 	}
 
 	d2.pBrush->SetColor(Colors::MAIN_TEXT);
 	d2.pTextFormats[D2Objects::Formats::Segoe12]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
-	for (size_t i = 0; i < m_labelLayouts.size(); i++)
+	for (size_t i = 0; i < m_labelRects.size(); i++)
 	{
 		d2.pD2DContext->DrawText(
 			m_labels[i].c_str(),
 			m_labels[i].size(),
 			d2.pTextFormats[D2Objects::Formats::Segoe12],
-			m_labelLayouts[i],
+			m_labelRects[i],
 			d2.pBrush
 		);
 	}
@@ -961,8 +964,7 @@ void BarGraph::Paint(D2Objects const & d2)
 
 std::wstring BarGraph::GetYLabel(size_t i) const
 {
-	std::pair<double, D2D1_COLOR_F> const * data = reinterpret_cast<std::pair<double, D2D1_COLOR_F> const *>(m_data);
-	if (i - m_offset < m_n) return std::to_wstring(data[i - m_offset].first);
+	if (i - m_offset < m_data.size()) return std::to_wstring(m_data[i - m_offset].first);
 	return std::wstring();
 }
 
@@ -972,47 +974,45 @@ std::wstring BarGraph::GetYLabel(size_t i) const
 
 void PointsGraph::Make()
 {
-	PointProps const * points = reinterpret_cast<PointProps const *>(m_data);
-	m_locs.resize(m_n);
-	for (size_t i = 0; i < m_n; i++)
+	m_locs.resize(m_points.size());
+	for (size_t i = 0; i < m_points.size(); i++)
 	{
 		m_locs[i] = D2D1::Point2F(
-			m_axes->XtoDIP(points[i].x),
-			m_axes->YtoDIP(points[i].y)
+			m_axes->XtoDIP(m_points[i].x),
+			m_axes->YtoDIP(m_points[i].y)
 		);
 	}
 }
 
 void PointsGraph::Paint(D2Objects const & d2)
 {
-	PointProps const * points = reinterpret_cast<PointProps const *>(m_data);
-	for (size_t i = 0; i < m_n; i++)
+	for (size_t i = 0; i < m_points.size(); i++)
 	{
-		d2.pBrush->SetColor(points[i].color);
-		switch (points[i].style)
+		d2.pBrush->SetColor(m_points[i].color);
+		switch (m_points[i].style)
 		{
 		case MarkerStyle::circle:
-			d2.pD2DContext->FillEllipse(D2D1::Ellipse(m_locs[i], points[i].scale, points[i].scale), d2.pBrush);
+			d2.pD2DContext->FillEllipse(D2D1::Ellipse(m_locs[i], m_points[i].scale, m_points[i].scale), d2.pBrush);
 			break;
 		case MarkerStyle::square:
 			d2.pD2DContext->FillRectangle(D2D1::RectF(
-				m_locs[i].x - points[i].scale,
-				m_locs[i].y - points[i].scale,
-				m_locs[i].x + points[i].scale,
-				m_locs[i].y + points[i].scale
+				m_locs[i].x - m_points[i].scale,
+				m_locs[i].y - m_points[i].scale,
+				m_locs[i].x + m_points[i].scale,
+				m_locs[i].y + m_points[i].scale
 			), d2.pBrush);
 			break;
 		case MarkerStyle::up:
 		case MarkerStyle::down:
 		{
 			D2D1_MATRIX_3X2_F scale = D2D1::Matrix3x2F::Scale(
-				points[i].scale,
-				points[i].scale,
+				m_points[i].scale,
+				m_points[i].scale,
 				D2D1::Point2F(0, 0)
 			);
 			D2D1_MATRIX_3X2_F translation = D2D1::Matrix3x2F::Translation(m_locs[i].x, m_locs[i].y);
 			d2.pD2DContext->SetTransform(scale * translation);
-			d2.pD2DContext->FillGeometry(m_axes->GetMarker(points[i].style), d2.pBrush);
+			d2.pD2DContext->FillGeometry(m_axes->GetMarker(m_points[i].style), d2.pBrush);
 			d2.pD2DContext->SetTransform(D2D1::Matrix3x2F::Identity());
 			break;
 		}

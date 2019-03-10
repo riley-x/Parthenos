@@ -947,6 +947,7 @@ void Parthenos::LoadPieChart()
 	m_pieChart->Load(data, colors, short_labels, long_labels);
 }
 
+
 // Updates all items that track the current account portfolio. 
 // i.e. call this when the account changes or a transaction is added.
 void Parthenos::UpdatePortfolioPlotters(char account, bool init)
@@ -968,26 +969,15 @@ void Parthenos::UpdatePortfolioPlotters(char account, bool init)
 	m_eqHistoryAxes->SetTitle(buffer);
 	m_eqHistoryAxes->SetXAxisPos((float)acc.histEquity[0]);
 	m_eqHistoryAxes->Clear();
-	m_eqHistoryAxes->Line(acc.histDate.data(),
-		acc.histEquity.data(),
-		acc.histDate.size()
-	);
+	m_eqHistoryAxes->Line(acc.histDate, acc.histEquity);
 
 	m_returnsAxes->Clear();
 	m_returnsPercAxes->Clear();
 	m_returnsAxes->SetXLabels(acc.tickers, false);
 	std::vector<std::wstring> perc_tickers(acc.tickers.begin(), acc.tickers.begin() + acc.returnsPercBarData.size());
 	m_returnsPercAxes->SetXLabels(perc_tickers, false);
-	m_returnsAxes->Bar(
-		acc.returnsBarData.data(), 
-		acc.returnsBarData.size(), 
-		acc.tickers
-	);
-	m_returnsPercAxes->Bar(
-		acc.returnsPercBarData.data(),
-		acc.returnsPercBarData.size(),
-		perc_tickers
-	);
+	m_returnsAxes->Bar(acc.returnsBarData, acc.tickers);
+	m_returnsPercAxes->Bar(acc.returnsPercBarData, perc_tickers);
 
 	::InvalidateRect(m_hwnd, NULL, FALSE);
 }

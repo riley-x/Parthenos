@@ -105,6 +105,7 @@ private:
 	D2D1_RECT_F CalculateItemRect(AppItem* item, D2D1_RECT_F const & dipRect);
 	void CalculateDividingLines(D2D1_RECT_F dipRect);
 	void LoadPieChart();
+	void LoadReturnsBars();
 	void UpdatePortfolioPlotters(char account, bool init = false);
 	std::wstring LaunchFileDialog(bool save = false);
 
