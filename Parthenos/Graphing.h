@@ -15,7 +15,7 @@ typedef struct LINE_STRUCT {
 } Line_t;
 
 typedef struct LINE_PROPERTIES {
-	D2D1_COLOR_F color = Colors::ALMOST_WHITE;
+	D2D1_COLOR_F color = Colors::BRIGHT_LINE;
 	float stroke_width = 1.0f;
 	ID2D1StrokeStyle * pStyle = NULL;
 } LineProps;

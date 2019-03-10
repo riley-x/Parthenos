@@ -584,31 +584,28 @@ void Chart::DrawHistory()
 	{
 		if (std::wstring(t.ticker) == m_ticker)
 		{
-			D2D1_COLOR_F color = D2D1::ColorF(0x472bff); // stocks
 			if (isOption(t.type))
 			{
-				MarkerStyle m;
+				D2D1_COLOR_F color = Colors::HOTPINK;
 				if (t.type == TransactionType::PutLong || t.type == TransactionType::PutShort)
 					color = Colors::PURPLE;
-				else
-					color = Colors::HOTPINK;
+
 				if (t.n > 0)
 				{
-					if (isShort(t.type)) 
-						m = MarkerStyle::down;
-					else 
-						m = MarkerStyle::up;
+					MarkerStyle m = MarkerStyle::up;
+					if (isShort(t.type)) m = MarkerStyle::down;
+					points.push_back(PointProps(m, t.date, t.strike, 5.0f, color));
 					points.push_back(PointProps(MarkerStyle::x, t.expiration, t.strike, 5.0f, color));
 				}
-				else m = MarkerStyle::circle;
-				points.push_back(PointProps(m, t.date, t.strike, 5.0f, color));
+				else 
+					points.push_back(PointProps(MarkerStyle::circle, t.date, t.strike, 3.0f, color));
 			}
 			else
 			{
 				if (t.n > 0)
-					points.push_back(PointProps(MarkerStyle::up, t.date, t.price, 5.0f, color));
+					points.push_back(PointProps(MarkerStyle::up, t.date, t.price, 5.0f, Colors::SKYBLUE));
 				else if (t.n < 0)
-					points.push_back(PointProps(MarkerStyle::down, t.date, t.price, 5.0f, color));
+					points.push_back(PointProps(MarkerStyle::down, t.date, t.price, 5.0f, Colors::SKYBLUE));
 			}
 		}
 	}

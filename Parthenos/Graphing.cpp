@@ -448,7 +448,8 @@ void Axes::DatePoints(std::vector<PointProps> points, GraphGroup group, std::wst
 {
 	if (group == GG_PRI || m_dates.empty() || points.empty()) return;
 
-	// fix x values
+	double ymin = nan("");
+	double ymax = nan("");
 	for (PointProps & p : points)
 	{
 		date_t d = static_cast<date_t>(p.x);
@@ -457,20 +458,18 @@ void Axes::DatePoints(std::vector<PointProps> points, GraphGroup group, std::wst
 		{
 			auto it = std::lower_bound(m_dates.begin(), m_dates.end(), d);
 			if (it == m_dates.end()) p.x = std::nan("");
-			else p.x = static_cast<double>(it - m_dates.begin());
+			else
+			{
+				p.x = static_cast<double>(it - m_dates.begin());
+				if (!(ymin < p.y)) ymin = p.y; // negation so always true against nan
+				else if (!(ymax > p.y)) ymax = p.y;
+			}
 		}
 	}
 
 	// scale y-axis
 	if (group == GG_SEC)
 	{
-		double ymin = points[0].y;
-		double ymax = points[0].y;
-		for (PointProps const & p : points)
-		{
-			if (p.y < ymin) ymin = p.y;
-			else if (p.y > ymax) ymax = p.y;
-		}
 		m_rescaled = setDataRange(dataRange::ymin, ymin) || m_rescaled;
 		m_rescaled = setDataRange(dataRange::ymax, ymax) || m_rescaled;
 	}
@@ -955,18 +954,18 @@ void CandlestickGraph::Make()
 
 void CandlestickGraph::Paint(D2Objects const & d2)
 {
-	d2.pBrush->SetColor(D2D1::ColorF(0.8f, 0.8f, 0.8f, 1.0f));
+	d2.pBrush->SetColor(Colors::BRIGHT_LINE);
 	for (auto line : m_lines)
 		d2.pD2DContext->DrawLine(line.start, line.end, d2.pBrush);
 
 	for (auto line : m_no_change)
 		d2.pD2DContext->DrawLine(line.start, line.end, d2.pBrush);
 
-	d2.pBrush->SetColor(D2D1::ColorF(32.0f / 255, 214.0f / 255, 126.0f / 255, 1.0f));
+	d2.pBrush->SetColor(Colors::GREEN);
 	for (auto rect : m_up_rects)
 		d2.pD2DContext->FillRectangle(rect, d2.pBrush);
 
-	d2.pBrush->SetColor(D2D1::ColorF(1.0f, 0.2f, 0.2f, 1.0f));
+	d2.pBrush->SetColor(Colors::RED);
 	for (auto rect : m_down_rects)
 		d2.pD2DContext->FillRectangle(rect, d2.pBrush);
 

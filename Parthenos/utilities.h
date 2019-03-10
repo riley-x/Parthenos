@@ -236,8 +236,9 @@ namespace Colors
 	const D2D1_COLOR_F MAIN_TEXT		= D2D1::ColorF(0.8f, 0.8f, 0.8f, 1.0f);
 
 	const D2D1_COLOR_F ACCENT			= D2D1::ColorF(0.8f, 0.0f, 0.5f, 1.0f);
-	const D2D1_COLOR_F GREEN			= D2D1::ColorF(0x008040);
-	const D2D1_COLOR_F SKYBLUE			= D2D1::ColorF(0x00ddff);
+	const D2D1_COLOR_F RED				= D2D1::ColorF(0xef4747);
+	const D2D1_COLOR_F GREEN			= D2D1::ColorF(0x2dbf78);
+	const D2D1_COLOR_F SKYBLUE			= D2D1::ColorF(0x4CCFFF);
 	const D2D1_COLOR_F BLUE				= D2D1::ColorF(0x0056e0);
 	const D2D1_COLOR_F HOTPINK			= D2D1::ColorF(0xff19d1);
 	const D2D1_COLOR_F PURPLE			= D2D1::ColorF(0x8000C0);
