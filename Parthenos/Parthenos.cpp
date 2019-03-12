@@ -30,6 +30,16 @@ Parthenos::~Parthenos()
 		if (item) delete item;
 	if (m_addTWin) delete m_addTWin;
 	if (m_okWin) delete m_okWin;
+
+	for (int i = 1; i < Timers::n_timers + 1; i++)
+	{
+		if (m_timers.nActiveP1[i] == 1)
+		{
+			BOOL err = ::KillTimer(m_hwnd, i);
+			if (err == 0) OutputError(L"Kill timer failed");
+			m_timers.nActiveP1[i] = 0;
+		}
+	}
 }
 
 LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)

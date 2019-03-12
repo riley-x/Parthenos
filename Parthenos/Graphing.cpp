@@ -961,7 +961,7 @@ void CandlestickGraph::Paint(D2Objects const & d2)
 	for (auto line : m_no_change)
 		d2.pD2DContext->DrawLine(line.start, line.end, d2.pBrush);
 
-	d2.pBrush->SetColor(Colors::GREEN);
+	d2.pBrush->SetColor(Colors::CANDLEGREEN);
 	for (auto rect : m_up_rects)
 		d2.pD2DContext->FillRectangle(rect, d2.pBrush);
 
