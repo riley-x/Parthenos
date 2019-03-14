@@ -1130,18 +1130,12 @@ LRESULT Parthenos::OnSize(WPARAM wParam)
 	m_sizeChanged = true;
 	if (m_d2.pD2DContext != NULL)
 	{
+		m_d2.DiscardGraphicsResources();
+		
 		RECT rc;
 		GetClientRect(m_hwnd, &rc);
-
-		m_d2.DiscardGraphicsResources();
-		HRESULT hr = m_d2.CreateGraphicsResources(m_hwnd);
-		if (FAILED(hr))
-		{
-			OutputError(L"CreateGraphicsResources failed");
-			return 0;
-		}
-
 		D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
+
 		m_halfBelowMenu = DPIScale::SnapToPixelY((dipRect.bottom + m_menuBarBottom) / 2.0f);
 		m_centerX = DPIScale::SnapToPixelX(dipRect.right / 2.0f);
 		CalculateDividingLines(dipRect);

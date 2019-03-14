@@ -67,6 +67,7 @@ private:
 	// Message responses
 	LRESULT	OnCreate();
 	LRESULT OnNCHitTest(POINT cursor);
+	LRESULT OnSize(WPARAM wParam);
 	LRESULT OnMouseMove(POINT cursor, WPARAM wParam);
 	LRESULT	OnLButtonDown(POINT cursor, WPARAM wParam);
 	LRESULT OnLButtonDblclk(POINT cursor, WPARAM wParam);

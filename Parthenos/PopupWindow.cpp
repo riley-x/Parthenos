@@ -39,12 +39,13 @@ LRESULT PopupWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		m_d2.DiscardLifetimeResources();
 		m_created = FALSE;
 		m_parent->SendClientMessage(reinterpret_cast<AppItem*>(this), m_name, CTPMessage::WINDOW_CLOSED);
+		// TODO remove m_hwnd from timers
 		PostMessage(m_phwnd, WM_APP, 0, 0);
 		return 0;
 	case WM_PAINT:
 		return OnPaint();
 	case WM_SIZE:
-		return 0;
+		return OnSize(wParam);
 	case WM_MOUSEMOVE:
 		return OnMouseMove(
 			POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) },
@@ -94,8 +95,8 @@ LRESULT PopupWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 LRESULT PopupWindow::OnCreate()
 {
-	m_d2.hwndParent = m_hwnd;
 	HRESULT hr = m_d2.CreateLifetimeResources(m_hwnd);
+	m_d2.hwndParent = m_hwnd;
 	if (FAILED(hr))
 	{
 		throw Error(L"OnCreate failed!");
@@ -119,6 +120,18 @@ LRESULT PopupWindow::OnNCHitTest(POINT cursor)
 		return HTCLIENT;
 }
 
+LRESULT PopupWindow::OnSize(WPARAM wParam)
+{
+	if (m_d2.pD2DContext != NULL)
+	{
+		m_d2.DiscardGraphicsResources();
+
+		// No need to pass to items since size is fixed
+
+		InvalidateRect(m_hwnd, NULL, FALSE);
+	}
+	return 0;
+}
 
 LRESULT PopupWindow::OnMouseMove(POINT cursor, WPARAM wParam)
 {
@@ -263,6 +276,7 @@ LRESULT AddTransactionWindow::OnPaint()
 	if (bErr == 0) OutputError(L"GetClientRect failed");
 	D2D1_RECT_F fullRect = DPIScale::PixelsToDips(rc);
 
+
 	HRESULT hr = m_d2.CreateGraphicsResources(m_hwnd);
 	if (SUCCEEDED(hr))
 	{
@@ -282,12 +296,21 @@ LRESULT AddTransactionWindow::OnPaint()
 		m_transactionTypeButton->GetMenu().Paint(fullRect);
 
 		hr = m_d2.pD2DContext->EndDraw();
-		if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
+		if (SUCCEEDED(hr))
 		{
-			m_d2.DiscardGraphicsResources();
+			// Present
+			DXGI_PRESENT_PARAMETERS parameters = { 0 };
+			parameters.DirtyRectsCount = 0;
+			parameters.pDirtyRects = nullptr;
+			parameters.pScrollRect = nullptr;
+			parameters.pScrollOffset = nullptr;
+
+			hr = m_d2.pDXGISwapChain->Present1(1, 0, &parameters);
 		}
+
 		EndPaint(m_hwnd, &ps);
 	}
+	if (FAILED(hr)) OutputHRerr(hr, L"TransactionWindow OnPaint failed");
 
 	return 0;
 }
@@ -505,12 +528,21 @@ LRESULT ConfirmationWindow::OnPaint()
 		m_d2.pTextFormats[D2Objects::Formats::Segoe12]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
 
 		hr = m_d2.pD2DContext->EndDraw();
-		if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
+		if (SUCCEEDED(hr))
 		{
-			m_d2.DiscardGraphicsResources();
+			// Present
+			DXGI_PRESENT_PARAMETERS parameters = { 0 };
+			parameters.DirtyRectsCount = 0;
+			parameters.pDirtyRects = nullptr;
+			parameters.pScrollRect = nullptr;
+			parameters.pScrollOffset = nullptr;
+
+			hr = m_d2.pDXGISwapChain->Present1(1, 0, &parameters);
 		}
+
 		EndPaint(m_hwnd, &ps);
 	}
+	if (FAILED(hr)) OutputHRerr(hr, L"ConfirmationWindow OnPaint failed");
 
 	return 0;
 }
