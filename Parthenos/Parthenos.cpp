@@ -325,6 +325,8 @@ void Parthenos::CalculateHistories()
 		histFile.Close();
 
 		// Add to account for plotting
+		acc.histDate.clear();
+		acc.histEquity.clear();
 		acc.histDate.reserve(portHist.size());
 		acc.histEquity.reserve(portHist.size());
 		double cash_in = GetCash(acc.positions).second;
@@ -352,6 +354,8 @@ void Parthenos::CalculateHistories()
 	}
 	double totCashIn = std::accumulate(cashIn.begin(), cashIn.end(), 0.0);
 
+	accAll.histDate.clear();
+	accAll.histEquity.clear();
 	accAll.histDate.reserve(maxSize);
 	accAll.histEquity.reserve(maxSize);
 	while (iAccDate[iAccMax] < m_accounts[iAccMax].histDate.size())
@@ -678,6 +682,7 @@ void Parthenos::ProcessMenuMessage(ClientMessage & msg)
 				histFile.Close();
 			}
 			CalculateHistories();
+			UpdatePortfolioPlotters(m_currAccount);
 		}
 	}
 	else if (msg.iData == 1) // Account

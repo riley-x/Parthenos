@@ -381,7 +381,7 @@ std::vector<Position> HoldingsToPositions(NestedHoldings const & holdings,
 			sumWeights += temp.avgCost; // this is total cost right now
 
 			// Loop over options lots;
-			for (iLot = iHeader + header.nLots + header.nOptions + 1;
+			for (iLot = iHeader + header.nLots + 1;
 				iLot < iHeader + header.nLots + header.nOptions + 1; iLot++)
 			{
 				Option const & opt = h.at(iLot).option;
