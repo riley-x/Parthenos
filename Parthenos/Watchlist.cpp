@@ -17,12 +17,16 @@ void Watchlist::SetSize(D2D1_RECT_F dipRect)
 {
 	if (equalRect(m_dipRect, dipRect)) return;
 
-	bool same_topleft = m_dipRect.left == dipRect.left && m_dipRect.top == dipRect.top;
 	m_dipRect = dipRect;
 	m_pixRect = DPIScale::DipsToPixels(m_dipRect);
 
-	// TODO what if right shrinks / grows?
-	if (!same_topleft) Refresh();
+	m_headerBorder = DPIScale::SnapToPixelY(m_dipRect.top + m_headerHeight) - DPIScale::hpy();
+	m_visibleLines = static_cast<size_t>(floorf((m_dipRect.bottom - m_headerBorder) / m_rowHeight));
+
+	// scroll bar auto sets left
+	m_scrollBar.SetSize(D2D1::RectF(0.0f, m_headerBorder + 1, m_dipRect.right, m_dipRect.bottom));
+	
+	Refresh();
 }
 
 void Watchlist::Paint(D2D1_RECT_F updateRect)
@@ -30,6 +34,9 @@ void Watchlist::Paint(D2D1_RECT_F updateRect)
 	// When invalidating, converts to pixels then back to DIPs -> updateRect has smaller values
 	// than when invalidated.
 	if (!overlapRect(m_dipRect, updateRect)) return;
+
+	// Scrollbar only
+	if (updateRect.left + 1 >= m_dipRect.right - ScrollBar::Width) return m_scrollBar.Paint(updateRect);
 
 	// Background
 	m_d2.pBrush->SetColor(Colors::WATCH_BACKGROUND);
@@ -50,8 +57,8 @@ void Watchlist::Paint(D2D1_RECT_F updateRect)
 	}
 
 	// Item texts
-	for (auto item : m_items)
-		item->Paint(m_dipRect); // pass watchlist rect as updateRect to force repaint
+	for (size_t i = m_currLine; i < m_items.size() && i < m_currLine + m_visibleLines; i++)
+		m_items[i]->Paint(m_dipRect); // pass watchlist rect as updateRect to force repaint
 
 	// Internal lines
 	m_d2.pBrush->SetColor(Colors::DULL_LINE);
@@ -74,6 +81,9 @@ void Watchlist::Paint(D2D1_RECT_F updateRect)
 		);
 	}
 
+	// Scrollbar
+	m_scrollBar.Paint(updateRect);
+
 	// Header dividing line
 	m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
 	m_d2.pD2DContext->DrawLine(
@@ -90,12 +100,11 @@ void Watchlist::Paint(D2D1_RECT_F updateRect)
 		m_d2.pBrush->SetColor(Colors::ACCENT);
 		m_d2.pD2DContext->DrawLine(
 			D2D1::Point2F(m_dipRect.left, y),
-			D2D1::Point2F(m_dipRect.right, y),
+			D2D1::Point2F(m_dipRect.right - ScrollBar::Width, y),
 			m_d2.pBrush,
 			DPIScale::py()
 		);
 	}
-
 }
 
 bool Watchlist::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
@@ -119,25 +128,40 @@ bool Watchlist::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 		handeled = true;
 	}
 
+	handeled = m_scrollBar.OnMouseMove(cursor, wParam, handeled) || handeled;
 	if (m_editableTickers)
 	{
-		for (auto item : m_items) handeled = item->OnMouseMove(cursor, wParam, handeled) || handeled;
+		for (size_t i = m_currLine; i < m_items.size() && i < m_currLine + m_visibleLines; i++)
+			handeled = m_items[i]->OnMouseMove(cursor, wParam, handeled) || handeled;
 	}
 
+	ProcessCTPMessages();
 	return handeled;
-	//ProcessCTPMessages();
+}
+
+bool Watchlist::OnMouseWheel(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
+{
+	if (!handeled && inRect(cursor, m_dipRect))
+	{
+		m_scrollBar.OnMouseWheel(cursor, wParam, handeled);
+		ProcessCTPMessages();
+		return true;
+	}
+	return false;
 }
 
 bool Watchlist::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 {
-	for (auto item : m_items)
+	handeled = m_scrollBar.OnLButtonDown(cursor, handeled) || handeled;
+	for (size_t i = m_currLine; i < m_items.size() && i < m_currLine + m_visibleLines; i++)
 	{
-		handeled = item->OnLButtonDown(cursor, handeled) || handeled;
+		handeled = m_items[i]->OnLButtonDown(cursor, handeled) || handeled;
 	}
+
 	if (!handeled && inRect(cursor, m_dipRect))
 	{
 		int i = GetItem(cursor.y);
-		if (i >= 0 && i < static_cast<int>(m_items.size()))
+		if (i >= (int)m_currLine && i < static_cast<int>(m_items.size()))
 		{
 			if (i == m_items.size() - 1 && m_items.back()->Ticker().empty()) return false; // can't select empty item at end
 			m_LButtonDown = i;
@@ -156,11 +180,11 @@ void Watchlist::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)
 	if (!inRect(cursor, m_dipRect)) return;
 	
 	int i = GetItem(cursor.y);
-	if (i >= 0 && i < static_cast<int>(m_items.size()) && m_editableTickers)
+	if (i >= (int)m_currLine && i < static_cast<int>(m_items.size()) && m_editableTickers)
 	{
 		m_items[i]->OnLButtonDblclk(cursor, wParam);
 	}
-	else if (i < 0) // double click on header
+	else if (i < (int)m_currLine) // double click on header
 	{
 		auto it = lower_bound(m_vLines.begin(), m_vLines.end(), cursor.x);
 		if (it == m_vLines.end()) return;
@@ -168,20 +192,25 @@ void Watchlist::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)
 		SortByColumn(column);
 		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 	}
-	//ProcessCTPMessages();
+
+	m_scrollBar.OnLButtonDown(cursor, false);
+	ProcessCTPMessages();
 }
 
 // If dragging an element, does the insertion above the drop location
 void Watchlist::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 {
-	for (auto item : m_items) item->OnLButtonUp(cursor, wParam);
+	m_scrollBar.OnLButtonUp(cursor, wParam);
+	for (size_t i = m_currLine; i < m_items.size() && i < m_currLine + m_visibleLines; i++)
+		m_items[i]->OnLButtonUp(cursor, wParam);
+
 	if (m_LButtonDown >= 0)
 	{
 		int iNew = GetItem(cursor.y);
 		bool draw = false;
 
 		// check for drag + drop
-		if (iNew >= 0 && iNew < static_cast<int>(m_items.size()))
+		if (iNew >= (int)m_currLine && iNew < static_cast<int>(m_items.size()))
 		{
 			if (iNew < m_LButtonDown)
 				MoveItem(m_LButtonDown, iNew);
@@ -201,9 +230,9 @@ bool Watchlist::OnChar(wchar_t c, LPARAM lParam)
 	if (m_editableTickers)
 	{
 		c = towupper(c);
-		for (auto item : m_items)
+		for (size_t i = m_currLine; i < m_items.size() && i < m_currLine + m_visibleLines; i++)
 		{
-			if (item->OnChar(c, lParam)) return true;
+			if (m_items[i]->OnChar(c, lParam)) return true;
 		}
 	}
 	//ProcessCTPMessages();
@@ -215,9 +244,9 @@ bool Watchlist::OnKeyDown(WPARAM wParam, LPARAM lParam)
 	bool out = false;
 	if (m_editableTickers)
 	{
-		for (auto item : m_items)
+		for (size_t i = m_currLine; i < m_items.size() && i < m_currLine + m_visibleLines; i++)
 		{
-			if (item->OnKeyDown(wParam, lParam)) out = true;
+			if (m_items[i]->OnKeyDown(wParam, lParam)) out = true;
 		}
 		ProcessCTPMessages();
 	}
@@ -228,7 +257,8 @@ void Watchlist::OnTimer(WPARAM wParam, LPARAM lParam)
 {
 	if (m_editableTickers)
 	{
-		for (auto item : m_items) item->OnTimer(wParam, lParam);
+		for (size_t i = m_currLine; i < m_items.size() && i < m_currLine + m_visibleLines; i++)
+			m_items[i]->OnTimer(wParam, lParam);
 	}
 	//ProcessCTPMessages();
 }
@@ -254,6 +284,7 @@ void Watchlist::ProcessCTPMessages()
 			));
 			m_items.push_back(temp);
 			m_hLines.push_back(top + m_rowHeight);
+			m_currLine = m_scrollBar.SetSteps(m_items.size(), m_visibleLines, ScrollBar::SetPosMethod::MaintainOffsetBottom);
 			break;
 		}
 		case CTPMessage::WATCHLISTITEM_EMPTY:
@@ -277,6 +308,14 @@ void Watchlist::ProcessCTPMessages()
 			m_parent->PostClientMessage(this, msg.msg, msg.imsg);
 			break;
 		}
+		case CTPMessage::SCROLLBAR_SCROLL:
+			m_currLine += msg.iData;
+			CalculatePositions();
+			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+			break;
+		case CTPMessage::MOUSE_CAPTURED: // from scrollbox
+			m_parent->PostClientMessage(this, msg.msg, msg.imsg, msg.iData, msg.dData);
+			// change sender to this to process scrollbox messages
 		}
 	}
 	if (!m_messages.empty()) m_messages.clear();
@@ -353,31 +392,13 @@ void Watchlist::Load(std::vector<std::wstring> const & tickers, std::vector<Posi
 
 void Watchlist::CalculatePositions()
 {
-	m_headerBorder = DPIScale::SnapToPixelY(m_dipRect.top + m_headerHeight) - DPIScale::hpy();
+	m_currLine = m_scrollBar.SetSteps(m_items.size(), m_visibleLines, ScrollBar::SetPosMethod::MaintainOffsetTop);
 
 	// Set size of WatchlistItems, horizontal divider lines
-	m_hLines.resize(m_items.size());
+	m_hLines.clear();
 	float top = m_dipRect.top + m_headerHeight;
-	for (size_t i = 0; i < m_items.size(); i++)
+	for (size_t i = m_currLine; i < m_items.size() && i < m_currLine + m_visibleLines; i++)
 	{
-		if (top + m_rowHeight > m_dipRect.bottom)
-		{
-			OutputMessage(L"Warning: Watchlist too many items\n");
-			if (i > 0)
-			{
-				m_hLines.resize(i - 1);
-				for (size_t j = i; j < m_items.size(); j++) if (m_items[j]) delete m_items[j];
-				m_items.resize(i - 1);
-			}
-			else
-			{
-				m_hLines.clear();
-				for (auto x : m_items) if (x) delete x;
-				m_items.clear();
-			}
-			break;
-		}
-
 		m_items[i]->SetSize(D2D1::RectF(
 			m_dipRect.left,
 			top,
@@ -386,7 +407,7 @@ void Watchlist::CalculatePositions()
 		));
 
 		top += m_rowHeight;
-		m_hLines[i] = top; // i.e. bottom of item i
+		m_hLines.push_back(top); // i.e. bottom of item i
 	}
 }
 
@@ -400,7 +421,7 @@ void Watchlist::CreateTextLayouts()
 
 	for (size_t i = 0; i < m_columns.size(); i++)
 	{
-		if (left + m_columns[i].width > m_dipRect.right)
+		if (left + m_columns[i].width > m_dipRect.right - ScrollBar::Width)
 		{
 			OutputMessage(L"Warning: Columns exceed watchlist width\n");
 			if (i > 0)
@@ -455,12 +476,12 @@ void Watchlist::MoveItem(int iOld, int iNew)
 		for (int j = iOld; j > iNew; j--) // j is new position of j-1
 		{
 			m_items[j] = m_items[j - 1];
-			m_items[j]->SetSize(D2D1::RectF(
-				m_dipRect.left,
-				GetHeight(j),
-				m_dipRect.right,
-				GetHeight(j + 1)
-			));
+			//m_items[j]->SetSize(D2D1::RectF(
+			//	m_dipRect.left,
+			//	GetHeight(j),
+			//	m_dipRect.right,
+			//	GetHeight(j + 1)
+			//));
 		}
 	}
 	// need to shift stuff up
@@ -469,22 +490,24 @@ void Watchlist::MoveItem(int iOld, int iNew)
 		for (int j = iOld; j < iNew; j++) // j is new position of j+1
 		{
 			m_items[j] = m_items[j + 1];
-			m_items[j]->SetSize(D2D1::RectF(
-				m_dipRect.left,
-				GetHeight(j),
-				m_dipRect.right,
-				GetHeight(j + 1)
-			));
+			//m_items[j]->SetSize(D2D1::RectF(
+			//	m_dipRect.left,
+			//	GetHeight(j),
+			//	m_dipRect.right,
+			//	GetHeight(j + 1)
+			//));
 		}
 	}
 
 	m_items[iNew] = temp;
-	m_items[iNew]->SetSize(D2D1::RectF(
-		m_dipRect.left,
-		GetHeight(iNew),
-		m_dipRect.right,
-		GetHeight(iNew + 1)
-	));
+	//m_items[iNew]->SetSize(D2D1::RectF(
+	//	m_dipRect.left,
+	//	GetHeight(iNew),
+	//	m_dipRect.right,
+	//	GetHeight(iNew + 1)
+	//));
+
+	CalculatePositions();
 }
 
 void Watchlist::SortByColumn(size_t iColumn)
@@ -518,17 +541,7 @@ void Watchlist::SortByColumn(size_t iColumn)
 	}
 
 	// Reset position of everything
-	float top = m_dipRect.top + m_headerHeight;
-	for (size_t i = 0; i < m_items.size(); i++)
-	{
-		m_items[i]->SetSize(D2D1::RectF(
-			m_dipRect.left,
-			top,
-			m_dipRect.right,
-			top + m_rowHeight
-		));
-		top += m_rowHeight;
-	}
+	CalculatePositions();
 }
 
 ///////////////////////////////////////////////////////////

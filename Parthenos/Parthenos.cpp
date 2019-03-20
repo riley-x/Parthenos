@@ -456,7 +456,7 @@ void Parthenos::InitItems()
 		{60.0f, Column::Equity, L"%.2lf"},
 		{60.0f, Column::ReturnsT, L"%.2lf"},
 		{60.0f, Column::ReturnsP, L"%.2lf"},
-		{60.0f, Column::APY, L"%.2lf"},
+		{55.0f, Column::APY, L"%.1lf"},
 		{60.0f, Column::ExDiv, L""},
 	};
 	m_watchlist->SetColumns(); // use defaults
@@ -960,7 +960,6 @@ void Parthenos::LoadPieChart()
 
 	m_pieChart->Load(data, colors, short_labels, long_labels);
 }
-
 
 // Updates all items that track the current account portfolio. 
 // i.e. call this when the account changes or a transaction is added.

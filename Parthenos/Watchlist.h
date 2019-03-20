@@ -4,6 +4,7 @@
 #include "AppItem.h"
 #include "TextBox.h"
 #include "DataManaging.h"
+#include "ScrollBar.h"
 
 class Watchlist;
 
@@ -115,13 +116,18 @@ class Watchlist : public AppItem
 {
 public:
 	Watchlist(HWND hwnd, D2Objects const & d2, CTPMessageReceiver * parent, bool editable)
-		: AppItem(hwnd, d2, parent), m_editableTickers(editable) {}
+		: AppItem(hwnd, d2, parent), m_scrollBar(hwnd, d2, this), m_editableTickers(editable)
+	{
+		// Set 1 line per minStep == detent
+		m_scrollBar.SetMinStep(WHEEL_DELTA);
+	}
 	~Watchlist();
 
 	// AppItem overrides
 	void Paint(D2D1_RECT_F updateRect);
 	void SetSize(D2D1_RECT_F dipRect);
 	bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled);
+	bool OnMouseWheel(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled);
 	bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled);
 	void OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam);
 	void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam);
@@ -143,25 +149,29 @@ public:
 	static D2Objects::Formats const m_format = D2Objects::Segoe12;
 
 private:
-	Watchlist(const Watchlist&) = delete;				// non construction-copyable
-	Watchlist& operator=(const Watchlist&) = delete;	// non copyable
+	// Objects
+	ScrollBar						m_scrollBar;
+	std::vector<WatchlistItem*>		m_items;
 
 	// Data
-	std::vector<WatchlistItem*>		m_items;
 	std::vector<Column>				m_columns;
 	std::vector<IDWriteTextLayout*> m_pTextLayouts; // For column headers
 	std::vector<Position>			m_positions; // Store these in case columns change from user input
 	
 	// Flags
-	int		m_LButtonDown		= -1;	 // Left button pressed on an item
-	int		m_hover				= -1;	 // Currently hovering over
-	bool	m_ignoreSelection	= false; // Flag to check if drag + drop on same location
-	int		m_sortColumn		= -1;	 // So that double clicking on the same column sorts in reverse
+	int			m_LButtonDown		= -1;	 // Left button pressed on an item
+	int			m_hover				= -1;	 // Currently hovering over
+	bool		m_ignoreSelection	= false; // Flag to check if drag + drop on same location
+	int			m_sortColumn		= -1;	 // So that double clicking on the same column sorts in reverse
 
 	// Paramters
 	float const m_headerHeight		= 18.0f;
 	float const m_rowHeight			= 18.0f;
 	bool		m_editableTickers	= true;
+
+	// Scroll State
+	size_t		m_visibleLines;
+	size_t		m_currLine = 0; // topmost visible line
 
 	// Drawing
 	std::vector<float>	m_vLines;
@@ -169,17 +179,20 @@ private:
 	float				m_headerBorder;
 
 	// Helpers
-
 	void CalculatePositions();
 	void CreateTextLayouts();
 	// Get top of item i
-	inline float GetHeight(int i) { return m_dipRect.top + m_headerHeight + i * m_rowHeight; }
+	inline float GetHeight(int i) { return m_dipRect.top + m_headerHeight + (i - m_currLine) * m_rowHeight; }
 	// Get index given y coord
-	inline int GetItem(float y) { return static_cast<int>(floor((y - (m_dipRect.top + m_headerHeight)) / m_rowHeight)); }
+	inline int GetItem(float y) { return static_cast<int>(floor((y - (m_dipRect.top + m_headerHeight)) / m_rowHeight)) + m_currLine; }
 	// Move item iOld to iNew, shifting everything in between appropriately.
 	// If iNew < iOld, moves iOld to above the current item at iNew.
 	// If iNew > iOld, moves iOld to below the current item at iNew.
 	// No bounds check. Make sure iOld and iNew are valid indices.
 	void MoveItem(int iOld, int iNew);
 	void SortByColumn(size_t iColumn);
+
+	// Deleted
+	Watchlist(const Watchlist&) = delete;				// non construction-copyable
+	Watchlist& operator=(const Watchlist&) = delete;	// non copyable
 };

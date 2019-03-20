@@ -156,6 +156,7 @@ void ScrollBar::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 	}
 }
 
+// Sets the step parameters. Adjust and returns the new scroll position, based on the the SetPosMethod.
 size_t ScrollBar::SetSteps(size_t totalSteps, size_t visibleSteps, SetPosMethod mtd)
 {
 	int oldTotal = (int)m_totalSteps;
