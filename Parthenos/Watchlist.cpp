@@ -23,10 +23,10 @@ void Watchlist::SetSize(D2D1_RECT_F dipRect)
 	m_headerBorder = DPIScale::SnapToPixelY(m_dipRect.top + m_headerHeight) - DPIScale::hpy();
 	m_visibleLines = static_cast<size_t>(floorf((m_dipRect.bottom - m_headerBorder) / m_rowHeight));
 
+	Refresh(); // also sets number of lines for scrollbar
+
 	// scroll bar auto sets left
 	m_scrollBar.SetSize(D2D1::RectF(0.0f, m_headerBorder + 1, m_dipRect.right, m_dipRect.bottom));
-	
-	Refresh();
 }
 
 void Watchlist::Paint(D2D1_RECT_F updateRect)
