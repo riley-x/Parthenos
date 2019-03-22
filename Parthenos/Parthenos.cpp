@@ -175,7 +175,6 @@ void Parthenos::PreShow()
 		else OutputDebugString(out.c_str());
 	}
 
-
 	// Size-dependent initializations
 	m_chart->Draw(L"AAPL");
 }
@@ -200,6 +199,7 @@ void Parthenos::InitData()
 
 	// Populate data members
 	m_tickers = GetTickers(holdings); // all tickers
+	m_tickerColors = Colors::Randomizer(m_tickers);
 	m_stats = GetBatchQuoteStats(m_tickers);
 
 	m_accounts.resize(m_accountNames.size() + 1);
@@ -281,8 +281,10 @@ void Parthenos::CalculateReturns()
 			if (p.ticker == L"CASH") continue;
 			double returns = p.realized_held + p.realized_unheld + p.unrealized;
 			double perc = (p.n == 0) ? 0.0 : (p.realized_held + p.unrealized) / (p.avgCost * p.n) * 100.0;
-			acc.returnsBarData.push_back({ returns, Colors::Randomizer(p.ticker) });
-			if (perc != 0) acc.returnsPercBarData.push_back({ perc, Colors::Randomizer(p.ticker) });
+			D2D1_COLOR_F color = KeyMatch(m_tickers, m_tickerColors, p.ticker);
+
+			acc.returnsBarData.push_back({ returns, color });
+			if (perc != 0) acc.returnsPercBarData.push_back({ perc, color });
 			acc.tickers.push_back(p.ticker);
 		}
 	}
@@ -924,16 +926,17 @@ void Parthenos::LoadPieChart()
 	Account const & acc = m_accounts[m_currAccount];
 	std::vector<double> market_values = GetMarketValues(acc.positions);
 	std::vector<std::wstring> tickers = GetTickers(acc.positions);
+	std::vector<D2D1_COLOR_F> colors = FilterByKeyMatch(m_tickers, m_tickerColors, tickers);
 
 	std::vector<double> data; 
 	std::vector<std::wstring> short_labels;
 	std::vector<std::wstring> long_labels;
-	std::vector<D2D1_COLOR_F> colors;
+	std::vector<D2D1_COLOR_F> wedge_colors;
 
 	data.reserve(tickers.size() + 1); // Add one for cash
 	short_labels.reserve(tickers.size() + 1);
 	long_labels.reserve(tickers.size() + 2); // Add another for default label
-	colors.reserve(tickers.size() + 1);
+	wedge_colors.reserve(tickers.size() + 1);
 
 	// Get total equity
 	double sum = std::accumulate(market_values.begin(), market_values.end(), 0.0);
@@ -956,16 +959,16 @@ void Parthenos::LoadPieChart()
 		data.push_back(value);
 		short_labels.push_back(ticker);
 		long_labels.push_back(MakeLongLabel(ticker, value, 100.0 * value / sum));
-		colors.push_back(Colors::Randomizer(ticker));
+		wedge_colors.push_back(colors[inds[i]]);
 	}
 
 	// Cash
 	data.push_back(cash.first);
 	short_labels.push_back(L"CASH");
 	long_labels.push_back(MakeLongLabel(L"CASH", cash.first, 100.0 * cash.first / sum));
-	colors.push_back(Colors::GREEN);
+	wedge_colors.push_back(Colors::GREEN);
 
-	m_pieChart->Load(data, colors, short_labels, long_labels);
+	m_pieChart->Load(data, wedge_colors, short_labels, long_labels);
 }
 
 // Updates all items that track the current account portfolio. 
@@ -975,6 +978,7 @@ void Parthenos::UpdatePortfolioPlotters(char account, bool init)
 	if (m_currAccount != account) return;
 	Account const & acc = m_accounts[account];
 	std::vector<std::wstring> tickers = GetTickers(acc.positions);
+	std::pair<double, double> cash = GetCash(acc.positions);
 
 	m_portfolioList->Load(tickers, acc.positions, FilterByKeyMatch(m_tickers, m_stats, tickers));
 	if (!init) m_portfolioList->Refresh();
@@ -983,11 +987,11 @@ void Parthenos::UpdatePortfolioPlotters(char account, bool init)
 	if (!init) m_pieChart->Refresh();
 
 	wchar_t buffer[100];
-	double returns = acc.histEquity.back() - acc.histEquity.front();
+	double returns = acc.histEquity.back() - cash.second;
 	swprintf_s(buffer, _countof(buffer), L"%s: %s (%.2lf%%)", acc.name.c_str(), 
-		FormatDollar(returns).c_str(), returns / acc.histEquity.back() * 100.0);
+		FormatDollar(returns).c_str(), returns / cash.second * 100.0);
 	m_eqHistoryAxes->SetTitle(buffer);
-	m_eqHistoryAxes->SetXAxisPos((float)acc.histEquity[0]);
+	m_eqHistoryAxes->SetXAxisPos((float)cash.second);
 	m_eqHistoryAxes->Clear();
 	m_eqHistoryAxes->Line(acc.histDate, acc.histEquity);
 

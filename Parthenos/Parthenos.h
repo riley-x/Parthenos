@@ -44,6 +44,7 @@ private:
 	std::vector<std::wstring>				m_accountNames;
 	std::vector<Account>					m_accounts; // same order as m_accountNames; extra entry at end for 'All'
 	std::vector<std::wstring>				m_tickers; // tickers in all accounts, sorted by name
+	std::vector<D2D1_COLOR_F>				m_tickerColors; // colors for each ticker in m_tickers, same order
 	std::vector<std::pair<Quote, Stats>>	m_stats; // in same order as m_tickers
 
 	// 'Child' windows

@@ -73,7 +73,7 @@ void SPrintExceptionHelper(std::wstring & out, const std::exception & e, int lev
 	{
 		size_t ssize = strlen(e.what());
 		size_t wssize;
-		appendee.resize(ssize, L' ');
+		appendee.resize(ssize + 1, L' ');
 		errno_t err = mbstowcs_s(&wssize, &appendee[0], appendee.size(), e.what(), _TRUNCATE);
 		if (!err) appendee.resize(wssize);
 		else appendee.clear();
@@ -239,4 +239,13 @@ D2D1_COLOR_F Colors::Randomizer(std::wstring str)
 	}
 
 	return HSVtoRGB(hsv);
+}
+
+std::vector<D2D1_COLOR_F> Colors::Randomizer(std::vector<std::wstring> const & strs)
+{
+	std::vector<D2D1_COLOR_F> out;
+	out.reserve(strs.size());
+	for (const std::wstring & str : strs)
+		out.push_back(Randomizer(str));
+	return out;
 }

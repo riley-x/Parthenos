@@ -217,6 +217,17 @@ std::vector<T2> FilterByKeyMatch(std::vector<T1> keys, std::vector<T2> vals, std
 	return out;
 }
 
+// Given 'keys' and 'vals' as above, returns the value corresponding to 'key'.
+template <typename T1, typename T2>
+T2 KeyMatch(std::vector<T1> keys, std::vector<T2> vals, T1 key)
+{
+	for (size_t i = 0; i < keys.size(); i++)
+	{
+		if (keys[i] == key) return vals[i];
+	}
+	return T2();
+}
+
 ///////////////////////////////////////////////////////////
 namespace Colors
 {
@@ -246,6 +257,7 @@ namespace Colors
 
 	D2D1_COLOR_F HSVtoRGB(float hsv[3]);
 	D2D1_COLOR_F Randomizer(std::wstring str);
+	std::vector<D2D1_COLOR_F> Randomizer(std::vector<std::wstring> const & strs);
 }
 
 ///////////////////////////////////////////////////////////
