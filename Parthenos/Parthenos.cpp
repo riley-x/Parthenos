@@ -510,8 +510,13 @@ void Parthenos::InitItemsWithData()
 
 void Parthenos::ProcessCTPMessages()
 {
-	for (ClientMessage & msg : m_messages)
+	while (!m_messages.empty())
 	{
+		ClientMessage & msg = m_messages.front();
+		bool pop_front = true; 
+		// functions that launch file dialog must delete their CTPMessage before launching
+		// flag main thread to not delete again
+		
 		switch (msg.imsg)
 		{
 		case CTPMessage::NONE:
@@ -576,7 +581,7 @@ void Parthenos::ProcessCTPMessages()
 		}
 		case CTPMessage::MENUBAR_SELECTED:
 		{
-			ProcessMenuMessage(msg);
+			ProcessMenuMessage(pop_front);
 			break;
 		}
 		case CTPMessage::WINDOW_CLOSED:
@@ -625,12 +630,14 @@ void Parthenos::ProcessCTPMessages()
 			OutputMessage(L"Unknown message %d received\n", static_cast<int>(msg.imsg));
 			break;
 		}
+		if (pop_front) m_messages.pop_front();
 	}
-	if (!m_messages.empty()) m_messages.clear();
 }
 
-void Parthenos::ProcessMenuMessage(ClientMessage & msg)
+// Processes the first message in m_messages assuming it's a message from the menu bar
+void Parthenos::ProcessMenuMessage(bool & pop_front)
 {
+	ClientMessage & msg = m_messages.front();
 	if (msg.iData == 0) // File
 	{
 		if (msg.msg == L"Print Transaction History")
@@ -741,7 +748,8 @@ void Parthenos::ProcessMenuMessage(ClientMessage & msg)
 	{
 		if (msg.msg == L"Print OHLC")
 		{
-			msg.imsg = CTPMessage::NONE; // "delete" this message but don't mess up the for loop
+			pop_front = false;
+			m_messages.pop_front(); // delete this message since file dialog blocks
 			std::wstring file = LaunchFileDialog();
 
 			FileIO ohlcFile;
@@ -752,11 +760,11 @@ void Parthenos::ProcessMenuMessage(ClientMessage & msg)
 			std::wstring out;
 			for (OHLC const & x : ohlcData) out.append(x.to_wstring());
 			if (m_msgBox) m_msgBox->Overwrite(out);
-
 		}
 		else if (msg.msg == L"Delete Last OHLC Entry")
 		{
-			msg.imsg = CTPMessage::NONE; // "delete" this message but don't mess up the for loop
+			pop_front = false;
+			m_messages.pop_front(); // delete this message since file dialog blocks
 			std::wstring file = LaunchFileDialog();
 
 			FileIO ohlcFile;
@@ -769,7 +777,6 @@ void Parthenos::ProcessMenuMessage(ClientMessage & msg)
 			std::wstring out;
 			for (OHLC const & x : ohlcData) out.append(x.to_wstring());
 			if (m_msgBox) m_msgBox->Overwrite(out);
-
 		}
 	}
 }

@@ -101,7 +101,7 @@ private:
 	void InitItems();
 	void InitItemsWithData();
 	void ProcessCTPMessages();
-	void ProcessMenuMessage(ClientMessage & msg);
+	void ProcessMenuMessage(bool & pop_front);
 	D2D1_RECT_F CalculateItemRect(AppItem* item, D2D1_RECT_F const & dipRect);
 	void CalculateDividingLines(D2D1_RECT_F dipRect);
 	void LoadPieChart();
