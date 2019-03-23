@@ -119,7 +119,7 @@ bool Watchlist::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 		}
 		if (i != m_hover)
 		{
-			if (i >= 0 && i < static_cast<int>(m_items.size()))
+			if (IsVisible(i))
 				m_hover = i;
 			else
 				m_hover = -2; // don't set to -1 to avoid confusion with init
@@ -161,7 +161,7 @@ bool Watchlist::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 	if (!handeled && inRect(cursor, m_dipRect))
 	{
 		int i = GetItem(cursor.y);
-		if (i >= (int)m_currLine && i < static_cast<int>(m_items.size()))
+		if (IsVisible(i))
 		{
 			if (i == m_items.size() - 1 && m_items.back()->Ticker().empty()) return false; // can't select empty item at end
 			m_LButtonDown = i;
@@ -180,7 +180,7 @@ void Watchlist::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)
 	if (!inRect(cursor, m_dipRect)) return;
 	
 	int i = GetItem(cursor.y);
-	if (i >= (int)m_currLine && i < static_cast<int>(m_items.size()) && m_editableTickers)
+	if (IsVisible(i) && m_editableTickers)
 	{
 		m_items[i]->OnLButtonDblclk(cursor, wParam);
 	}
@@ -210,7 +210,7 @@ void Watchlist::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 		bool draw = false;
 
 		// check for drag + drop
-		if (iNew >= (int)m_currLine && iNew < static_cast<int>(m_items.size()))
+		if (IsVisible(iNew))
 		{
 			if (iNew < m_LButtonDown)
 				MoveItem(m_LButtonDown, iNew);
@@ -310,6 +310,8 @@ void Watchlist::ProcessCTPMessages()
 		}
 		case CTPMessage::SCROLLBAR_SCROLL:
 			m_currLine += msg.iData;
+			if (m_hover >= 0) m_hover += msg.iData;
+			if (!IsVisible(m_hover)) m_hover = -2;
 			CalculatePositions();
 			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 			break;

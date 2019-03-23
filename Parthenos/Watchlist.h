@@ -185,6 +185,11 @@ private:
 	inline float GetHeight(int i) { return m_dipRect.top + m_headerHeight + (i - m_currLine) * m_rowHeight; }
 	// Get index given y coord
 	inline int GetItem(float y) { return static_cast<int>(floor((y - (m_dipRect.top + m_headerHeight)) / m_rowHeight)) + m_currLine; }
+	inline bool IsVisible(int i) 
+	{
+		return i >= (int)m_currLine && i < (int)(m_currLine + m_visibleLines) && i < (int)m_items.size();
+	}
+
 	// Move item iOld to iNew, shifting everything in between appropriately.
 	// If iNew < iOld, moves iOld to above the current item at iNew.
 	// If iNew > iOld, moves iOld to below the current item at iNew.
