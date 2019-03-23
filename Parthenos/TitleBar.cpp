@@ -182,7 +182,7 @@ bool TitleBar::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 	case Buttons::CLOSE:
 	case Buttons::MAXRESTORE:
 	case Buttons::MIN:
-		m_parent->SendClientMessage(this, name, ButtonToCTPMessage(button)); // Invalidates
+		m_parent->PostClientMessage(this, name, ButtonToCTPMessage(button)); // Invalidates
 		return true;
 	case Buttons::CAPTION:
 	case Buttons::NONE:

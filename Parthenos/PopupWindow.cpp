@@ -38,7 +38,7 @@ LRESULT PopupWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		m_d2.DiscardGraphicsResources();
 		m_d2.DiscardLifetimeResources();
 		m_created = FALSE;
-		m_parent->SendClientMessage(reinterpret_cast<AppItem*>(this), m_name, CTPMessage::WINDOW_CLOSED);
+		m_parent->PostClientMessage(reinterpret_cast<AppItem*>(this), m_name, CTPMessage::WINDOW_CLOSED);
 		// TODO remove m_hwnd from timers
 		PostMessage(m_phwnd, WM_APP, 0, 0);
 		return 0;

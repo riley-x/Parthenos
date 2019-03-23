@@ -142,6 +142,8 @@ public:
 	void SetSize(D2D1_RECT_F dipRect);
 	void Paint(D2D1_RECT_F updateRect);
 	bool OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled);
+	bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled);
+	void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam);
 
 	// Interface
 	void Clear();
@@ -227,6 +229,9 @@ private:
 	size_t	m_imade[nGraphGroups]	= {};	 // index into m_graphObjects. Objects < i are already made
 	bool	m_rescaled				= false; // data ranges changed, so need to call Rescale()
 	bool	m_drawxLabels			= true;  // set before SetSize()
+	bool	m_select				= true; // allow mouse to select region
+	int		m_selectStart			= -1;	 // selection start point in terms of x-position [0, n)
+	int		m_selectEnd;
 	int		m_hoverOn				= -1;	 // current mouse position in terms of x-position [0, n), or -1 for no hover
 	HoverStyle	m_hoverStyle		= HoverStyle::none;
 
@@ -289,5 +294,6 @@ private:
 	void CreateCachedImage();
 	void CreateTriangleMarker(ComPtr<ID2D1PathGeometry> & geometry, int parity);
 	void CreateXMarker();
+	void CreateHoverText(size_t xind, D2D1_POINT_2F cursor);
 };
 

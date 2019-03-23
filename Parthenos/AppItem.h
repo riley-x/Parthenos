@@ -14,6 +14,7 @@ enum class CTPMessage
 	MOUSE_CAPTURED, // < 0 release, >= 0 capture
 	TEXTBOX_ENTER, TEXTBOX_DEACTIVATED,
 	DROPMENU_SELECTED,
+	AXES_SELECTION,
 	SCROLLBAR_SCROLL,
 	WATCHLISTITEM_NEW, WATCHLISTITEM_EMPTY, WATCHLIST_SELECTED,
 	MENUBAR_SELECTED,
@@ -38,10 +39,12 @@ public:
 	void SendClientMessage(AppItem *sender, std::wstring msg, CTPMessage imsg, int iData = 0, double dData = 0) 
 	{
 		m_messages.push_front({ sender, msg, imsg, iData, dData });
+		ProcessCTPMessages();
 	}
 	void SendClientMessage(ClientMessage const & msg)
 	{
 		m_messages.push_front(msg);
+		ProcessCTPMessages();
 	}
 	void PostClientMessage(AppItem *sender, std::wstring msg, CTPMessage imsg, int iData = 0, double dData = 0) 
 	{

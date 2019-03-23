@@ -62,7 +62,6 @@ Chart::Chart(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent)
 	}
 }
 
-
 Chart::~Chart()
 {
 	for (size_t i = 0; i < MARK_NMARKERS; i++)
@@ -181,7 +180,6 @@ void Chart::SetSize(D2D1_RECT_F dipRect)
 	}
 }
 
-
 void Chart::Paint(D2D1_RECT_F updateRect)
 {
 	if (!overlapRect(m_dipRect, updateRect)) return;
@@ -252,6 +250,7 @@ bool Chart::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 {
 	handeled = m_timeframeButton.OnLButtonDown(cursor, handeled) || handeled;
 	handeled = m_tickerBox.OnLButtonDown(cursor, handeled) || handeled;
+	handeled = m_axes.OnLButtonDown(cursor, handeled) || handeled;
 
 	if (!handeled && inRect(cursor, m_menuRect))
 	{
@@ -315,7 +314,8 @@ void Chart::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)
 void Chart::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 {
 	m_tickerBox.OnLButtonUp(cursor, wParam);
-	// ProcessCTPMessages(); // not needed
+	m_axes.OnLButtonUp(cursor, wParam);
+	ProcessCTPMessages();
 }
 
 bool Chart::OnChar(wchar_t c, LPARAM lParam)
@@ -366,6 +366,12 @@ void Chart::ProcessCTPMessages()
 			DrawCurrentState();
 			break;
 		}
+		case CTPMessage::MOUSE_CAPTURED: // From children, forward to Parthenos
+			m_parent->PostClientMessage(msg);
+			break;
+		case CTPMessage::AXES_SELECTION:
+			// TODO
+			break;
 		case CTPMessage::TEXTBOX_DEACTIVATED:
 		case CTPMessage::BUTTON_DOWN:
 		default:

@@ -118,14 +118,27 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 {
 	if (!m_ismade) Make();
 
+	// Background
+	m_d2.pBrush->SetColor(Colors::AXES_BACKGROUND);
+	m_d2.pD2DContext->FillRectangle(m_dipRect, m_d2.pBrush);
+
+	// Selection
+	if (m_select && m_selectStart >= 0 && m_selectEnd != m_selectStart)
+	{
+		m_d2.pBrush->SetColor(Colors::MAIN_BACKGROUND);
+		m_d2.pD2DContext->FillRectangle(
+			D2D1::RectF(
+				(m_selectStart < m_selectEnd) ? XtoDIP(m_selectStart) : XtoDIP(m_selectEnd),
+				m_axesRect.top,
+				(m_selectStart < m_selectEnd) ? XtoDIP(m_selectEnd) : XtoDIP(m_selectStart),
+				m_axesRect.bottom
+			),
+			m_d2.pBrush
+		);
+	}
+
 	// Cached bitmap
 	if (m_primaryCache) m_d2.pD2DContext->DrawBitmap(m_primaryCache.Get());
-	else // can occur if axes are cleared without setting new data
-	{
-		// Background
-		m_d2.pBrush->SetColor(Colors::AXES_BACKGROUND);
-		m_d2.pD2DContext->FillRectangle(m_dipRect, m_d2.pBrush);
-	}
 
 	// Ancillary graphs
 	for (Graph* const & graph : m_graphObjects[nGraphGroups - 1])
@@ -190,83 +203,70 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 
 bool Axes::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 {
-	if (handeled || m_hoverStyle == HoverStyle::none || m_nPoints == 0 ||
-		!inRect(cursor, m_axesRect))
+	bool invalidate = false;
+
+	// Get x position
+	int x = static_cast<int>(round(DIPtoX(cursor.x))); // all x values are [0, n)
+	if (x < 0) x = 0; // occurs from padding so that xmin < 0
+	else if (x > (int)m_nPoints - 1) x = (int)m_nPoints - 1;
+
+	// Selection
+	if (m_select && m_selectStart >= 0 && m_selectEnd != x)
+	{
+		m_selectEnd = x;
+		invalidate = true;
+	}
+
+	// Hover text
+	if (handeled || m_nPoints == 0 || m_hoverStyle == HoverStyle::none || !inRect(cursor, m_axesRect))
 	{
 		if (m_hoverOn >= 0)
 		{
 			m_hoverOn = -1;
-			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+			invalidate = true;
 		}
-		return false;
 	}
-
-	// Get x position
-	double n = static_cast<double>(m_nPoints);
-	double x = round(DIPtoX(cursor.x)); // all x values are [0, n)
-	if (x < 0) x = 0; // occurs from padding so that xmin < 0
-	else if (x > n - 1) x = n - 1;
-	size_t xind = static_cast<size_t>(x); 
-	m_hoverLoc = cursor;
-	m_hoverLoc.x = XtoDIP(x);
-
-	if (m_hoverOn != (int)xind || m_hoverStyle == HoverStyle::crosshairs) 
+	else
 	{
-		// Calculate new text and layout
-		m_hoverOn = (int)xind;
-		std::wstring xlabel, ylabel;
-
-		// Get x label
-		if (xind < m_userXLabels.size()) xlabel = m_userXLabels[xind];
-		else if (xind < m_dates.size()) xlabel = DateToWString(m_dates[xind]);
-
-		// Get y label (and adjust crosshairs for HoverStyle::snap) from first graph object
-		ylabel = (m_hoverStyle == HoverStyle::snap) ? m_graphObjects[0][0]->GetYLabel(xind) : std::to_wstring(DIPtoY(cursor.y));
-
-		// Make layout
-		std::wstring label = xlabel + L"\n" + ylabel;
-		SafeRelease(&m_hoverLayout);
-		m_d2.pTextFormats[D2Objects::Formats::Segoe12]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
-		HRESULT hr = m_d2.pDWriteFactory->CreateTextLayout(
-			label.c_str(),	// The string to be laid out and formatted.
-			label.size(),	// The length of the string.
-			m_d2.pTextFormats[D2Objects::Formats::Segoe12],	// The text format to apply to the string
-			200.0f,			// The width of the layout box.
-			200.0f,			// The height of the layout box.
-			&m_hoverLayout	// The IDWriteTextLayout interface pointer.
-		);
-		m_d2.pTextFormats[D2Objects::Formats::Segoe12]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+		m_hoverLoc = cursor;
+		m_hoverLoc.x = XtoDIP(x);
+		CreateHoverText(static_cast<size_t>(x), cursor);
+		handeled = true;
+		invalidate = true;
 	}
+	
+	if (invalidate) ::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+	return handeled;
+}
 
-	// Calculate bounding box
-	if (m_hoverLayout)
+bool Axes::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
+{
+	if (!handeled && m_select && inRect(cursor, m_axesRect))
 	{
-		DWRITE_TEXT_METRICS metrics;
-		m_hoverLayout->GetMetrics(&metrics);
-		if (cursor.x + metrics.width + 10.0f > m_dipRect.right) // go left of cursor
-		{
-			m_hoverRect.left = cursor.x - metrics.width - 2.0f * m_labelPad;
-			m_hoverRect.right = cursor.x;
-		}
-		else
-		{
-			m_hoverRect.left = cursor.x;
-			m_hoverRect.right = cursor.x + metrics.width + 2.0f * m_labelPad;
-		}
-		if (cursor.y + metrics.height + 20.0f > m_dipRect.bottom) // go above cursor
-		{
-			m_hoverRect.top = cursor.y - (metrics.height + 2.0f * m_labelPad);
-			m_hoverRect.bottom = cursor.y;
-		}
-		else
-		{
-			m_hoverRect.top = cursor.y + 12.0f; // TODO height of cursor?
-			m_hoverRect.bottom = cursor.y + 12.0f + metrics.height + 2.0f * m_labelPad;
-		}
+		m_selectStart = static_cast<int>(round(DIPtoX(cursor.x))); // all x values are [0, n)
+		if (m_selectStart < 0) m_selectStart = 0; // occurs from padding so that xmin < 0
+		else if (m_selectStart > (int)m_nPoints - 1) m_selectStart = (int)m_nPoints - 1;
+		m_selectEnd = m_selectStart;
+		m_parent->PostClientMessage(this, L"", CTPMessage::MOUSE_CAPTURED, 1); // should forward to parthenos
+		return true;
 	}
+	else if (m_selectStart >= 0)
+	{
+		m_selectStart = -1;
+	}
+	return false;
+}
 
-	::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
-	return true;
+void Axes::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
+{
+	if (m_select && m_selectStart >= 0)
+	{
+		m_selectStart = -1;
+		m_parent->SendClientMessage(this, L"", CTPMessage::MOUSE_CAPTURED, -1);
+		if (m_selectEnd != m_selectStart)
+			m_parent->SendClientMessage(this, L"", CTPMessage::AXES_SELECTION, m_selectStart, m_selectEnd);
+		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+	}
 }
 
 void Axes::Candlestick(std::vector<OHLC> const & ohlc, GraphGroup group)
@@ -333,7 +333,6 @@ void Axes::Candlestick(std::vector<OHLC> const & ohlc, GraphGroup group)
 	m_ismade = false;
 }
 
-
 void Axes::Line(std::vector<date_t> const & dates, std::vector<double> const & ydata, LineProps props, GraphGroup group)
 {
 	size_t n = dates.size();
@@ -390,7 +389,6 @@ void Axes::Line(std::vector<date_t> const & dates, std::vector<double> const & y
 	m_graphObjects[group].push_back(graph);
 	m_ismade = false;
 }
-
 
 void Axes::Bar(std::vector<std::pair<double, D2D1_COLOR_F>> const & data, 
 	std::vector<std::wstring> const & labels, GraphGroup group, size_t offset)
@@ -681,7 +679,7 @@ void Axes::CalculateYTicks()
 	}
 }
 
-// Creates the cached image containing the background, graph groups 0 and 1, the title, 
+// Creates the cached image containing graph groups 0 and 1, the title, 
 // gridlines, and axes labels.
 // Does not contain graph group 2, the actual axes lines (need to be painted on top), 
 // or the hover artifacts.
@@ -717,10 +715,6 @@ void Axes::CreateCachedImage()
 	// Render static content to the sceneBitmap.
 	m_d2.pD2DContext->SetTarget(m_primaryCache.Get());
 	m_d2.pD2DContext->BeginDraw();
-
-	// Background
-	m_d2.pBrush->SetColor(Colors::AXES_BACKGROUND);
-	m_d2.pD2DContext->FillRectangle(m_dipRect, m_d2.pBrush);
 
 	// Grid lines
 	m_d2.pBrush->SetColor(Colors::DULL_LINE);
@@ -857,6 +851,65 @@ void Axes::CreateXMarker()
 
 		hr = pSink->Close();
 	}
+}
+
+void Axes::CreateHoverText(size_t xind, D2D1_POINT_2F cursor)
+{
+	if (m_hoverOn != (int)xind || m_hoverStyle == HoverStyle::crosshairs)
+	{
+		// Calculate new text and layout
+		m_hoverOn = (int)xind;
+		std::wstring xlabel, ylabel;
+
+		// Get x label
+		if (xind < m_userXLabels.size()) xlabel = m_userXLabels[xind];
+		else if (xind < m_dates.size()) xlabel = DateToWString(m_dates[xind]);
+
+		// Get y label (and adjust crosshairs for HoverStyle::snap) from first graph object
+		ylabel = (m_hoverStyle == HoverStyle::snap) ? m_graphObjects[0][0]->GetYLabel(xind) : std::to_wstring(DIPtoY(cursor.y));
+
+		// Make layout
+		std::wstring label = xlabel + L"\n" + ylabel;
+		SafeRelease(&m_hoverLayout);
+		m_d2.pTextFormats[D2Objects::Formats::Segoe12]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
+		HRESULT hr = m_d2.pDWriteFactory->CreateTextLayout(
+			label.c_str(),	// The string to be laid out and formatted.
+			label.size(),	// The length of the string.
+			m_d2.pTextFormats[D2Objects::Formats::Segoe12],	// The text format to apply to the string
+			200.0f,			// The width of the layout box.
+			200.0f,			// The height of the layout box.
+			&m_hoverLayout	// The IDWriteTextLayout interface pointer.
+		);
+		m_d2.pTextFormats[D2Objects::Formats::Segoe12]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+	}
+
+	// Calculate bounding box
+	if (m_hoverLayout)
+	{
+		DWRITE_TEXT_METRICS metrics;
+		m_hoverLayout->GetMetrics(&metrics);
+		if (cursor.x + metrics.width + 10.0f > m_dipRect.right) // go left of cursor
+		{
+			m_hoverRect.left = cursor.x - metrics.width - 2.0f * m_labelPad;
+			m_hoverRect.right = cursor.x;
+		}
+		else
+		{
+			m_hoverRect.left = cursor.x;
+			m_hoverRect.right = cursor.x + metrics.width + 2.0f * m_labelPad;
+		}
+		if (cursor.y + metrics.height + 20.0f > m_dipRect.bottom) // go above cursor
+		{
+			m_hoverRect.top = cursor.y - (metrics.height + 2.0f * m_labelPad);
+			m_hoverRect.bottom = cursor.y;
+		}
+		else
+		{
+			m_hoverRect.top = cursor.y + 12.0f; // TODO height of cursor?
+			m_hoverRect.bottom = cursor.y + 12.0f + metrics.height + 2.0f * m_labelPad;
+		}
+	}
+
 }
 
 ///////////////////////////////////////////////////////////
