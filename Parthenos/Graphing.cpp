@@ -261,10 +261,12 @@ void Axes::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 {
 	if (m_select && m_selectStart >= 0)
 	{
-		m_selectStart = -1;
 		m_parent->SendClientMessage(this, L"", CTPMessage::MOUSE_CAPTURED, -1);
-		if (m_selectEnd != m_selectStart)
+		if (m_selectStart < m_selectEnd)
 			m_parent->SendClientMessage(this, L"", CTPMessage::AXES_SELECTION, m_selectStart, m_selectEnd);
+		else if (m_selectStart > m_selectEnd)
+			m_parent->SendClientMessage(this, L"", CTPMessage::AXES_SELECTION, m_selectEnd, m_selectStart);
+		m_selectStart = -1;
 		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 	}
 }

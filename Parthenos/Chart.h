@@ -14,7 +14,7 @@ class Chart : public AppItem
 public:
 	// Enums
 	enum class MainChartType { none, line, candlestick, envelope };
-	enum class Timeframe { none, month1, month3, month6, year1, year2, year5 };
+	enum class Timeframe { none, month1, month3, month6, year1, year2, year5, custom };
 	enum Markers : size_t { MARK_HISTORY, MARK_NMARKERS };
 
 	// AppItem overrides
@@ -50,6 +50,8 @@ private:
 	std::wstring		m_ticker;
 	MainChartType		m_currentMChart = MainChartType::none;
 	Timeframe			m_currentTimeframe = Timeframe::none;
+	date_t				m_startDate; // for custom timeframe
+	date_t				m_endDate;
 	bool				m_markerActive[MARK_NMARKERS] = {};
 
 	// Data

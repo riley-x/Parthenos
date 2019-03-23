@@ -370,8 +370,18 @@ void Chart::ProcessCTPMessages()
 			m_parent->PostClientMessage(msg);
 			break;
 		case CTPMessage::AXES_SELECTION:
-			// TODO
+		{
+			size_t iCurrStart = FindDateOHLC(m_ohlc, m_startDate);
+			size_t iNewStart = iCurrStart + (size_t)msg.iData;
+			size_t iNewEnd = iCurrStart + (size_t)msg.dData;
+			if (iNewStart >= m_ohlc.size() || iNewEnd >= m_ohlc.size()) break;
+
+			m_currentTimeframe = Timeframe::custom;
+			m_startDate = m_ohlc[iNewStart].date;
+			m_endDate = m_ohlc[iNewEnd].date;
+			DrawCurrentState();
 			break;
+		}
 		case CTPMessage::TEXTBOX_DEACTIVATED:
 		case CTPMessage::BUTTON_DOWN:
 		default:
@@ -427,11 +437,29 @@ void Chart::DrawMainChart(MainChartType type, Timeframe timeframe)
 	m_currentMChart = type;
 
 	std::vector<OHLC>::iterator start = m_ohlc.begin();
-	int n = FindStart(timeframe, start);
-	if (n <= 0)
+	int n = 0;
+	if (timeframe == Timeframe::custom)
 	{
-		InvalidateRect(m_hwnd, &m_pixRect, FALSE); // so button clicks still appear
-		return;
+		size_t iStart = FindDateOHLC(m_ohlc, m_startDate);
+		size_t iEnd = FindDateOHLC(m_ohlc, m_endDate);
+		if (iStart >= m_ohlc.size() || iEnd >= m_ohlc.size())
+		{
+			InvalidateRect(m_hwnd, &m_pixRect, FALSE); // so button clicks still appear
+			return;
+		}
+		start += iStart;
+		n = iEnd - iStart + 1; // inclusive
+	}
+	else
+	{
+		n = FindStart(timeframe, start);
+		if (n <= 0)
+		{
+			InvalidateRect(m_hwnd, &m_pixRect, FALSE); // so button clicks still appear
+			return;
+		}
+		m_startDate = start->date;
+		m_endDate = m_ohlc.back().date;
 	}
 
 	switch (type)
