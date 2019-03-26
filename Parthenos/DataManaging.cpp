@@ -941,8 +941,11 @@ std::vector<OHLC> parseAlphaChart(std::string json, date_t latestDate)
 	while (end != std::string::npos)
 	{
 		OHLC temp = parseAlphaChartItem(json.substr(start, end - start));
-		if ((latestDate == 0 || temp.date > latestDate) && !(temp.date == refreshDate && hour < 16))
-			out.push_back(temp);
+		if (latestDate == 0 || temp.date > latestDate)
+		{
+			if (!(temp.date == refreshDate && hour < 16))
+				out.push_back(temp);
+		}
 		else // done reading new data
 			return out;
 		start = end + delim.length();
