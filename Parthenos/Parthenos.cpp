@@ -402,6 +402,7 @@ void Parthenos::AddTransaction(Transaction t)
 
 	// Update data
 	m_tickers = GetTickers(holdings);
+	m_tickerColors = Colors::Randomizer(m_tickers);
 	m_stats = GetBatchQuoteStats(m_tickers);
 	m_accounts[t.account].positions = HoldingsToPositions(holdings, t.account, GetCurrentDate(), GetMarketPrices(m_stats));
 	m_accounts.back().positions = HoldingsToPositions(holdings, -1, GetCurrentDate(), GetMarketPrices(m_stats)); // all accounts
