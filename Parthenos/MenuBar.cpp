@@ -126,6 +126,14 @@ void MenuBar::SetMenus(std::vector<std::wstring> const & menus,
 	}
 }
 
+void MenuBar::SetMenuItems(size_t i, std::vector<std::wstring> const & items, std::vector<size_t> const & divisions)
+{
+	if (i >= m_buttons.size()) return;
+
+	m_buttons[i]->SetItems(items);
+	m_buttons[i]->GetMenu().SetDivisions(divisions);
+}
+
 void MenuBar::Refresh()
 {
 	float left = m_dipRect.left;

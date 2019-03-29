@@ -120,8 +120,6 @@ void PopupMenu::Show(bool show)
 // Creates the text layout and calculates the width and height of the menu
 void PopupMenu::SetItems(std::vector<std::wstring> const & items)
 {
-	if (m_items.size() > 0) return; // only set once
-
 	m_items = items;
 	for (auto x : m_pTextLayouts) SafeRelease(&x);
 	m_pTextLayouts.resize(items.size());
@@ -150,6 +148,8 @@ void PopupMenu::SetItems(std::vector<std::wstring> const & items)
 
 	m_width = 50.0f * ceil((max_width + 20.0f) / 50.0f); // 20 DIP pad
 	m_height = getTop(items.size());
+	m_dipRect.right = m_dipRect.left + m_width;
+	m_dipRect.bottom = m_dipRect.top + m_height;
 }
 
 void PopupMenu::SetDivisions(std::vector<size_t> const & divs)

@@ -91,6 +91,7 @@ private:
 
 	// Data management
 	void InitData();
+	void InitRealtimeData();
 	int AccountToIndex(std::wstring account);
 	NestedHoldings CalculateHoldings() const;
 	void CalculatePositions(NestedHoldings const & holdings);
@@ -100,7 +101,7 @@ private:
 
 	// Child management
 	void InitItems();
-	void InitItemsWithData();
+	void InitItemsWithRealtimeData();
 	void ProcessCTPMessages();
 	void ProcessMenuMessage(bool & pop_front);
 	D2D1_RECT_F CalculateItemRect(AppItem* item, D2D1_RECT_F const & dipRect);

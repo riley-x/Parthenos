@@ -21,6 +21,7 @@ public:
 	void SetMenus(std::vector<std::wstring> const & menus, 
 		std::vector<std::vector<std::wstring>> const & items,
 		std::vector<std::vector<size_t>> const & divisions);
+	void SetMenuItems(size_t i, std::vector<std::wstring> const & items, std::vector<size_t> const & divisions);
 	void Refresh();
 
 private:

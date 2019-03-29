@@ -163,20 +163,17 @@ void Parthenos::PreShow()
 		item->SetSize(CalculateItemRect(item, dipRect));
 
 	try {
-		// Get account names, calculate positions, get stats, etc.
-		InitData();
+		// Calculate positions, get stats, etc.
+		InitRealtimeData();
 
 		// Data dependent initializations
-		InitItemsWithData();
+		InitItemsWithRealtimeData();
 	}
 	catch (const std::exception & e) {
 		std::wstring out = SPrintException(e);
 		if (m_msgBox) m_msgBox->Print(out);
 		else OutputDebugString(out.c_str());
 	}
-
-	// Size-dependent initializations
-	m_chart->Draw(L"AAPL");
 }
 
 
@@ -189,6 +186,15 @@ void Parthenos::InitData()
 	m_accountNames = { L"Robinhood", L"Arista" };
 	m_currAccount = 0;
 
+	m_accounts.resize(m_accountNames.size() + 1);
+	for (size_t i = 0; i < m_accountNames.size(); i++)
+		m_accounts[i].name = m_accountNames[i];
+	m_accounts.back().name = L"All Accounts";
+}
+
+// Data initializations dependent on realtime data (i.e. requires HTTP GET).
+void Parthenos::InitRealtimeData()
+{
 	// Read Holdings
 	FileIO holdingsFile;
 	holdingsFile.Init(ROOTDIR + L"port.hold");
@@ -198,14 +204,9 @@ void Parthenos::InitData()
 	NestedHoldings holdings = FlattenedHoldingsToTickers(out);
 
 	// Populate data members
-	m_tickers = GetTickers(holdings); // all tickers
+	m_tickers = GetTickers(holdings); // tickers from all accounts
 	m_tickerColors = Colors::Randomizer(m_tickers);
 	m_stats = GetBatchQuoteStats(m_tickers);
-
-	m_accounts.resize(m_accountNames.size() + 1);
-	for (size_t i = 0; i < m_accountNames.size(); i++)
-		m_accounts[i].name = m_accountNames[i];
-	m_accounts.back().name = L"All Accounts";
 
 	CalculatePositions(holdings);
 	CalculateReturns();
@@ -321,8 +322,13 @@ void Parthenos::CalculateHistories()
 		else // assumes that holdings haven't changed since last update (add transaction will properly invalidate history)
 		{
 			portHist = histFile.Read<TimeSeries>();
-			UpdateEquityHistory(portHist, acc.positions, m_stats); 
-			histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
+			try { // non-critical fail here - just show not up-to-date history
+				UpdateEquityHistory(portHist, acc.positions, m_stats);
+				histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
+			}
+			catch (const std::exception & e) {
+				if (m_msgBox) m_msgBox->Print(SPrintException(e));
+			}
 		}
 		histFile.Close();
 
@@ -447,9 +453,32 @@ void Parthenos::AddTransaction(Transaction t)
 // Size independent initializations
 void Parthenos::InitItems()
 {
+	// Title bar
 	m_titleBar->SetTabs({ L"Portfolio", L"Returns", L"Chart" });
 	m_titleBar->SetActive(L"Chart");
 
+	// Menu bar
+	std::vector<std::wstring> menus = { L"File", L"Account", L"Transactions", L"Stocks" };
+	std::vector<std::vector<std::wstring>> items = {
+		{ L"Print Transaction History", L"Print Holdings", L"Print Equity History", L"Update Last Equity History Entry" },
+		m_accountNames, // Add "All Accounts" below
+		{ L"Add...", L"Recalculate All" },
+		{ L"Print OHLC", L"Delete Last OHLC Entry" }
+	};
+	items[1].push_back(L"All Accounts");
+	std::vector<std::vector<size_t>> divisions = { {3}, {m_accountNames.size()}, {}, {} };
+	m_menuBar->SetMenus(menus, items, divisions);
+	m_menuBar->Refresh();
+
+	// Load transaction history into chart
+	FileIO transFile;
+	transFile.Init(ROOTDIR + L"hist.trans");
+	transFile.Open(GENERIC_READ);
+	std::vector<Transaction> trans = transFile.Read<Transaction>();
+	transFile.Close();
+	m_chart->LoadHistory(trans);
+
+	// Watchlists
 	std::vector<Column> portColumns = {
 		{60.0f, Column::Ticker, L""},
 		{60.0f, Column::Last, L"%.2lf"},
@@ -465,6 +494,7 @@ void Parthenos::InitItems()
 	m_watchlist->SetColumns(); // use defaults
 	m_portfolioList->SetColumns(portColumns);
 
+	// Returns plots
 	m_returnsAxes->SetXAxisPos(0.0f);
 	m_returnsAxes->SetYAxisPos(std::nanf(""));
 	m_returnsAxes->SetHoverStyle(Axes::HoverStyle::snap);
@@ -473,33 +503,11 @@ void Parthenos::InitItems()
 	m_returnsPercAxes->SetHoverStyle(Axes::HoverStyle::snap);
 	m_eqHistoryAxes->SetYAxisPos(std::nanf(""));
 	m_eqHistoryAxes->SetHoverStyle(Axes::HoverStyle::snap);
-
 }
 
-void Parthenos::InitItemsWithData()
+// Item initializations dependent on realtime data (i.e. requires HTTP GET).
+void Parthenos::InitItemsWithRealtimeData()
 {
-	// Menu bar
-	std::vector<std::wstring> menus = { L"File", L"Account", L"Transactions", L"Stocks" };
-	std::vector<std::vector<std::wstring>> items = {
-		{ L"Print Transaction History", L"Print Holdings", L"Print Equity History", L"Update Last Equity History Entry" },
-		m_accountNames, // Add "all" below
-		{ L"Add...", L"Recalculate All" },
-		{ L"Print OHLC", L"Delete Last OHLC Entry" }
-	};
-	items[1].push_back(L"All Accounts");
-	std::vector<std::vector<size_t>> divisions = { {3}, {m_accountNames.size()}, {}, {} };
-
-	m_menuBar->SetMenus(menus, items, divisions);
-	m_menuBar->Refresh();
-
-	// Load transaction history into chart
-	FileIO transFile;
-	transFile.Init(ROOTDIR + L"hist.trans");
-	transFile.Open(GENERIC_READ);
-	std::vector<Transaction> trans = transFile.Read<Transaction>();
-	transFile.Close();
-	m_chart->LoadHistory(trans);
-
 	// Set initial watchlist and load portfolio trackers
 	if ((size_t)m_currAccount < m_accounts.size())
 	{
@@ -509,6 +517,9 @@ void Parthenos::InitItemsWithData()
 		m_watchlist->Refresh();
 		UpdatePortfolioPlotters(m_currAccount, false);
 	}
+
+	// Initial chart
+	m_chart->Draw(L"AAPL");
 }
 
 void Parthenos::ProcessCTPMessages()
@@ -1116,6 +1127,9 @@ LRESULT Parthenos::OnCreate()
 	m_activeItems.push_back(m_titleBar);
 	m_activeItems.push_back(m_chart);
 	m_activeItems.push_back(m_watchlist);
+
+	// Get account names, etc.
+	InitData();
 
 	// Initialize AppItems
 	InitItems();
