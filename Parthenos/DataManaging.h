@@ -174,6 +174,21 @@ inline bool isShort(TransactionType type)
 	}
 }
 
+inline std::wstring OptToLetter(TransactionType type)
+{
+	switch (type)
+	{
+	case TransactionType::CallLong:
+	case TransactionType::CallShort:
+		return L"C";
+	case TransactionType::PutShort:
+	case TransactionType::PutLong:
+		return L"P";
+	default:
+		return L"";
+	}
+}
+
 typedef struct Transaction_struct
 {
 	char account;				// 1
@@ -233,8 +248,9 @@ typedef struct Option_struct
 	float RESERVED;
 	// 32 bytes
 
-	inline std::wstring to_wstring() const
+	inline std::wstring to_wstring(bool dump = false) const
 	{
+		if (!dump) return OptToLetter(type) + FormatMsg(L"%.2f-%u", strike, date);
 		return L"type: "		+ std::to_wstring(static_cast<int>(type))
 			+ L", n: "			+ std::to_wstring(n)
 			+ L", date: "		+ DateToWString(date)
@@ -352,7 +368,7 @@ typedef struct Position_struct
 	double marketPrice;		// for CASH, cash from transfers
 	double realized_held;	// == sum_lots ( lot.realized ), shares only. For CASH, cash from interest
 	double realized_unheld; // == head.sumReal + proceeds of any open option positions. For CASH, net cash from transactions
-	double unrealized;
+	double unrealized;		// includes intrinsic value gain(long) / loss(short) from options
 	double APY;
 	std::wstring ticker;
 	std::vector<Option> options; // p/l already included in above, but useful to keep around
@@ -418,6 +434,14 @@ inline std::pair<double, double> GetCash(std::vector<Position> const & positions
 			return { x.marketPrice + x.realized_held + x.realized_unheld, x.marketPrice };
 	}
 	return { 0, 0 };
+}
+
+inline std::vector<std::vector<Option>> GetOptions(std::vector<Position> const & positions)
+{
+	std::vector<std::vector<Option>> out;
+	out.reserve(positions.size() - 1);
+	for (auto const & x : positions) if (x.ticker != L"CASH") out.push_back(x.options);
+	return out;
 }
 
 

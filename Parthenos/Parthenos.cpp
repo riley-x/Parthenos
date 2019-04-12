@@ -935,15 +935,63 @@ inline std::wstring MakeLongLabel(std::wstring const & ticker, double val, doubl
 
 void Parthenos::LoadPieChart()
 {
-	Account const & acc = m_accounts[m_currAccount];
-	std::vector<double> market_values = GetMarketValues(acc.positions);
-	std::vector<std::wstring> tickers = GetTickers(acc.positions);
-	std::vector<D2D1_COLOR_F> colors = FilterByKeyMatch(m_tickers, m_tickerColors, tickers);
+	struct Collat
+	{
+		size_t i; // index into tickers
+		std::wstring name;
+		double value;
+		D2D1_COLOR_F color;
+	} temp_collat;
 
+	double cash = 0.0;
+	std::vector<std::wstring> tickers;
+	std::vector<double> equities;
+	std::vector<D2D1_COLOR_F> colors;
+	std::vector<Collat> collaterals;
+
+	Account const & acc = m_accounts[m_currAccount];
+	for (Position const & p : acc.positions)
+	{
+		if (p.ticker == L"CASH")
+		{
+			cash = p.marketPrice + p.realized_held + p.realized_unheld;
+			continue;
+		}
+
+		tickers.push_back(p.ticker);
+		equities.push_back(p.n * p.marketPrice);
+		colors.push_back(KeyMatch(m_tickers, m_tickerColors, p.ticker));
+
+		for (Option const & opt : p.options)
+		{
+			if (isShort(opt.type))
+			{
+				temp_collat.i = (opt.type == TransactionType::PutShort) ? -1 : tickers.size() - 1; // TODO not necc. if long options too
+				temp_collat.name = p.ticker + L"-" + opt.to_wstring();
+				temp_collat.value = (opt.type == TransactionType::PutShort) ? opt.strike * opt.n : p.marketPrice * opt.n;
+				temp_collat.color = KeyMatch(m_tickers, m_tickerColors, p.ticker);
+				collaterals.push_back(temp_collat);
+			}
+			else
+			{
+				tickers.push_back(p.ticker + L"-" + opt.to_wstring());
+				equities.push_back(opt.price * opt.n + GetIntrinsicValue(opt, p.marketPrice));
+				colors.push_back(Colors::Randomizer(tickers.back()));
+			}
+		}
+	}
+
+	// Pie inputs
 	std::vector<double> data; 
 	std::vector<std::wstring> short_labels;
 	std::vector<std::wstring> long_labels;
 	std::vector<D2D1_COLOR_F> wedge_colors;
+
+	// Slider inputs
+	std::vector<size_t> slider_pos;
+	std::vector<double> slider_vals;
+	std::vector<std::wstring> slider_labels;
+	std::vector<D2D1_COLOR_F> slider_colors;
 
 	data.reserve(tickers.size() + 1); // Add one for cash
 	short_labels.reserve(tickers.size() + 1);
@@ -951,9 +999,8 @@ void Parthenos::LoadPieChart()
 	wedge_colors.reserve(tickers.size() + 1);
 
 	// Get total equity
-	double sum = std::accumulate(market_values.begin(), market_values.end(), 0.0);
-	std::pair<double, double> cash = GetCash(acc.positions);
-	sum += cash.first;
+	double sum = std::accumulate(equities.begin(), equities.end(), 0.0);
+	sum += cash;
 
 	// Default long label
 	wchar_t buffer[100];
@@ -961,11 +1008,11 @@ void Parthenos::LoadPieChart()
 	long_labels.push_back(std::wstring(buffer));
 
 	// Sort by market value
-	std::vector<size_t> inds = sort_indexes(market_values, std::greater<>{});
-	for (size_t i = 0; i < market_values.size(); i++)
+	std::vector<size_t> inds = sort_indexes(equities, std::greater<>{});
+	for (size_t i = 0; i < equities.size(); i++)
 	{
-		if (market_values[inds[i]] <= 0.01) break;
-		double value = market_values[inds[i]];
+		if (equities[inds[i]] <= 0.01) break;
+		double value = equities[inds[i]];
 		std::wstring ticker = tickers[inds[i]];
 
 		data.push_back(value);
@@ -974,13 +1021,26 @@ void Parthenos::LoadPieChart()
 		wedge_colors.push_back(colors[inds[i]]);
 	}
 
+	// Sliders
+	std::sort(collaterals.begin(), collaterals.end(),
+		[](Collat const & c1, Collat const & c2) {return c1.i < c2.i; });
+	for (Collat const & x : collaterals)
+	{
+		if (x.i == -1) slider_pos.push_back(data.size()); // cash collateral
+		else slider_pos.push_back(inds[x.i]);
+		slider_vals.push_back(x.value);
+		slider_labels.push_back(MakeLongLabel(x.name, x.value, 100.0 * x.value / sum));
+		slider_colors.push_back(x.color);
+	}
+
 	// Cash
-	data.push_back(cash.first);
+	data.push_back(cash);
 	short_labels.push_back(L"CASH");
-	long_labels.push_back(MakeLongLabel(L"CASH", cash.first, 100.0 * cash.first / sum));
+	long_labels.push_back(MakeLongLabel(L"CASH", cash, 100.0 * cash / sum));
 	wedge_colors.push_back(Colors::GREEN);
 
 	m_pieChart->Load(data, wedge_colors, short_labels, long_labels);
+	m_pieChart->LoadSliders(slider_pos, slider_vals, slider_colors, slider_labels);
 }
 
 // Updates all items that track the current account portfolio. 

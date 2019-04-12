@@ -4,6 +4,7 @@
 PieChart::~PieChart()
 {
 	for (auto x : m_wedges) SafeRelease(&x);
+	for (auto x : m_sliders) SafeRelease(&x);
 	for (auto x : m_shortLabelLayouts) SafeRelease(&x);
 	for (auto x : m_longLabelLayouts) SafeRelease(&x);
 }
@@ -34,20 +35,20 @@ void PieChart::Paint(D2D1_RECT_F updateRect)
 	m_d2.pD2DContext->FillRectangle(m_dipRect, m_d2.pBrush);
 
 	// Wedges
-	float offset_angle = 0.0f;
-	for (size_t i = 0; i < m_angles.size(); i++)
-	{
-		PaintWedge(m_wedges[i], offset_angle, m_colors[i]);
-		offset_angle += m_angles[i];
-	}
+	for (size_t i = 0; i < m_wedges.size(); i++)
+		PaintWedge(m_wedges[i], m_angles[i], m_colors[i]);
+
+	// Sliders
+	for (size_t i = 0; i < m_sliders.size(); i++)
+		PaintWedge(m_sliders[i], m_sliderPos[i].first, m_sliderColors[i]);
 	m_d2.pD2DContext->SetTransform(D2D1::Matrix3x2F::Identity());
+
 
 	// Borders (this is cleaner than drawing the geometry borders)
 	m_d2.pBrush->SetColor(m_borderColor);
-	offset_angle = 0.0f;
 	for (size_t i = 0; i < m_angles.size(); i++)
 	{
-		float offset_radians = static_cast<float>(M_PI / 180.0 * offset_angle);
+		float offset_radians = static_cast<float>(M_PI / 180.0 * m_angles[i]);
 		float x = m_trueRadius * sin(offset_radians);
 		float y = m_trueRadius * -cos(offset_radians);
 		m_d2.pD2DContext->DrawLine(
@@ -55,7 +56,6 @@ void PieChart::Paint(D2D1_RECT_F updateRect)
 			D2D1::Point2F(m_center.x + m_outerRadius * x, m_center.y + m_outerRadius * y),
 			m_d2.pBrush, 2.0f
 		);
-		offset_angle += m_angles[i];
 	}
 	m_d2.pD2DContext->DrawEllipse(
 		D2D1::Ellipse(m_center, m_trueRadius * m_innerRadius, m_trueRadius * m_innerRadius), 
@@ -68,12 +68,11 @@ void PieChart::Paint(D2D1_RECT_F updateRect)
 
 	// Short labels
 	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
-	offset_angle = 0.0f;
 	for (size_t i = 0; i < m_angles.size(); i++)
 	{
-		if (m_angles[i] >= 5.0f)
+		if (m_widths[i] >= 5.0f)
 		{
-			float center_angle = static_cast<float>(M_PI / 180.0 * (offset_angle + m_angles[i] / 2.0)); // radians
+			float center_angle = static_cast<float>(M_PI / 180.0 * (m_angles[i] + m_widths[i] / 2.0)); // radians
 			float center_r = m_trueRadius * (m_innerRadius + m_outerRadius) / 2.0f;
 			float center_x = center_r * sin(center_angle);
 			float center_y = -center_r * cos(center_angle);
@@ -84,7 +83,6 @@ void PieChart::Paint(D2D1_RECT_F updateRect)
 				m_d2.pBrush
 			);
 		}
-		offset_angle += m_angles[i];
 	}
 
 	// Long label
@@ -98,28 +96,52 @@ void PieChart::Paint(D2D1_RECT_F updateRect)
 bool PieChart::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 {
 	D2D1_POINT_2F point = D2D1::Point2F(cursor.x - m_center.x, cursor.y - m_center.y);
-	if (inRect(cursor, m_dipRect) && !handeled &&
-		!inRadius(point, m_trueRadius * m_innerRadius) && inRadius(point, m_trueRadius * m_outerRadius))
+	if (inRect(cursor, m_dipRect) && !handeled && inRadius(point, m_trueRadius * m_outerRadius)
+		&& !inRadius(point, m_trueRadius * m_sliderRadius))
 	{
 		float degree = std::atan2(point.x, -point.y) * 180.0f / (float)M_PI;
 		if (degree < 0) degree += 360.0f;
 
-		for (size_t i = 0; i < m_angles.size(); i++)
+		if (inRadius(point, m_trueRadius * m_innerRadius)) // slider
 		{
-			degree -= m_angles[i];
-			if (degree < 0)
+			for (size_t i = 0; i < m_sliderPos.size(); i++)
 			{
-				if (m_mouseOn != i)
+				if (degree >= m_sliderPos[i].first && degree <= m_sliderPos[i].second)
 				{
-					m_mouseOn = i;
-					::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+					if (m_mouseOn != m_wedges.size() + i)
+					{
+						m_mouseOn = m_wedges.size() + i;
+						::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+					}
+					return true;
 				}
-				break;
 			}
+			if (m_mouseOn >= 0) // not hovering over a slider
+			{
+				m_mouseOn = -1;
+				::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+			}
+			return false;
 		}
-		return true;
+		else // main wedges
+		{
+			for (size_t i = 0; i < m_widths.size(); i++)
+			{
+				degree -= m_widths[i];
+				if (degree < 0)
+				{
+					if (m_mouseOn != i)
+					{
+						m_mouseOn = i;
+						::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+					}
+					break;
+				}
+			}
+			return true;
+		}
 	}
-	else
+	else // not in pie
 	{
 		if (m_mouseOn >= 0)
 		{
@@ -143,21 +165,58 @@ void PieChart::Load(std::vector<double> const & data, std::vector<D2D1_COLOR_F> 
 
 	// Create the wedges
 	for (auto x : m_wedges) SafeRelease(&x);
+	m_widths.resize(data.size());
 	m_angles.resize(data.size());
 	m_wedges.resize(data.size());
 
-	double sum = std::accumulate(data.begin(), data.end(), 0.0);
+	m_sum = std::accumulate(data.begin(), data.end(), 0.0);
 	for (size_t i = 0; i < data.size(); i++)
 	{
-		m_angles[i] = static_cast<float>(360.0 * data[i] / sum);
-		CreateWedge(&m_wedges[i], static_cast<float>(2.0 * M_PI * data[i] / sum));
+		if (i == 0) m_angles[i] = 0;
+		else m_angles[i] = m_angles[i - 1] + m_widths[i - 1];
+		m_widths[i] = static_cast<float>(360.0 * data[i] / m_sum);
+		CreateWedge(&m_wedges[i], static_cast<float>(2.0 * M_PI * data[i] / m_sum));
 	}
 }
 
+void PieChart::LoadSliders(std::vector<size_t> const & positions, std::vector<double> const & sizes, 
+	std::vector<D2D1_COLOR_F> const & colors, std::vector<std::wstring> const & labels)
+{
+	if (sizes.size() != positions.size() || labels.size() != positions.size()
+		|| colors.size() != positions.size())
+		throw std::invalid_argument("PieChart::LoadSliders inconsistent argument lengths");
 
-void PieChart::CreateWedge(ID2D1PathGeometry ** ppGeometry, float radians)
+	m_sliderColors = colors;
+	m_longLabels.insert(m_longLabels.end(), labels.begin(), labels.end());
+
+	m_sliderPos.resize(positions.size());
+	for (auto x : m_sliders) SafeRelease(&x);
+	m_sliders.resize(positions.size());
+
+	size_t curr_ind = -1;
+	float curr_pos = 0;
+	for (size_t i = 0; i < positions.size(); i++)
+	{
+		if (positions[i] >= m_angles.size()) throw ws_exception(L"PieChart::LoadSliders invalid positions");
+
+		if (curr_ind != positions[i])
+		{
+			curr_ind = positions[i];
+			curr_pos = m_angles[positions[i]];
+		}
+		float end_pos = curr_pos + static_cast<float>(360.0 * sizes[i] / m_sum); 
+		m_sliderPos[i] = { curr_pos, end_pos }; 
+		curr_pos = end_pos;
+
+		CreateWedge(&m_sliders[i], static_cast<float>(2.0 * M_PI * sizes[i] / m_sum - .01), true); // -.01 == small border
+	}
+}
+
+void PieChart::CreateWedge(ID2D1PathGeometry ** ppGeometry, float radians, bool slider)
 {
 	ID2D1GeometrySink *pSink = NULL;
+	float r1 = (slider) ? m_sliderRadius : m_innerRadius; // smaller
+	float r2 = (slider) ? m_innerRadius : m_outerRadius;  // larger
 
 	HRESULT hr = m_d2.pFactory->CreatePathGeometry(ppGeometry);
 	if (SUCCEEDED(hr))
@@ -167,27 +226,32 @@ void PieChart::CreateWedge(ID2D1PathGeometry ** ppGeometry, float radians)
 	if (SUCCEEDED(hr))
 	{
 		pSink->SetFillMode(D2D1_FILL_MODE_WINDING);
-
+		
+		// Start on positive y-axis
 		pSink->BeginFigure(
-			D2D1::Point2F(0, -m_innerRadius), // Start on positive y-axis
+			D2D1::Point2F(0, -r1), 
 			D2D1_FIGURE_BEGIN_FILLED
 		);
+		// Edge up
 		pSink->AddLine(
-			D2D1::Point2F(0, -m_outerRadius)
+			D2D1::Point2F(0, -r2)
 		);
+		// Outer arc clockwise
 		pSink->AddArc(D2D1::ArcSegment(
-			D2D1::Point2F(m_outerRadius * sin(radians), -m_outerRadius * cos(radians)), // end point
-			D2D1::SizeF(m_outerRadius, m_outerRadius), // x,y radii
+			D2D1::Point2F(r2 * sin(radians), -r2 * cos(radians)), // end point
+			D2D1::SizeF(r2, r2), // x,y radii
 			0.0f, // rotation angle of ellipse axes
 			D2D1_SWEEP_DIRECTION_CLOCKWISE,
 			(radians > M_PI) ? D2D1_ARC_SIZE_LARGE : D2D1_ARC_SIZE_SMALL
 		));
+		// Edge in
 		pSink->AddLine(
-			D2D1::Point2F(m_innerRadius * sin(radians), -m_innerRadius * cos(radians))
+			D2D1::Point2F(r1 * sin(radians), -r1 * cos(radians))
 		);
+		// Inner arc counter-clockwise
 		pSink->AddArc(D2D1::ArcSegment(
-			D2D1::Point2F(0, -m_innerRadius), // end point
-			D2D1::SizeF(m_innerRadius, m_innerRadius), // x,y radii
+			D2D1::Point2F(0, -r1), // end point
+			D2D1::SizeF(r1, r1), // x,y radii
 			0.0f, // rotation angle of ellipse axes
 			D2D1_SWEEP_DIRECTION_COUNTER_CLOCKWISE,
 			(radians > M_PI) ? D2D1_ARC_SIZE_LARGE : D2D1_ARC_SIZE_SMALL
