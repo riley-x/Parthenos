@@ -935,6 +935,8 @@ inline std::wstring MakeLongLabel(std::wstring const & ticker, double val, doubl
 
 void Parthenos::LoadPieChart()
 {
+	// Get data, colors, etc. then sort into inputs to pie chart
+
 	struct Collat
 	{
 		size_t i; // index into tickers
@@ -964,12 +966,20 @@ void Parthenos::LoadPieChart()
 
 		for (Option const & opt : p.options)
 		{
-			if (isShort(opt.type))
+			if (opt.type == TransactionType::PutShort)
 			{
-				temp_collat.i = (opt.type == TransactionType::PutShort) ? -1 : tickers.size() - 1; // TODO not necc. if long options too
 				temp_collat.name = p.ticker + L"-" + opt.to_wstring();
-				temp_collat.value = (opt.type == TransactionType::PutShort) ? opt.strike * opt.n : p.marketPrice * opt.n;
+				temp_collat.i = -1;
+				temp_collat.value = opt.strike * opt.n;
 				temp_collat.color = KeyMatch(m_tickers, m_tickerColors, p.ticker);
+				collaterals.push_back(temp_collat);
+			}
+			else if (opt.type == TransactionType::CallShort)
+			{
+				temp_collat.name = p.ticker + L"-" + opt.to_wstring();
+				temp_collat.i = tickers.size() - 1; // TODO not necc. if long options too
+				temp_collat.value = p.marketPrice * opt.n;
+				temp_collat.color = Colors::RED;
 				collaterals.push_back(temp_collat);
 			}
 			else
@@ -981,26 +991,26 @@ void Parthenos::LoadPieChart()
 		}
 	}
 
+	// Get total equity
+	double sum = std::accumulate(equities.begin(), equities.end(), 0.0);
+	sum += cash;
+
 	// Pie inputs
 	std::vector<double> data; 
 	std::vector<std::wstring> short_labels;
 	std::vector<std::wstring> long_labels;
 	std::vector<D2D1_COLOR_F> wedge_colors;
 
-	// Slider inputs
-	std::vector<size_t> slider_pos;
-	std::vector<double> slider_vals;
-	std::vector<std::wstring> slider_labels;
-	std::vector<D2D1_COLOR_F> slider_colors;
-
 	data.reserve(tickers.size() + 1); // Add one for cash
 	short_labels.reserve(tickers.size() + 1);
 	long_labels.reserve(tickers.size() + 2); // Add another for default label
 	wedge_colors.reserve(tickers.size() + 1);
 
-	// Get total equity
-	double sum = std::accumulate(equities.begin(), equities.end(), 0.0);
-	sum += cash;
+	// Slider inputs
+	std::vector<size_t> slider_pos;
+	std::vector<double> slider_vals;
+	std::vector<std::wstring> slider_labels;
+	std::vector<D2D1_COLOR_F> slider_colors;
 
 	// Default long label
 	wchar_t buffer[100];
