@@ -692,8 +692,9 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const 
 					data = position->realized_held + position->realized_unheld + position->unrealized;
 				break;
 			case Column::ReturnsP:
-				if (position && position->n != 0)
-					data = (position->realized_held + position->unrealized) / (position->avgCost * position->n) * 100.0f;
+				if (position && (position->n > 0 || position->cash_collateral > 0))
+					data = (position->realized_held + position->unrealized) / 
+						(position->avgCost * position->n + position->cash_collateral) * 100.0f;
 				break;
 			case Column::APY:
 				if (position) data = position->APY * 100.0f;

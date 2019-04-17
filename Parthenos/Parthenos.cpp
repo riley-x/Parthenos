@@ -280,13 +280,18 @@ void Parthenos::CalculateReturns()
 		{
 			Position const & p = acc.positions[i];
 			if (p.ticker == L"CASH") continue;
-			double returns = p.realized_held + p.realized_unheld + p.unrealized;
-			double perc = (p.n == 0) ? 0.0 : (p.realized_held + p.unrealized) / (p.avgCost * p.n) * 100.0;
+			double returns = p.realized_held + p.realized_unheld + p.unrealized; 
+			double cost_basis = p.avgCost * p.n + p.cash_collateral;
+			double perc = (cost_basis == 0) ? 0.0 : (p.realized_held + p.unrealized) / cost_basis * 100.0; 
 			D2D1_COLOR_F color = KeyMatch(m_tickers, m_tickerColors, p.ticker);
 
 			acc.returnsBarData.push_back({ returns, color });
-			if (perc != 0) acc.returnsPercBarData.push_back({ perc, color });
 			acc.tickers.push_back(p.ticker);
+			if (perc != 0)
+			{
+				acc.returnsPercBarData.push_back({ perc, color });
+				acc.percTickers.push_back(p.ticker);
+			}
 		}
 	}
 }
@@ -1080,10 +1085,9 @@ void Parthenos::UpdatePortfolioPlotters(char account, bool init)
 	m_returnsAxes->Clear();
 	m_returnsPercAxes->Clear();
 	m_returnsAxes->SetXLabels(acc.tickers, false);
-	std::vector<std::wstring> perc_tickers(acc.tickers.begin(), acc.tickers.begin() + acc.returnsPercBarData.size());
-	m_returnsPercAxes->SetXLabels(perc_tickers, false);
+	m_returnsPercAxes->SetXLabels(acc.percTickers, false);
 	m_returnsAxes->Bar(acc.returnsBarData, acc.tickers);
-	m_returnsPercAxes->Bar(acc.returnsPercBarData, perc_tickers);
+	m_returnsPercAxes->Bar(acc.returnsPercBarData, acc.percTickers);
 
 	::InvalidateRect(m_hwnd, NULL, FALSE);
 }

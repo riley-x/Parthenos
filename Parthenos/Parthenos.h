@@ -20,9 +20,10 @@ typedef struct Account_struct
 	std::vector<Position> positions;
 	std::vector<date_t> histDate;
 	std::vector<double> histEquity;
-	std::vector<std::pair<double, D2D1_COLOR_F>> returnsBarData; // in equity order
-	std::vector<std::pair<double, D2D1_COLOR_F>> returnsPercBarData; // in equity order
+	std::vector<std::pair<double, D2D1_COLOR_F>> returnsBarData; // in stock equity order
+	std::vector<std::pair<double, D2D1_COLOR_F>> returnsPercBarData; // in stock equity order
 	std::vector<std::wstring> tickers; // in equity order
+	std::vector<std::wstring> percTickers; // for % return graph
 } Account;
 
 class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver
