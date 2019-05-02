@@ -461,4 +461,8 @@ public:
 	{
 		m_bMouseTracking = false;
 	}
+	bool IsTracking() const
+	{
+		return m_bMouseTracking;
+	}
 };

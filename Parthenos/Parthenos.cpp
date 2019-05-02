@@ -103,11 +103,28 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			wParam
 		);
 	case WM_MOUSELEAVE:
-		OnMouseMove(POINT{ -1, -1 }, 0);
+	{
+		// This message seems to be sent when screen turns off, even when not tracking.
+		// OnMouseMove() begins tracking, so don't call it or else infinite loop.
+		D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(POINT{ -1, -1 });
+		if (m_mouseCaptured)
+		{
+			m_mouseCaptured->OnMouseMove(dipCursor, wParam, false);
+		}
+		else
+		{
+			bool handeled = false;
+			for (auto item : m_activeItems)
+			{
+				handeled = item->OnMouseMove(dipCursor, wParam, handeled) || handeled;
+			}
+		}
 		m_mouseTrack.Reset(m_hwnd);
 		return 0;
+	}
 	case WM_MOUSEHOVER:
 		// TODO: Handle the mouse-hover message.
+		OutputDebugString(L"Hover\n");
 		m_mouseTrack.Reset(m_hwnd);
 		return 0;
 	case WM_MOUSEWHEEL:
