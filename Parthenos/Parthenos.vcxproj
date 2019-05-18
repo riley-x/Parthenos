@@ -157,67 +157,67 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="AddTransactionWindow.h" />
-    <ClInclude Include="AppItem.h" />
-    <ClInclude Include="BaseWindow.h" />
-    <ClInclude Include="BorderlessWindow.h" />
-    <ClInclude Include="Button.h" />
-    <ClInclude Include="Chart.h" />
-    <ClInclude Include="ConfirmationWindow.h" />
-    <ClInclude Include="D2Objects.h" />
-    <ClInclude Include="DataManaging.h" />
-    <ClInclude Include="EditTransactionWindow.h" />
-    <ClInclude Include="FileIO.h" />
-    <ClInclude Include="Graphing.h" />
-    <ClInclude Include="HTTP.h" />
-    <ClInclude Include="MenuBar.h" />
-    <ClInclude Include="MessageScrollBox.h" />
-    <ClInclude Include="Parthenos.h" />
-    <ClInclude Include="PieChart.h" />
-    <ClInclude Include="PopupMenu.h" />
-    <ClInclude Include="PopupWindow.h" />
+    <ClInclude Include="AppItems\AppItem.h" />
+    <ClInclude Include="AppItems\Button.h" />
+    <ClInclude Include="AppItems\Chart.h" />
+    <ClInclude Include="AppItems\Graphing.h" />
+    <ClInclude Include="AppItems\MenuBar.h" />
+    <ClInclude Include="AppItems\MessageScrollBox.h" />
+    <ClInclude Include="AppItems\PieChart.h" />
+    <ClInclude Include="AppItems\PopupMenu.h" />
+    <ClInclude Include="AppItems\ScrollBar.h" />
+    <ClInclude Include="AppItems\Table.h" />
+    <ClInclude Include="AppItems\TextBox.h" />
+    <ClInclude Include="AppItems\TitleBar.h" />
+    <ClInclude Include="AppItems\TransactionEditor.h" />
+    <ClInclude Include="AppItems\Watchlist.h" />
     <ClInclude Include="Resource.h" />
-    <ClInclude Include="ScrollBar.h" />
     <ClInclude Include="stdafx.h" />
-    <ClInclude Include="Table.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="TextBox.h" />
-    <ClInclude Include="TitleBar.h" />
-    <ClInclude Include="TransactionEditor.h" />
-    <ClInclude Include="utilities.h" />
-    <ClInclude Include="Watchlist.h" />
+    <ClInclude Include="Utilities\D2Objects.h" />
+    <ClInclude Include="Utilities\DataManaging.h" />
+    <ClInclude Include="Utilities\FileIO.h" />
+    <ClInclude Include="Utilities\HTTP.h" />
+    <ClInclude Include="Utilities\utilities.h" />
+    <ClInclude Include="Windows\AddTransactionWindow.h" />
+    <ClInclude Include="Windows\BaseWindow.h" />
+    <ClInclude Include="Windows\BorderlessWindow.h" />
+    <ClInclude Include="Windows\ConfirmationWindow.h" />
+    <ClInclude Include="Windows\EditTransactionWindow.h" />
+    <ClInclude Include="Windows\Parthenos.h" />
+    <ClInclude Include="Windows\PopupWindow.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="AddTransactionWindow.cpp" />
-    <ClCompile Include="Button.cpp" />
-    <ClCompile Include="Chart.cpp" />
-    <ClCompile Include="ConfirmationWindow.cpp" />
-    <ClCompile Include="D2Objects.cpp" />
-    <ClCompile Include="DataManaging.cpp" />
-    <ClCompile Include="EditTransactionWindow.cpp" />
-    <ClCompile Include="MenuBar.cpp" />
-    <ClCompile Include="MessageScrollBox.cpp" />
-    <ClCompile Include="PieChart.cpp" />
-    <ClCompile Include="PopupMenu.cpp" />
-    <ClCompile Include="FileIO.cpp" />
-    <ClCompile Include="Graphing.cpp" />
-    <ClCompile Include="HTTP.cpp" />
+    <ClCompile Include="AppItems\Button.cpp" />
+    <ClCompile Include="AppItems\Chart.cpp" />
+    <ClCompile Include="AppItems\Graphing.cpp" />
+    <ClCompile Include="AppItems\MenuBar.cpp" />
+    <ClCompile Include="AppItems\MessageScrollBox.cpp" />
+    <ClCompile Include="AppItems\PieChart.cpp" />
+    <ClCompile Include="AppItems\PopupMenu.cpp" />
+    <ClCompile Include="AppItems\ScrollBar.cpp" />
+    <ClCompile Include="AppItems\Table.cpp" />
+    <ClCompile Include="AppItems\TextBox.cpp" />
+    <ClCompile Include="AppItems\TitleBar.cpp" />
+    <ClCompile Include="AppItems\TransactionEditor.cpp" />
+    <ClCompile Include="AppItems\Watchlist.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Parthenos.cpp" />
-    <ClCompile Include="PopupWindow.cpp" />
-    <ClCompile Include="ScrollBar.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Table.cpp" />
-    <ClCompile Include="TextBox.cpp" />
-    <ClCompile Include="TitleBar.cpp" />
-    <ClCompile Include="TransactionEditor.cpp" />
-    <ClCompile Include="utilities.cpp" />
-    <ClCompile Include="Watchlist.cpp" />
+    <ClCompile Include="Utilities\D2Objects.cpp" />
+    <ClCompile Include="Utilities\DataManaging.cpp" />
+    <ClCompile Include="Utilities\FileIO.cpp" />
+    <ClCompile Include="Utilities\HTTP.cpp" />
+    <ClCompile Include="Utilities\utilities.cpp" />
+    <ClCompile Include="Windows\AddTransactionWindow.cpp" />
+    <ClCompile Include="Windows\ConfirmationWindow.cpp" />
+    <ClCompile Include="Windows\EditTransactionWindow.cpp" />
+    <ClCompile Include="Windows\Parthenos.cpp" />
+    <ClCompile Include="Windows\PopupWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Parthenos.rc" />

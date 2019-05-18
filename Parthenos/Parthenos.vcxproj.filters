@@ -31,93 +31,99 @@
     <Filter Include="Header Files\Utilities">
       <UniqueIdentifier>{34148477-50ed-4e8b-8a90-b98189ead491}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Windows">
+      <UniqueIdentifier>{ba86a7de-3f98-4f6f-a6d3-69998af219b9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Utilities">
+      <UniqueIdentifier>{6ebf9422-55c0-450a-917b-f8d375614cc0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="D2Objects.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="FileIO.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="HTTP.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="DataManaging.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="AppItem.h">
+    <ClInclude Include="AppItems\AppItem.h">
       <Filter>Header Files\AppItems</Filter>
     </ClInclude>
-    <ClInclude Include="Button.h">
+    <ClInclude Include="AppItems\Button.h">
       <Filter>Header Files\AppItems</Filter>
     </ClInclude>
-    <ClInclude Include="Chart.h">
+    <ClInclude Include="AppItems\Chart.h">
       <Filter>Header Files\AppItems</Filter>
     </ClInclude>
-    <ClInclude Include="Graphing.h">
+    <ClInclude Include="AppItems\Graphing.h">
       <Filter>Header Files\AppItems</Filter>
     </ClInclude>
-    <ClInclude Include="TextBox.h">
+    <ClInclude Include="AppItems\MenuBar.h">
       <Filter>Header Files\AppItems</Filter>
     </ClInclude>
-    <ClInclude Include="TitleBar.h">
+    <ClInclude Include="AppItems\MessageScrollBox.h">
       <Filter>Header Files\AppItems</Filter>
+    </ClInclude>
+    <ClInclude Include="AppItems\PieChart.h">
+      <Filter>Header Files\AppItems</Filter>
+    </ClInclude>
+    <ClInclude Include="AppItems\PopupMenu.h">
+      <Filter>Header Files\AppItems</Filter>
+    </ClInclude>
+    <ClInclude Include="AppItems\ScrollBar.h">
+      <Filter>Header Files\AppItems</Filter>
+    </ClInclude>
+    <ClInclude Include="AppItems\Table.h">
+      <Filter>Header Files\AppItems</Filter>
+    </ClInclude>
+    <ClInclude Include="AppItems\TextBox.h">
+      <Filter>Header Files\AppItems</Filter>
+    </ClInclude>
+    <ClInclude Include="AppItems\TitleBar.h">
+      <Filter>Header Files\AppItems</Filter>
+    </ClInclude>
+    <ClInclude Include="AppItems\TransactionEditor.h">
+      <Filter>Header Files\AppItems</Filter>
+    </ClInclude>
+    <ClInclude Include="AppItems\Watchlist.h">
+      <Filter>Header Files\AppItems</Filter>
+    </ClInclude>
+    <ClInclude Include="Utilities\D2Objects.h">
+      <Filter>Header Files\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="Utilities\DataManaging.h">
+      <Filter>Header Files\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="Utilities\FileIO.h">
+      <Filter>Header Files\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="Utilities\HTTP.h">
+      <Filter>Header Files\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="Utilities\utilities.h">
+      <Filter>Header Files\Utilities</Filter>
     </ClInclude>
     <ClInclude Include="Resource.h">
-      <Filter>Header Files\Utilities</Filter>
-    </ClInclude>
-    <ClInclude Include="targetver.h">
-      <Filter>Header Files\Utilities</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="stdafx.h">
-      <Filter>Header Files\Utilities</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="PopupMenu.h">
-      <Filter>Header Files\AppItems</Filter>
+    <ClInclude Include="targetver.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Watchlist.h">
-      <Filter>Header Files\AppItems</Filter>
-    </ClInclude>
-    <ClInclude Include="MenuBar.h">
-      <Filter>Header Files\AppItems</Filter>
-    </ClInclude>
-    <ClInclude Include="BaseWindow.h">
+    <ClInclude Include="Windows\AddTransactionWindow.h">
       <Filter>Header Files\Windows</Filter>
     </ClInclude>
-    <ClInclude Include="BorderlessWindow.h">
+    <ClInclude Include="Windows\BaseWindow.h">
       <Filter>Header Files\Windows</Filter>
     </ClInclude>
-    <ClInclude Include="PopupWindow.h">
+    <ClInclude Include="Windows\BorderlessWindow.h">
       <Filter>Header Files\Windows</Filter>
     </ClInclude>
-    <ClInclude Include="Parthenos.h">
+    <ClInclude Include="Windows\ConfirmationWindow.h">
       <Filter>Header Files\Windows</Filter>
     </ClInclude>
-    <ClInclude Include="utilities.h">
-      <Filter>Header Files\Utilities</Filter>
-    </ClInclude>
-    <ClInclude Include="PieChart.h">
-      <Filter>Header Files\AppItems</Filter>
-    </ClInclude>
-    <ClInclude Include="ScrollBar.h">
-      <Filter>Header Files\AppItems</Filter>
-    </ClInclude>
-    <ClInclude Include="MessageScrollBox.h">
-      <Filter>Header Files\AppItems</Filter>
-    </ClInclude>
-    <ClInclude Include="TransactionEditor.h">
-      <Filter>Header Files\AppItems</Filter>
-    </ClInclude>
-    <ClInclude Include="Table.h">
-      <Filter>Header Files\AppItems</Filter>
-    </ClInclude>
-    <ClInclude Include="AddTransactionWindow.h">
-      <Filter>Header Files\AppItems</Filter>
-    </ClInclude>
-    <ClInclude Include="ConfirmationWindow.h">
+    <ClInclude Include="Windows\EditTransactionWindow.h">
       <Filter>Header Files\Windows</Filter>
     </ClInclude>
-    <ClInclude Include="EditTransactionWindow.h">
+    <ClInclude Include="Windows\Parthenos.h">
+      <Filter>Header Files\Windows</Filter>
+    </ClInclude>
+    <ClInclude Include="Windows\PopupWindow.h">
       <Filter>Header Files\Windows</Filter>
     </ClInclude>
   </ItemGroup>
@@ -125,77 +131,77 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Parthenos.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="utilities.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="D2Objects.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="FileIO.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="HTTP.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DataManaging.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Chart.cpp">
+    <ClCompile Include="AppItems\Button.cpp">
       <Filter>Source Files\AppItems</Filter>
     </ClCompile>
-    <ClCompile Include="TextBox.cpp">
+    <ClCompile Include="AppItems\Chart.cpp">
       <Filter>Source Files\AppItems</Filter>
     </ClCompile>
-    <ClCompile Include="TitleBar.cpp">
+    <ClCompile Include="AppItems\Graphing.cpp">
       <Filter>Source Files\AppItems</Filter>
     </ClCompile>
-    <ClCompile Include="Graphing.cpp">
+    <ClCompile Include="AppItems\MenuBar.cpp">
       <Filter>Source Files\AppItems</Filter>
     </ClCompile>
-    <ClCompile Include="Button.cpp">
+    <ClCompile Include="AppItems\MessageScrollBox.cpp">
       <Filter>Source Files\AppItems</Filter>
     </ClCompile>
-    <ClCompile Include="PopupMenu.cpp">
+    <ClCompile Include="AppItems\PieChart.cpp">
       <Filter>Source Files\AppItems</Filter>
     </ClCompile>
-    <ClCompile Include="Watchlist.cpp">
+    <ClCompile Include="AppItems\PopupMenu.cpp">
       <Filter>Source Files\AppItems</Filter>
     </ClCompile>
-    <ClCompile Include="PopupWindow.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="MenuBar.cpp">
+    <ClCompile Include="AppItems\ScrollBar.cpp">
       <Filter>Source Files\AppItems</Filter>
     </ClCompile>
-    <ClCompile Include="PieChart.cpp">
+    <ClCompile Include="AppItems\Table.cpp">
       <Filter>Source Files\AppItems</Filter>
     </ClCompile>
-    <ClCompile Include="ScrollBar.cpp">
+    <ClCompile Include="AppItems\TextBox.cpp">
       <Filter>Source Files\AppItems</Filter>
     </ClCompile>
-    <ClCompile Include="MessageScrollBox.cpp">
+    <ClCompile Include="AppItems\TitleBar.cpp">
       <Filter>Source Files\AppItems</Filter>
     </ClCompile>
-    <ClCompile Include="TransactionEditor.cpp">
+    <ClCompile Include="AppItems\TransactionEditor.cpp">
       <Filter>Source Files\AppItems</Filter>
     </ClCompile>
-    <ClCompile Include="Table.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="AddTransactionWindow.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ConfirmationWindow.cpp">
+    <ClCompile Include="AppItems\Watchlist.cpp">
       <Filter>Source Files\AppItems</Filter>
     </ClCompile>
-    <ClCompile Include="EditTransactionWindow.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Windows\AddTransactionWindow.cpp">
+      <Filter>Source Files\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="Windows\ConfirmationWindow.cpp">
+      <Filter>Source Files\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="Windows\EditTransactionWindow.cpp">
+      <Filter>Source Files\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="Windows\Parthenos.cpp">
+      <Filter>Source Files\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="Windows\PopupWindow.cpp">
+      <Filter>Source Files\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="Utilities\D2Objects.cpp">
+      <Filter>Source Files\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="Utilities\DataManaging.cpp">
+      <Filter>Source Files\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="Utilities\FileIO.cpp">
+      <Filter>Source Files\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="Utilities\HTTP.cpp">
+      <Filter>Source Files\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="Utilities\utilities.cpp">
+      <Filter>Source Files\Utilities</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
