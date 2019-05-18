@@ -1,7 +1,7 @@
-#include "stdafx.h"
+#include "../stdafx.h"
 #include "EditTransactionWindow.h"
-#include "FileIO.h"
-#include "TransactionEditor.h"
+#include "../Utilities/FileIO.h"
+#include "../AppItems/TransactionEditor.h"
 
 
 

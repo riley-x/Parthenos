@@ -1,16 +1,15 @@
 // Parthenos.cpp : Defines the entry point for the application.
 
-#include "stdafx.h"
+#include "../stdafx.h"
 #include "Parthenos.h"
-#include "utilities.h"
-#include "TitleBar.h"
-#include "HTTP.h"
-#include "DataManaging.h"
 #include "ConfirmationWindow.h"
 #include "AddTransactionWindow.h"
 #include "EditTransactionWindow.h"
+#include "../Utilities/HTTP.h"
+#include "../Utilities/DataManaging.h"
+#include "../Utilities/FileIO.h"
+#include "../Utilities/utilities.h"
 
-#include <windowsx.h>
 
 ///////////////////////////////////////////////////////////
 // --- Forward declarations ---

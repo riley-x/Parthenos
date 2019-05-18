@@ -1,8 +1,8 @@
 #pragma once
 
-#include "stdafx.h"
+#include "../stdafx.h"
 #include "PopupWindow.h"
-#include "Button.h"
+#include "../AppItems/Button.h"
 
 // Initialize with text and a message to send to parent when user presses "OK"
 class ConfirmationWindow : public PopupWindow

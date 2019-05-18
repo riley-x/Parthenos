@@ -1,6 +1,6 @@
 #pragma once
-#include "stdafx.h"
-#include "resource.h"
+#include "../stdafx.h"
+#include "../resource.h"
 
 
 class D2Objects 

@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "../stdafx.h"
 #include "MessageScrollBox.h"
 
 void MessageScrollBox::SetSize(D2D1_RECT_F dipRect)

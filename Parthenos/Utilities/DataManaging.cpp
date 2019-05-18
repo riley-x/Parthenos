@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "../stdafx.h"
 #include "DataManaging.h"
 #include "FileIO.h"
 #include "HTTP.h"

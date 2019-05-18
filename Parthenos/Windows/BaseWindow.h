@@ -1,6 +1,6 @@
 #pragma once
 
-#include "stdafx.h"
+#include "../stdafx.h"
 
 // Argument struct to pass to BaseWindow::Register/Create
 struct WndCreateArgs {

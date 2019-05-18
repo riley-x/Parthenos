@@ -1,6 +1,6 @@
 #include "stdafx.h"
-#include "Parthenos.h"
-#include "utilities.h"
+#include "Windows/Parthenos.h"
+#include "Utilities/utilities.h"
 
 // Main entry point
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,

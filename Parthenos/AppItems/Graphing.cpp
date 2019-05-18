@@ -1,6 +1,6 @@
-#include "stdafx.h"
+#include "../stdafx.h"
 #include "Graphing.h"
-#include "utilities.h"
+#include "../Utilities/utilities.h"
 
 
 Axes::Axes(HWND hwnd, D2Objects const & d2, CTPMessageReceiver * parent)

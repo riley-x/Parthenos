@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "../stdafx.h"
 #include "Table.h"
 
 float const Table::m_hTextPad = 4.0f;

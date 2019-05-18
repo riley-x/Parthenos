@@ -1,7 +1,7 @@
-#include "stdafx.h"
+#include "../stdafx.h"
+#include "../Resource.h"
+#include "../Utilities/utilities.h"
 #include "Chart.h"
-#include "utilities.h"
-#include "Resource.h"
 
 #include <algorithm>
 

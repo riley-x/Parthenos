@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "../stdafx.h"
 #include "TransactionEditor.h"
 
 TransactionEditor::TransactionEditor(HWND hwnd, D2Objects const & d2, Table *parent, std::vector<std::wstring> accounts)

@@ -1,9 +1,9 @@
-#include "stdafx.h"
+#include "../stdafx.h"
 #include "Watchlist.h"
 #include "TitleBar.h"
-#include "utilities.h"
-#include "DataManaging.h"
-#include "Parthenos.h"
+#include "../Utilities/utilities.h"
+#include "../Utilities/DataManaging.h"
+#include "../Windows/Parthenos.h"
 
 float const Watchlist::m_hTextPad = 4.0f;
 

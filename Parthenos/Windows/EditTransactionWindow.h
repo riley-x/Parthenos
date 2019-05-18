@@ -1,9 +1,9 @@
 #pragma once
 
-#include "stdafx.h"
+#include "../stdafx.h"
 #include "PopupWindow.h"
-#include "Table.h"
-#include "DataManaging.h"
+#include "../AppItems/Table.h"
+#include "../Utilities/DataManaging.h"
 
 
 class EditTransactionWindow : public PopupWindow

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "stdafx.h"
+#include "../stdafx.h"
 #include "AppItem.h"
 #include "TextBox.h"
-#include "DataManaging.h"
+#include "../Utilities/DataManaging.h"
 #include "ScrollBar.h"
 
 class Watchlist;

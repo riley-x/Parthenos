@@ -1,10 +1,10 @@
 #pragma once
-#include "stdafx.h"
+#include "../stdafx.h"
 #include "BorderlessWindow.h"
-#include "utilities.h"
-#include "D2Objects.h"
-#include "AppItem.h"
-#include "TitleBar.h"
+#include "../Utilities/utilities.h"
+#include "../Utilities/D2Objects.h"
+#include "../AppItems/AppItem.h"
+#include "../AppItems/TitleBar.h"
 
 
 class PopupWindow : public BorderlessWindow<PopupWindow>, public CTPMessageReceiver

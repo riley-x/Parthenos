@@ -1,8 +1,8 @@
 #pragma once
 
-#include "stdafx.h"
-#include "utilities.h"
-#include "D2Objects.h"
+#include "../stdafx.h"
+#include "../Utilities/utilities.h"
+#include "../Utilities/D2Objects.h"
 
 class AppItem;
 

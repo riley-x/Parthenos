@@ -1,8 +1,8 @@
 #pragma once
 
-#include "stdafx.h"
+#include "../stdafx.h"
 #include "AppItem.h"
-#include "DataManaging.h"
+#include "../Utilities/DataManaging.h"
 #include "Graphing.h"
 #include "TextBox.h"
 #include "Button.h"

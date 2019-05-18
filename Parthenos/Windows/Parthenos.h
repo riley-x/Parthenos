@@ -1,17 +1,16 @@
 #pragma once
 
-#include "stdafx.h"
-#include "resource.h"
+#include "../stdafx.h"
+#include "../resource.h"
 #include "BorderlessWindow.h"
-#include "D2Objects.h"
-#include "TitleBar.h"
-#include "FileIO.h"
-#include "Chart.h"
-#include "Watchlist.h"
-#include "MenuBar.h"
 #include "PopupWindow.h"
-#include "PieChart.h"
-#include "MessageScrollBox.h"
+#include "../Utilities/D2Objects.h"
+#include "../AppItems/TitleBar.h"
+#include "../AppItems/Chart.h"
+#include "../AppItems/Watchlist.h"
+#include "../AppItems/MenuBar.h"
+#include "../AppItems/PieChart.h"
+#include "../AppItems/MessageScrollBox.h"
 
 
 typedef struct Account_struct

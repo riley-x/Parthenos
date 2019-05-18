@@ -1,5 +1,5 @@
 #pragma once
-#include "stdafx.h"
+#include "../stdafx.h"
 
 
 std::string SendHTTPSRequest_GET(const std::wstring& _server,

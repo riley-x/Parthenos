@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "../stdafx.h"
 #include "ScrollBar.h"
 
 float const ScrollBar::Width = 15.0f;

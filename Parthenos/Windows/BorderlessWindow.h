@@ -1,8 +1,8 @@
 #pragma once
 
-#include "stdafx.h"
+#include "../stdafx.h"
 #include "BaseWindow.h"
-#include "utilities.h"
+#include "../Utilities/utilities.h"
 
 #include <windowsx.h>
 #include <dwmapi.h>

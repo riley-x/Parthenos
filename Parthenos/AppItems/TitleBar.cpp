@@ -1,7 +1,7 @@
-#include "stdafx.h"
-#include "Parthenos.h"
+#include "../stdafx.h"
+#include "../Windows/Parthenos.h"
+#include "../Utilities/utilities.h"
 #include "TitleBar.h"
-#include "utilities.h"
 #include "Button.h"
 
 float const TitleBar::iconHPad = 6.0f;

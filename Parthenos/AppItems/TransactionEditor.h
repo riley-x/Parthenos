@@ -1,11 +1,11 @@
 #pragma once
 
-#include "stdafx.h"
+#include "../stdafx.h"
 #include "AppItem.h"
 #include "Table.h"
 #include "TextBox.h"
 #include "Button.h"
-#include "DataManaging.h"
+#include "../Utilities/DataManaging.h"
 
 class TransactionEditor : public TableRowItem
 {
