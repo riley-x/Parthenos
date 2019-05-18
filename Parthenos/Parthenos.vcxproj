@@ -157,13 +157,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="AddTransactionWindow.h" />
     <ClInclude Include="AppItem.h" />
     <ClInclude Include="BaseWindow.h" />
     <ClInclude Include="BorderlessWindow.h" />
     <ClInclude Include="Button.h" />
     <ClInclude Include="Chart.h" />
+    <ClInclude Include="ConfirmationWindow.h" />
     <ClInclude Include="D2Objects.h" />
     <ClInclude Include="DataManaging.h" />
+    <ClInclude Include="EditTransactionWindow.h" />
     <ClInclude Include="FileIO.h" />
     <ClInclude Include="Graphing.h" />
     <ClInclude Include="HTTP.h" />
@@ -185,10 +188,13 @@
     <ClInclude Include="Watchlist.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AddTransactionWindow.cpp" />
     <ClCompile Include="Button.cpp" />
     <ClCompile Include="Chart.cpp" />
+    <ClCompile Include="ConfirmationWindow.cpp" />
     <ClCompile Include="D2Objects.cpp" />
     <ClCompile Include="DataManaging.cpp" />
+    <ClCompile Include="EditTransactionWindow.cpp" />
     <ClCompile Include="MenuBar.cpp" />
     <ClCompile Include="MessageScrollBox.cpp" />
     <ClCompile Include="PieChart.cpp" />

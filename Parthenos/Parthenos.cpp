@@ -6,7 +6,9 @@
 #include "TitleBar.h"
 #include "HTTP.h"
 #include "DataManaging.h"
-#include "PopupWindow.h"
+#include "ConfirmationWindow.h"
+#include "AddTransactionWindow.h"
+#include "EditTransactionWindow.h"
 
 #include <windowsx.h>
 
@@ -620,13 +622,13 @@ void Parthenos::ProcessCTPMessages()
 		}
 		case CTPMessage::WINDOW_CLOSED:
 		{
-			PopupWindow *win = reinterpret_cast<PopupWindow*>(msg.sender);
+			PopupWindow *win = static_cast<PopupWindow*>(msg.sender);
 			if (m_childWindows.erase(win)) delete win;
 			break;
 		}
 		case CTPMessage::WINDOW_ADDTRANSACTION_P:
 		{
-			Transaction *t = reinterpret_cast<Transaction*>(msg.sender);
+			Transaction *t = static_cast<Transaction*>(msg.sender);
 			if (!t) break;
 			AddTransaction(*t);
 			delete t;
@@ -637,7 +639,7 @@ void Parthenos::ProcessCTPMessages()
 			if (msg.iData < 0) // Release (ReleaseCapture() called in OnLButtonUp)
 				m_mouseCaptured = nullptr;
 			else // Capture (SetCapture() called in OnLButtonDown)
-				m_mouseCaptured = reinterpret_cast<AppItem*>(msg.sender);
+				m_mouseCaptured = static_cast<AppItem*>(msg.sender);
 			break;
 		}
 		case CTPMessage::PRINT:

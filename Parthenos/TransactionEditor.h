@@ -25,6 +25,7 @@ public:
 	void OnTimer(WPARAM wParam, LPARAM lParam);
 
 	// Interface
+	std::wstring GetData(size_t iColumn) const;
 	void SetInfo(Transaction const & t);
 	//void GetTransaction() const;
 

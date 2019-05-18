@@ -111,6 +111,15 @@
     <ClInclude Include="Table.h">
       <Filter>Header Files\AppItems</Filter>
     </ClInclude>
+    <ClInclude Include="AddTransactionWindow.h">
+      <Filter>Header Files\AppItems</Filter>
+    </ClInclude>
+    <ClInclude Include="ConfirmationWindow.h">
+      <Filter>Header Files\Windows</Filter>
+    </ClInclude>
+    <ClInclude Include="EditTransactionWindow.h">
+      <Filter>Header Files\Windows</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -177,6 +186,15 @@
       <Filter>Source Files\AppItems</Filter>
     </ClCompile>
     <ClCompile Include="Table.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="AddTransactionWindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ConfirmationWindow.cpp">
+      <Filter>Source Files\AppItems</Filter>
+    </ClCompile>
+    <ClCompile Include="EditTransactionWindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

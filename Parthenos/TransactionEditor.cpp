@@ -104,6 +104,31 @@ void TransactionEditor::OnTimer(WPARAM wParam, LPARAM lParam)
 	for (AppItem *item : m_items) item->OnTimer(wParam, lParam);
 }
 
+std::wstring TransactionEditor::GetData(size_t iColumn) const
+{
+	if (iColumn < 2)
+	{
+		DropMenuButton *but = static_cast<DropMenuButton*>(m_items[iColumn]);
+		return std::to_wstring(but->GetSelection());
+	}
+	else if (iColumn < m_items.size())
+	{
+		TextBox *box = static_cast<TextBox*>(m_items[iColumn]);
+		return box->String();
+	}
+	else return L"";
+}
+
+// Formats to [2,4] decimal places.
+std::wstring PriceFormat(double p)
+{
+	std::wstring out = FormatMsg(L"%.4f", p);
+	size_t i = 1;
+	for (; i <= 2; i++)
+		if (out[out.size() - i] != L'0') return out.substr(0, out.length() - i + 1);
+	return out.substr(0, out.length() - i + 1);
+}
+
 void TransactionEditor::SetInfo(Transaction const & t)
 {
 	m_accountButton->SetActive(t.account);
@@ -111,7 +136,7 @@ void TransactionEditor::SetInfo(Transaction const & t)
 	m_dateBox->SetText(std::to_wstring(t.date));
 	m_tickerBox->SetText(t.ticker);
 	m_nsharesBox->SetText(std::to_wstring(t.n));
-	m_priceBox->SetText(FormatMsg(L"%.4f", t.price));
+	m_priceBox->SetText(PriceFormat(t.price));
 	m_valueBox->SetText(FormatMsg(L"%.2f", t.value));
 	m_expirationBox->SetText(std::to_wstring(t.expiration));
 	m_strikeBox->SetText(FormatMsg(L"%.2f", t.strike));
