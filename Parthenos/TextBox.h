@@ -12,8 +12,8 @@ class TextBox : public AppItem
 {
 public:
 	TextBox(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent, 
-		D2Objects::Formats format = D2Objects::Segoe12) :
-		AppItem(hwnd, d2, parent), m_format(format) {};
+		D2Objects::Formats format = D2Objects::Segoe12, float leftOffset = 2.0f, bool border = true) :
+		AppItem(hwnd, d2, parent), m_format(format), m_leftOffset(leftOffset), m_border(border) {};
 	~TextBox();
 	
 	void SetSize(D2D1_RECT_F dipRect);
@@ -51,8 +51,8 @@ private:
 	float				m_fstart; // for selection
 
 	// paramters
-	bool				m_border = true;
-	float				m_leftOffset = 2.0f;
+	bool				m_border;
+	float				m_leftOffset;
 	size_t				m_maxChars = 9;
 	D2Objects::Formats	m_format;
 

@@ -6,6 +6,8 @@
 #include "AppItem.h"
 #include "TitleBar.h"
 #include "TextBox.h"
+#include "Table.h"
+#include "TransactionEditor.h"
 #include "DataManaging.h"
 
 
@@ -50,6 +52,9 @@ protected:
 	// Layout
 	float const	m_titleBarHeight = 30.0f;
 
+	// Helpers
+	bool ProcessPopupWindowCTP(ClientMessage const & msg);
+
 	// Virtuals
 	virtual void		ProcessCTPMessages() = 0;
 	virtual LRESULT		OnPaint() = 0;
@@ -60,6 +65,7 @@ private:
 
 	// Flags
 	bool m_created = false; // only allow create once
+	AppItem *m_mouseCaptured = nullptr;
 
 	// Resources
 	MouseTrackEvents m_mouseTrack;
@@ -69,6 +75,7 @@ private:
 	LRESULT OnNCHitTest(POINT cursor);
 	LRESULT OnSize(WPARAM wParam);
 	LRESULT OnMouseMove(POINT cursor, WPARAM wParam);
+	LRESULT OnMouseWheel(POINT cursor, WPARAM wParam);
 	LRESULT	OnLButtonDown(POINT cursor, WPARAM wParam);
 	LRESULT OnLButtonDblclk(POINT cursor, WPARAM wParam);
 	LRESULT	OnLButtonUp(POINT cursor, WPARAM wParam);
@@ -77,6 +84,38 @@ private:
 	LRESULT OnTimer(WPARAM wParam, LPARAM lParam);
 };
 
+// Initialize with text and a message to send to parent when user presses "OK"
+class ConfirmationWindow : public PopupWindow
+{
+public:
+	ConfirmationWindow() : PopupWindow(L"ConfirmationWindow") {}
+
+	void PreShow();
+	inline void SetText(std::wstring const & text) { m_text = text; }
+	inline void SetMessage(ClientMessage const & msg) { m_msg = msg; }
+private:
+
+	// Items
+	TextButton		*m_ok;
+	TextButton		*m_cancel;
+
+	// Data
+	std::wstring	m_text;
+	ClientMessage	m_msg; // message to send to parent if click OK
+
+	// Layout
+	float		m_center;
+	float const	m_buttonHPad = 10.0f;
+	float const	m_buttonVPad = 30.0f;
+	float const	m_buttonWidth = 50.0f;
+	float const	m_buttonHeight = 20.0f;
+
+	// Functions
+	LRESULT	OnPaint();
+
+	void ProcessCTPMessages();
+	D2D1_RECT_F CalculateItemRect(AppItem *item, D2D1_RECT_F const & dipRect);
+};
 
 class AddTransactionWindow : public PopupWindow
 {
@@ -131,36 +170,31 @@ private:
 	Transaction *CreateTransaction();
 };
 
-
-// Initialize with text and a message to send to parent when user presses "OK"
-class ConfirmationWindow : public PopupWindow
+class EditTransactionWindow : public PopupWindow
 {
 public:
-	ConfirmationWindow() : PopupWindow(L"ConfirmationWindow") {}
+	EditTransactionWindow() : PopupWindow(L"EditTransactionWindow") {}
 
 	void PreShow();
-	inline void SetText(std::wstring const & text) { m_text = text; }
-	inline void SetMessage(ClientMessage const & msg) { m_msg = msg; }
-private:
+	inline void SetAccounts(std::vector<std::wstring> const & accounts) { m_accounts = accounts; }
+	inline void SetFilepath(std::wstring const & fp) { m_filepath = fp; }
 
+private:
 	// Items
-	TextButton		*m_ok;
-	TextButton		*m_cancel;
+	Table *m_table;
+	std::vector<std::wstring> const m_labels = { L"Account:", L"Transaction:", L"Date:", L"Ticker:",
+		L"Shares:", L"Price:", L"Value:",
+		L"Ex Date:", L"Strike:", L"Tax Lot:" };
+	std::vector<float> m_widths = { 100.0f, 100.0f, 80.0f, 70.0f, 50.0f, 70.0f, 70.0f, 80.0f, 50.0f, 50.0f };
 
 	// Data
-	std::wstring	m_text;
-	ClientMessage	m_msg; // message to send to parent if click OK
-
-	// Layout
-	float		m_center;
-	float const	m_buttonHPad = 10.0f;
-	float const	m_buttonVPad = 30.0f;
-	float const	m_buttonWidth = 50.0f;
-	float const	m_buttonHeight = 20.0f;
+	std::wstring				m_filepath;
+	std::vector<std::wstring>	m_accounts;
+	std::vector<Transaction>	m_transactions;
 
 	// Functions
 	LRESULT	OnPaint();
 
 	void ProcessCTPMessages();
-	D2D1_RECT_F CalculateItemRect(AppItem *item, D2D1_RECT_F const & dipRect);
 };
+

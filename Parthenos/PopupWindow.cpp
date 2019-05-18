@@ -2,7 +2,6 @@
 #include "PopupWindow.h"
 #include "Parthenos.h"
 
-
 BOOL PopupWindow::Create(HINSTANCE hInstance)
 {
 	if (m_created) return FALSE;
@@ -38,8 +37,8 @@ LRESULT PopupWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		m_d2.DiscardGraphicsResources();
 		m_d2.DiscardLifetimeResources();
 		m_created = FALSE;
-		m_parent->PostClientMessage(reinterpret_cast<AppItem*>(this), m_name, CTPMessage::WINDOW_CLOSED);
-		// TODO remove m_hwnd from timers
+		m_parent->PostClientMessage(this, m_name, CTPMessage::WINDOW_CLOSED);
+		Timers::WndTimersMap.erase(m_hwnd);
 		PostMessage(m_phwnd, WM_APP, 0, 0);
 		return 0;
 	case WM_PAINT:
@@ -52,13 +51,32 @@ LRESULT PopupWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			wParam
 		);
 	case WM_MOUSELEAVE:
-		m_titleBar->SetMouseOn(TitleBar::Buttons::NONE);
+	{
+		D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(POINT{ -1, -1 });
+		if (m_mouseCaptured)
+		{
+			m_mouseCaptured->OnMouseMove(dipCursor, wParam, false);
+		}
+		else
+		{
+			bool handeled = false;
+			for (auto item : m_items)
+			{
+				handeled = item->OnMouseMove(dipCursor, wParam, handeled) || handeled;
+			}
+		}
 		m_mouseTrack.Reset(m_hwnd);
 		return 0;
+	}
 	case WM_MOUSEHOVER:
 		// TODO: Handle the mouse-hover message.
 		m_mouseTrack.Reset(m_hwnd);
 		return 0;
+	case WM_MOUSEWHEEL:
+		return OnMouseWheel(
+			POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) },
+			wParam
+		);
 	case WM_SETCURSOR:
 		if (LOWORD(lParam) == HTCLIENT)	return TRUE;
 		break;
@@ -88,10 +106,37 @@ LRESULT PopupWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return DefWindowProc(m_hwnd, uMsg, wParam, lParam);
 }
 
+bool PopupWindow::ProcessPopupWindowCTP(ClientMessage const & msg)
+{
+	switch (msg.imsg)
+	{
+	case CTPMessage::TITLEBAR_CLOSE:
+		SendMessage(m_hwnd, WM_CLOSE, 0, 0);
+		return true;
+	case CTPMessage::TITLEBAR_MAXRESTORE: // Do nothing
+		return true;
+	case CTPMessage::TITLEBAR_MIN:
+		ShowWindow(m_hwnd, SW_MINIMIZE);
+		return true;
+	case CTPMessage::MOUSE_CAPTURED: // click and hold
+	{
+		if (msg.iData < 0) // Release (ReleaseCapture() called in OnLButtonUp)
+			m_mouseCaptured = nullptr;
+		else // Capture (SetCapture() called in OnLButtonDown)
+			m_mouseCaptured = reinterpret_cast<AppItem*>(msg.sender);
+		return true;
+	}
+	default:
+		return false;
+	}
+}
+
 ///////////////////////////////////////////////////////////
 // --- Message Handlers ---
 // These pretty much just pass to m_items, calling ProcessCTPMessages
 // as needed
+
+
 
 LRESULT PopupWindow::OnCreate()
 {
@@ -107,7 +152,6 @@ LRESULT PopupWindow::OnCreate()
 
 	return 0;
 }
-
 
 LRESULT PopupWindow::OnNCHitTest(POINT cursor)
 {
@@ -139,25 +183,56 @@ LRESULT PopupWindow::OnMouseMove(POINT cursor, WPARAM wParam)
 	m_mouseTrack.OnMouseMove(m_hwnd);  // Start tracking.
 
 	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
-	bool handeled = false;
-	for (auto item : m_items)
+	if (m_mouseCaptured)
 	{
-		handeled = item->OnMouseMove(dipCursor, wParam, handeled) || handeled;
+		m_mouseCaptured->OnMouseMove(dipCursor, wParam, false);
+	}
+	else
+	{
+		bool handeled = false;
+		for (auto item : m_items)
+		{
+			handeled = item->OnMouseMove(dipCursor, wParam, handeled) || handeled;
+		}
 	}
 
 	if (!Cursor::isSet) ::SetCursor(Cursor::hArrow);
+
+	ProcessCTPMessages();
+	return 0;
+}
+
+LRESULT PopupWindow::OnMouseWheel(POINT cursor, WPARAM wParam)
+{
+	if (!::ScreenToClient(m_hwnd, &cursor)) throw Error(L"ScreenToClient failed");
+	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
+	bool handeled = false;
+	for (auto item : m_items)
+	{
+		handeled = item->OnMouseWheel(dipCursor, wParam, handeled) || handeled;
+	}
+
+	//ProcessCTPMessages();
 	return 0;
 }
 
 LRESULT PopupWindow::OnLButtonDown(POINT cursor, WPARAM wParam)
 {
-	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
-	bool handeled = false;
-	for (auto item : m_items)
-	{
-		handeled = item->OnLButtonDown(dipCursor, handeled) || handeled;
-	}
+	SetCapture(m_hwnd); // always?
 
+	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
+	if (m_mouseCaptured)
+	{
+		m_mouseCaptured->OnLButtonDown(dipCursor, false);
+	}
+	else
+	{
+		bool handeled = false;
+		for (auto item : m_items)
+		{
+			handeled = item->OnLButtonDown(dipCursor, handeled) || handeled;
+		}
+	}
 	ProcessCTPMessages();
 	return 0;
 }
@@ -175,12 +250,20 @@ LRESULT PopupWindow::OnLButtonDblclk(POINT cursor, WPARAM wParam)
 LRESULT PopupWindow::OnLButtonUp(POINT cursor, WPARAM wParam)
 {
 	D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(cursor);
-	for (auto item : m_items)
+	if (m_mouseCaptured)
 	{
-		item->OnLButtonUp(dipCursor, wParam);
+		m_mouseCaptured->OnLButtonUp(dipCursor, wParam);
+	}
+	else
+	{
+		for (auto item : m_items)
+		{
+			item->OnLButtonUp(dipCursor, wParam);
+		}
 	}
 	ProcessCTPMessages();
 
+	ReleaseCapture();
 	return 0;
 }
 
@@ -226,6 +309,143 @@ LRESULT PopupWindow::OnTimer(WPARAM wParam, LPARAM lParam)
 
 
 ///////////////////////////////////////////////////////////
+// --- ConfirmationWindow ---
+
+void ConfirmationWindow::PreShow()
+{
+	RECT rc;
+	BOOL bErr = GetClientRect(m_hwnd, &rc);
+	if (bErr == 0) OutputError(L"GetClientRect failed");
+	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
+
+	m_center = (dipRect.left + dipRect.right) / 2.0f;
+
+	// Create AppItems
+	m_titleBar = new TitleBar(m_hwnd, m_d2, this);
+	m_ok = new TextButton(m_hwnd, m_d2, this);
+	m_cancel = new TextButton(m_hwnd, m_d2, this);
+
+	m_items = { m_titleBar, m_ok, m_cancel };
+
+	m_ok->SetName(L"Ok");
+	m_cancel->SetName(L"Cancel");
+
+	for (auto item : m_items)
+	{
+		item->SetSize(CalculateItemRect(item, dipRect));
+	}
+}
+
+LRESULT ConfirmationWindow::OnPaint()
+{
+	RECT rc;
+	BOOL bErr = GetClientRect(m_hwnd, &rc);
+	if (bErr == 0) OutputError(L"GetClientRect failed");
+	D2D1_RECT_F fullRect = DPIScale::PixelsToDips(rc);
+
+	HRESULT hr = m_d2.CreateGraphicsResources(m_hwnd);
+	if (SUCCEEDED(hr))
+	{
+		PAINTSTRUCT ps;
+		BeginPaint(m_hwnd, &ps);
+		m_d2.pD2DContext->BeginDraw();
+
+		// Repaint everything
+		m_d2.pD2DContext->Clear(Colors::MAIN_BACKGROUND);
+		for (auto item : m_items)
+			item->Paint(fullRect);
+
+		m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
+		m_d2.pTextFormats[D2Objects::Formats::Segoe12]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+		m_d2.pD2DContext->DrawTextW(
+			m_text.c_str(),
+			m_text.size(),
+			m_d2.pTextFormats[D2Objects::Formats::Segoe12],
+			D2D1::RectF(fullRect.left, m_titleBarHeight, fullRect.right, fullRect.bottom - m_buttonVPad - m_buttonHeight),
+			m_d2.pBrush
+		);
+		m_d2.pTextFormats[D2Objects::Formats::Segoe12]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+
+		hr = m_d2.pD2DContext->EndDraw();
+		if (SUCCEEDED(hr))
+		{
+			// Present
+			DXGI_PRESENT_PARAMETERS parameters = { 0 };
+			parameters.DirtyRectsCount = 0;
+			parameters.pDirtyRects = nullptr;
+			parameters.pScrollRect = nullptr;
+			parameters.pScrollOffset = nullptr;
+
+			hr = m_d2.pDXGISwapChain->Present1(1, 0, &parameters);
+		}
+
+		EndPaint(m_hwnd, &ps);
+	}
+	if (FAILED(hr)) OutputHRerr(hr, L"ConfirmationWindow OnPaint failed");
+
+	return 0;
+}
+
+void ConfirmationWindow::ProcessCTPMessages()
+{
+	for (ClientMessage msg : m_messages)
+	{
+		if (ProcessPopupWindowCTP(msg)) continue;
+
+		switch (msg.imsg)
+		{
+		case CTPMessage::BUTTON_DOWN:
+			if (msg.sender == m_ok)
+			{
+				m_parent->PostClientMessage(m_msg);
+				PostMessage(m_phwnd, WM_APP, 0, 0);
+			}
+			SendMessage(m_hwnd, WM_CLOSE, 0, 0); // Close on both ok and close
+			break;
+		default:
+			OutputMessage(L"Unknown message %d received\n", static_cast<int>(msg.imsg));
+			break;
+		}
+	}
+	if (!m_messages.empty()) m_messages.clear();
+}
+
+D2D1_RECT_F ConfirmationWindow::CalculateItemRect(AppItem *item, D2D1_RECT_F const & dipRect)
+{
+	if (item == m_titleBar)
+	{
+		return D2D1::RectF(
+			0.0f,
+			0.0f,
+			dipRect.right,
+			DPIScale::SnapToPixelY(m_titleBarHeight)
+		);
+	}
+	else if (item == m_ok)
+	{
+		return D2D1::RectF(
+			m_center - m_buttonHPad - m_buttonWidth,
+			dipRect.bottom - m_buttonVPad - m_buttonHeight,
+			m_center - m_buttonHPad,
+			dipRect.bottom - m_buttonVPad
+		);
+	}
+	else if (item == m_cancel)
+	{
+		return D2D1::RectF(
+			m_center + m_buttonHPad,
+			dipRect.bottom - m_buttonVPad - m_buttonHeight,
+			m_center + m_buttonHPad + m_buttonWidth,
+			dipRect.bottom - m_buttonVPad
+		);
+	}
+	else
+	{
+		return D2D1::RectF(0, 0, 0, 0);
+	}
+}
+
+///////////////////////////////////////////////////////////
 // --- AddTransactionWindow ---
 
 void AddTransactionWindow::PreShow()
@@ -240,7 +460,7 @@ void AddTransactionWindow::PreShow()
 
 	// Create AppItems
 	m_titleBar		= new TitleBar(m_hwnd, m_d2, this);
-	m_accountButton			= new DropMenuButton(m_hwnd, m_d2, this);
+	m_accountButton	= new DropMenuButton(m_hwnd, m_d2, this);
 	m_transactionTypeButton = new DropMenuButton(m_hwnd, m_d2, this);
 	m_taxLotBox		= new TextBox(m_hwnd, m_d2, this);
 	m_tickerBox		= new TextBox(m_hwnd, m_d2, this);
@@ -319,16 +539,10 @@ void AddTransactionWindow::ProcessCTPMessages()
 {
 	for (ClientMessage msg : m_messages)
 	{
+		if (ProcessPopupWindowCTP(msg)) continue;
+
 		switch (msg.imsg)
 		{
-		case CTPMessage::TITLEBAR_CLOSE:
-			SendMessage(m_hwnd, WM_CLOSE, 0, 0);
-			break;
-		case CTPMessage::TITLEBAR_MAXRESTORE: // Do nothing
-			break;
-		case CTPMessage::TITLEBAR_MIN:
-			ShowWindow(m_hwnd, SW_MINIMIZE);
-			break;
 		case CTPMessage::TEXTBOX_DEACTIVATED:
 		case CTPMessage::TEXTBOX_ENTER:
 		case CTPMessage::DROPMENU_SELECTED:
@@ -464,40 +678,54 @@ Transaction* AddTransactionWindow::CreateTransaction()
 	catch (const std::exception& ia) {
 		if (t) delete t;
 		OutputDebugStringA(ia.what()); OutputDebugStringA("\n");
+		m_parent->PostClientMessage(this, L"Add transaction failed.\n", CTPMessage::PRINT);
 	}
 	return nullptr;
 }
 
-
 ///////////////////////////////////////////////////////////
-// --- ConfirmationWindow ---
+// --- EditTransactionWindow ---
 
-void ConfirmationWindow::PreShow()
+void EditTransactionWindow::PreShow()
 {
+	// Resize the window to be bigger than the normal PopupWindow
+	BOOL ok = SetWindowPos(m_hwnd, HWND_TOP, 100, 100, DPIScale::DipsToPixelsX(800), DPIScale::DipsToPixelsY(500), 0);
+	if (!ok) OutputError(L"EditTransactionWindow::PreShow() SetWindowPos failed");
+
+	// Get the window rect
 	RECT rc;
-	BOOL bErr = GetClientRect(m_hwnd, &rc);
-	if (bErr == 0) OutputError(L"GetClientRect failed");
+	ok = GetClientRect(m_hwnd, &rc);
+	if (!ok) OutputError(L"EditTransactionWindow::PreShow() GetClientRect failed");
 	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
 
-	m_center = (dipRect.left + dipRect.right) / 2.0f;
+	// Load transactions
+	FileIO transFile;
+	transFile.Init(m_filepath);
+	transFile.Open(GENERIC_READ);
+	m_transactions = transFile.Read<Transaction>();
+	transFile.Close();
 
-	// Create AppItems
+	// Create title bar
 	m_titleBar = new TitleBar(m_hwnd, m_d2, this);
-	m_ok = new TextButton(m_hwnd, m_d2, this);
-	m_cancel = new TextButton(m_hwnd, m_d2, this);
+	m_titleBar->SetSize(D2D1::RectF(0, 0, dipRect.right, DPIScale::SnapToPixelY(m_titleBarHeight)));
 
-	m_items = { m_titleBar, m_ok, m_cancel };
-
-	m_ok->SetName(L"Ok");
-	m_cancel->SetName(L"Cancel");
-
-	for (auto item : m_items)
+	// Create table
+	m_table = new Table(m_hwnd, m_d2, this, true);
+	m_table->SetColumns(m_labels, m_widths);
+	std::vector<TableRowItem*> rows;
+	for (size_t i = 0; i < m_transactions.size() + 1; i++)
 	{
-		item->SetSize(CalculateItemRect(item, dipRect));
+		TransactionEditor *temp = new TransactionEditor(m_hwnd, m_d2, m_table, m_accounts);
+		if (i < m_transactions.size()) temp->SetInfo(m_transactions[i]);
+		rows.push_back(temp);
 	}
+	m_table->Load(rows);
+	m_table->SetSize(D2D1::RectF(0, DPIScale::SnapToPixelY(m_titleBarHeight), dipRect.right, dipRect.bottom));
+
+	m_items = { m_titleBar, m_table };
 }
 
-LRESULT ConfirmationWindow::OnPaint()
+LRESULT EditTransactionWindow::OnPaint()
 {
 	RECT rc;
 	BOOL bErr = GetClientRect(m_hwnd, &rc);
@@ -509,23 +737,16 @@ LRESULT ConfirmationWindow::OnPaint()
 	{
 		PAINTSTRUCT ps;
 		BeginPaint(m_hwnd, &ps);
+		//D2D1_RECT_F dipRect = DPIScale::PixelsToDips(ps.rcPaint);
 		m_d2.pD2DContext->BeginDraw();
 
 		// Repaint everything
 		m_d2.pD2DContext->Clear(Colors::MAIN_BACKGROUND);
+
 		for (auto item : m_items)
 			item->Paint(fullRect);
 
-		m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
-		m_d2.pTextFormats[D2Objects::Formats::Segoe12]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
-		m_d2.pD2DContext->DrawTextW(
-			m_text.c_str(),
-			m_text.size(),
-			m_d2.pTextFormats[D2Objects::Formats::Segoe12],
-			D2D1::RectF(fullRect.left, m_titleBarHeight, fullRect.right, fullRect.bottom - m_buttonVPad - m_buttonHeight),
-			m_d2.pBrush
-		);
-		m_d2.pTextFormats[D2Objects::Formats::Segoe12]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+		// TODO Paint menus here
 
 		hr = m_d2.pD2DContext->EndDraw();
 		if (SUCCEEDED(hr))
@@ -542,32 +763,21 @@ LRESULT ConfirmationWindow::OnPaint()
 
 		EndPaint(m_hwnd, &ps);
 	}
-	if (FAILED(hr)) OutputHRerr(hr, L"ConfirmationWindow OnPaint failed");
+	if (FAILED(hr)) OutputHRerr(hr, L"EditTransactionWindow::OnPaint() failed");
 
 	return 0;
 }
 
-void ConfirmationWindow::ProcessCTPMessages()
+void EditTransactionWindow::ProcessCTPMessages()
 {
 	for (ClientMessage msg : m_messages)
 	{
+		if (ProcessPopupWindowCTP(msg)) continue;
+
 		switch (msg.imsg)
 		{
-		case CTPMessage::TITLEBAR_CLOSE:
-			SendMessage(m_hwnd, WM_CLOSE, 0, 0);
-			break;
-		case CTPMessage::TITLEBAR_MAXRESTORE: // Do nothing
-			break;
-		case CTPMessage::TITLEBAR_MIN:
-			ShowWindow(m_hwnd, SW_MINIMIZE);
-			break;
-		case CTPMessage::BUTTON_DOWN:
-			if (msg.sender == m_ok)
-			{
-				m_parent->PostClientMessage(m_msg);
-				PostMessage(m_phwnd, WM_APP, 0, 0);
-			}
-			SendMessage(m_hwnd, WM_CLOSE, 0, 0); // Close on both ok and close
+		case CTPMessage::TEXTBOX_DEACTIVATED:
+		case CTPMessage::TEXTBOX_ENTER:
 			break;
 		default:
 			OutputMessage(L"Unknown message %d received\n", static_cast<int>(msg.imsg));
@@ -577,37 +787,4 @@ void ConfirmationWindow::ProcessCTPMessages()
 	if (!m_messages.empty()) m_messages.clear();
 }
 
-D2D1_RECT_F ConfirmationWindow::CalculateItemRect(AppItem *item, D2D1_RECT_F const & dipRect)
-{
-	if (item == m_titleBar)
-	{
-		return D2D1::RectF(
-			0.0f,
-			0.0f,
-			dipRect.right,
-			DPIScale::SnapToPixelY(m_titleBarHeight)
-		);
-	}
-	else if (item == m_ok)
-	{
-		return D2D1::RectF(
-			m_center - m_buttonHPad - m_buttonWidth,
-			dipRect.bottom - m_buttonVPad - m_buttonHeight,
-			m_center - m_buttonHPad,
-			dipRect.bottom - m_buttonVPad
-		);
-	}
-	else if (item == m_cancel)
-	{
-		return D2D1::RectF(
-			m_center + m_buttonHPad,
-			dipRect.bottom - m_buttonVPad - m_buttonHeight,
-			m_center + m_buttonHPad + m_buttonWidth,
-			dipRect.bottom - m_buttonVPad
-		);
-	}
-	else
-	{
-		return D2D1::RectF(0, 0, 0, 0);
-	}
-}
+

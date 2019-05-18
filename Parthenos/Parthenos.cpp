@@ -28,8 +28,7 @@ Parthenos::~Parthenos()
 {
 	for (auto item : m_allItems)
 		if (item) delete item;
-	if (m_addTWin) delete m_addTWin;
-	if (m_okWin) delete m_okWin;
+	for (PopupWindow *cwin : m_childWindows) if (cwin) delete cwin;
 
 	for (int i = 1; i < Timers::n_timers + 1; i++)
 	{
@@ -104,7 +103,7 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		);
 	case WM_MOUSELEAVE:
 	{
-		// This message seems to be sent when screen turns off, even when not tracking.
+		// This message seems to be sent when screen turns off, even when m_bMouseTracking == false.
 		// OnMouseMove() begins tracking, so don't call it or else infinite loop.
 		D2D1_POINT_2F dipCursor = DPIScale::PixelsToDips(POINT{ -1, -1 });
 		if (m_mouseCaptured)
@@ -124,7 +123,6 @@ LRESULT Parthenos::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	}
 	case WM_MOUSEHOVER:
 		// TODO: Handle the mouse-hover message.
-		OutputDebugString(L"Hover\n");
 		m_mouseTrack.Reset(m_hwnd);
 		return 0;
 	case WM_MOUSEWHEEL:
@@ -484,11 +482,11 @@ void Parthenos::InitItems()
 	std::vector<std::vector<std::wstring>> items = {
 		{ L"Print Transaction History", L"Print Holdings", L"Print Equity History", L"Update Last Equity History Entry" },
 		m_accountNames, // Add "All Accounts" below
-		{ L"Add...", L"Recalculate All" },
+		{ L"Add", L"Edit", L"Recalculate All" },
 		{ L"Print OHLC", L"Delete Last OHLC Entry" }
 	};
 	items[1].push_back(L"All Accounts");
-	std::vector<std::vector<size_t>> divisions = { {3}, {m_accountNames.size()}, {}, {} };
+	std::vector<std::vector<size_t>> divisions = { {3}, {m_accountNames.size()}, {2}, {} };
 	m_menuBar->SetMenus(menus, items, divisions);
 	m_menuBar->Refresh();
 
@@ -623,22 +621,7 @@ void Parthenos::ProcessCTPMessages()
 		case CTPMessage::WINDOW_CLOSED:
 		{
 			PopupWindow *win = reinterpret_cast<PopupWindow*>(msg.sender);
-			if (msg.msg == L"AddTransactionWindow" && win == m_addTWin)
-			{
-				delete m_addTWin;
-				m_addTWin = nullptr;
-			}
-			else if (msg.msg == L"ConfirmationWindow" && win == m_okWin)
-			{
-				delete m_okWin;
-				m_okWin = nullptr;
-			}
-			else
-			{
-				std::wstring err = L"Error: WINDOW_CLOSED couldn't match window\n";
-				if (m_msgBox) m_msgBox->Print(err);
-				else OutputMessage(err);
-			}
+			if (m_childWindows.erase(win)) delete win;
 			break;
 		}
 		case CTPMessage::WINDOW_ADDTRANSACTION_P:
@@ -654,7 +637,7 @@ void Parthenos::ProcessCTPMessages()
 			if (msg.iData < 0) // Release (ReleaseCapture() called in OnLButtonUp)
 				m_mouseCaptured = nullptr;
 			else // Capture (SetCapture() called in OnLButtonDown)
-				m_mouseCaptured = msg.sender;
+				m_mouseCaptured = reinterpret_cast<AppItem*>(msg.sender);
 			break;
 		}
 		case CTPMessage::PRINT:
@@ -740,43 +723,70 @@ void Parthenos::ProcessMenuMessage(bool & pop_front)
 	}
 	else if (msg.iData == 2) // Transactions
 	{
-		if (msg.msg == L"Add...")
+		if (msg.msg == L"Add")
 		{
-			if (!m_addTWin)
+			AddTransactionWindow *addTWin = new AddTransactionWindow();
+			BOOL ok = addTWin->Create(m_hInstance);
+			if (ok)
 			{
-				m_addTWin = new AddTransactionWindow();
-				BOOL ok = m_addTWin->Create(m_hInstance);
-				if (!ok) OutputError(L"Create AddTransaction window failed");
-				m_addTWin->SetParent(this, m_hwnd);
-				m_addTWin->SetAccounts(m_accountNames);
-				m_addTWin->PreShow();
-				ShowWindow(m_addTWin->Window(), SW_SHOW);
+				m_childWindows.insert(addTWin);
+				addTWin->SetParent(this, m_hwnd);
+				addTWin->SetAccounts(m_accountNames);
+				addTWin->PreShow();
+				ShowWindow(addTWin->Window(), SW_SHOW);
+			}
+			else
+			{
+				delete addTWin;
+				OutputError(L"Create AddTransaction window failed");
+			}
+		}
+		else if (msg.msg == L"Edit")
+		{
+			EditTransactionWindow *editTWin = new EditTransactionWindow();
+			BOOL ok = editTWin->Create(m_hInstance);
+			if (ok)
+			{
+				m_childWindows.insert(editTWin);
+				editTWin->SetParent(this, m_hwnd);
+				editTWin->SetAccounts(m_accountNames);
+				editTWin->SetFilepath(ROOTDIR + L"hist.trans");
+				editTWin->PreShow();
+				ShowWindow(editTWin->Window(), SW_SHOW);
+			}
+			else
+			{
+				delete editTWin;
+				OutputError(L"Create AddTransaction window failed");
 			}
 		}
 		else if (msg.msg == L"Recalculate All")
 		{
 			if (msg.sender) // sent by menubar -> ask confirmation
 			{
-				if (!m_okWin) // shouldn't already exist
+				ConfirmationWindow *okWin = new ConfirmationWindow();
+				BOOL ok = okWin->Create(m_hInstance);
+				if (ok)
 				{
-					m_okWin = new ConfirmationWindow();
-					BOOL ok = m_okWin->Create(m_hInstance);
-					if (!ok) OutputError(L"Create AddTransaction window failed");
-
-					m_okWin->SetParent(this, m_hwnd);
-					m_okWin->SetText(L"Recalculate holdings from full transaction history?");
+					okWin->SetParent(this, m_hwnd);
+					okWin->SetText(L"Recalculate holdings from full transaction history?");
 					msg.sender = nullptr;
-					m_okWin->SetMessage(msg);
-					m_okWin->PreShow();
-
-					ShowWindow(m_okWin->Window(), SW_SHOW);
+					okWin->SetMessage(msg);
+					okWin->PreShow();
+					ShowWindow(okWin->Window(), SW_SHOW);
+				}
+				else
+				{
+					delete okWin;
+					OutputError(L"Create AddTransaction window failed");
 				}
 			}
 			else if (!msg.sender) // sent from confirmation window
 			{
-				m_msgBox->Print(L"Recalculating holdings\n");
+				m_msgBox->Print(L"Recalculating holdings...\n");
 				NestedHoldings holdings = CalculateHoldings();
 				CalculatePositions(holdings);
+				m_msgBox->Print(L"Done.\n");
 			}
 		}
 	}
@@ -784,8 +794,8 @@ void Parthenos::ProcessMenuMessage(bool & pop_front)
 	{
 		if (msg.msg == L"Print OHLC")
 		{
-			pop_front = false;
 			m_messages.pop_front(); // delete this message since file dialog blocks
+			pop_front = false; // tell ProcessCTPMessages not to pop front again
 			std::wstring file = LaunchFileDialog();
 
 			FileIO ohlcFile;
@@ -1181,11 +1191,10 @@ LRESULT Parthenos::OnCreate()
 	args.hIcon = LoadIcon(args.hInstance, MAKEINTRESOURCE(IDI_PARTHENOS));
 	args.hIconSm = LoadIcon(args.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
-	m_okWin = new ConfirmationWindow(); // temp
-	BOOL ok = m_okWin->Register(args);
+	ConfirmationWindow *temp_window = new ConfirmationWindow(); // use a ConfirmationWindow as a temp
+	BOOL ok = temp_window->Register(args);
 	if (!ok) OutputError(L"Register Popup failed");
-	delete m_okWin;
-	m_okWin = nullptr;
+	delete temp_window;
 
 	// Calculate layouts
 	m_titleBarBottom = DPIScale::SnapToPixelY(m_titleBarHeight);

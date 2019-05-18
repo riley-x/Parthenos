@@ -77,9 +77,14 @@ void MenuBar::ProcessCTPMessages()
 	{
 		if (msg.imsg == CTPMessage::DROPMENU_SELECTED)
 		{
-			size_t i = 0;
-			for (; i < m_buttons.size(); i++) if (msg.sender == m_buttons[i]) break;
-			m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_SELECTED, (int)i);
+			for (size_t i = 0; i < m_buttons.size(); i++)
+			{
+				if (msg.sender == m_buttons[i])
+				{
+					m_parent->PostClientMessage(this, msg.msg, CTPMessage::MENUBAR_SELECTED, (int)i);
+					break;
+				}
+			}
 		}
 	}
 	if (!m_messages.empty()) m_messages.clear();

@@ -49,8 +49,7 @@ private:
 	std::vector<std::pair<Quote, Stats>>	m_stats; // in same order as m_tickers
 
 	// 'Child' windows
-	AddTransactionWindow	*m_addTWin = nullptr;
-	ConfirmationWindow		*m_okWin = nullptr;
+	std::unordered_set<PopupWindow*> m_childWindows;
 
 	// Logical components
 	std::vector<AppItem*>	m_activeItems; // items that need to be painted

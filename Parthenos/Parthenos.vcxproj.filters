@@ -105,6 +105,12 @@
     <ClInclude Include="MessageScrollBox.h">
       <Filter>Header Files\AppItems</Filter>
     </ClInclude>
+    <ClInclude Include="TransactionEditor.h">
+      <Filter>Header Files\AppItems</Filter>
+    </ClInclude>
+    <ClInclude Include="Table.h">
+      <Filter>Header Files\AppItems</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -166,6 +172,12 @@
     </ClCompile>
     <ClCompile Include="MessageScrollBox.cpp">
       <Filter>Source Files\AppItems</Filter>
+    </ClCompile>
+    <ClCompile Include="TransactionEditor.cpp">
+      <Filter>Source Files\AppItems</Filter>
+    </ClCompile>
+    <ClCompile Include="Table.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

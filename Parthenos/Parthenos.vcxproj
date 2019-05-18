@@ -176,9 +176,11 @@
     <ClInclude Include="Resource.h" />
     <ClInclude Include="ScrollBar.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="Table.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="TextBox.h" />
     <ClInclude Include="TitleBar.h" />
+    <ClInclude Include="TransactionEditor.h" />
     <ClInclude Include="utilities.h" />
     <ClInclude Include="Watchlist.h" />
   </ItemGroup>
@@ -204,8 +206,10 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Table.cpp" />
     <ClCompile Include="TextBox.cpp" />
     <ClCompile Include="TitleBar.cpp" />
+    <ClCompile Include="TransactionEditor.cpp" />
     <ClCompile Include="utilities.cpp" />
     <ClCompile Include="Watchlist.cpp" />
   </ItemGroup>

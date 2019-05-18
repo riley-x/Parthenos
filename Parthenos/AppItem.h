@@ -25,7 +25,7 @@ enum class CTPMessage
 // For WINDOW_*_P messages, use sender as pointer to data to pass, since the window is getting destroyed.
 typedef struct ClientMessage_struct
 {
-	AppItem *sender;
+	void *sender;
 	std::wstring msg;
 	CTPMessage imsg;
 	int iData;
@@ -36,7 +36,7 @@ typedef struct ClientMessage_struct
 class CTPMessageReceiver
 {
 public:
-	void SendClientMessage(AppItem *sender, std::wstring msg, CTPMessage imsg, int iData = 0, double dData = 0) 
+	void SendClientMessage(void *sender, std::wstring msg, CTPMessage imsg, int iData = 0, double dData = 0) 
 	{
 		m_messages.push_front({ sender, msg, imsg, iData, dData });
 		ProcessCTPMessages();
@@ -46,7 +46,7 @@ public:
 		m_messages.push_front(msg);
 		ProcessCTPMessages();
 	}
-	void PostClientMessage(AppItem *sender, std::wstring msg, CTPMessage imsg, int iData = 0, double dData = 0) 
+	void PostClientMessage(void *sender, std::wstring msg, CTPMessage imsg, int iData = 0, double dData = 0) 
 	{
 		m_messages.push_back({ sender, msg, imsg, iData, dData });
 	}

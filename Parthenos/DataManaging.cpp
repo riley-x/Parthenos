@@ -522,7 +522,7 @@ namespace EquityHistoryHelper
 // This will almost always crash because Alpha only allows 5 api calls per minute.
 // Could launch a separate thread that sleeps for a minute
 //
-// Does not include transactions.
+// Does not include transfers.
 std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Transaction> const & trans)
 {
 	std::vector<TimeSeries> out;
