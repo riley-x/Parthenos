@@ -13,7 +13,8 @@ void PopupMenu::SetSize(D2D1_RECT_F dipRect)
 {
 	m_dipRect = dipRect;
 	m_dipRect.right = m_dipRect.left + m_width;
-	m_dipRect.bottom = m_dipRect.top + m_height;
+	if (m_orientDown) m_dipRect.bottom = m_dipRect.top + m_height;
+	else m_dipRect.top = m_dipRect.bottom - m_height;
 
 	m_pixRect = DPIScale::DipsToPixels(m_dipRect);
 	m_borderRect = DPIScale::SnapToPixel(m_dipRect, true);	

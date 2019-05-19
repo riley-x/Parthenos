@@ -4,7 +4,6 @@
 #include "../AppItems/TransactionEditor.h"
 
 
-
 void EditTransactionWindow::PreShow()
 {
 	// Resize the window to be bigger than the normal PopupWindow
@@ -53,7 +52,7 @@ void EditTransactionWindow::PaintSelf(D2D1_RECT_F windowRect, D2D1_RECT_F update
 	for (auto item : m_items)
 		item->Paint(windowRect);
 
-	// TODO Paint menus here
+	if (m_activeButton) m_activeButton->GetMenu()->Paint(windowRect);
 }
 
 void EditTransactionWindow::ProcessCTPMessages()
@@ -65,8 +64,28 @@ void EditTransactionWindow::ProcessCTPMessages()
 		switch (msg.imsg)
 		{
 		case CTPMessage::TEXTBOX_DEACTIVATED:
-		case CTPMessage::TEXTBOX_ENTER:
+		case CTPMessage::TEXTBOX_ENTER: // ignore
 			break;
+		case CTPMessage::DROPMENU_ACTIVE:
+		{
+			m_activeButton = static_cast<DropMenuButton*>(msg.sender);
+			D2D1_RECT_F menuRect = m_activeButton->GetMenu()->GetDIPRect();
+			if (menuRect.bottom > m_dipRect.bottom)
+				m_activeButton->SetOrientationDown(false);
+			else if (menuRect.top < m_dipRect.top)
+				m_activeButton->SetOrientationDown(true);
+			break;
+		}
+		case CTPMessage::DROPMENU_SELECTED:
+		case CTPMessage::ITEM_SCROLLED: // from table
+		{
+			if (m_activeButton)
+			{
+				m_activeButton->Deactivate();
+				m_activeButton = nullptr;
+			}
+			break;
+		}
 		default:
 			OutputMessage(L"Unknown message %d received\n", static_cast<int>(msg.imsg));
 			break;

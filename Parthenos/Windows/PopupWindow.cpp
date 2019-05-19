@@ -174,16 +174,17 @@ LRESULT PopupWindow::OnSize(WPARAM wParam)
 
 		InvalidateRect(m_hwnd, NULL, FALSE);
 	}
+
+	RECT rc;
+	BOOL bErr = GetClientRect(m_hwnd, &rc);
+	if (bErr == 0) OutputError(L"PopupWindow::OnPaint() GetClientRect failed");
+	m_dipRect = DPIScale::PixelsToDips(rc);
+
 	return 0;
 }
 
 LRESULT PopupWindow::OnPaint()
 {
-	RECT rc;
-	BOOL bErr = GetClientRect(m_hwnd, &rc);
-	if (bErr == 0) OutputError(L"PopupWindow::OnPaint() GetClientRect failed");
-	D2D1_RECT_F windowRect = DPIScale::PixelsToDips(rc);
-
 	HRESULT hr = m_d2.CreateGraphicsResources(m_hwnd);
 	if (SUCCEEDED(hr))
 	{
@@ -193,7 +194,7 @@ LRESULT PopupWindow::OnPaint()
 		D2D1_RECT_F updateRect = DPIScale::PixelsToDips(ps.rcPaint);
 		m_d2.pD2DContext->BeginDraw();
 
-		PaintSelf(windowRect, updateRect);
+		PaintSelf(m_dipRect, updateRect);
 
 		hr = m_d2.pD2DContext->EndDraw();
 		if (SUCCEEDED(hr))
@@ -250,7 +251,7 @@ LRESULT PopupWindow::OnMouseWheel(POINT cursor, WPARAM wParam)
 		handeled = item->OnMouseWheel(dipCursor, wParam, handeled) || handeled;
 	}
 
-	//ProcessCTPMessages();
+	ProcessCTPMessages();
 	return 0;
 }
 

@@ -29,7 +29,7 @@ public:
 	bool OnKeyDown(WPARAM wParam, LPARAM lParam);
 	void OnTimer(WPARAM wParam, LPARAM lParam);
 	virtual void ProcessCTPMessages();
-	void ProcessTableCTP(ClientMessage const & msg);
+	bool ProcessTableCTP(ClientMessage const & msg);
 
 	// Interface
 	void SetColumns(std::vector<std::wstring> const & names, std::vector<float> const & widths);

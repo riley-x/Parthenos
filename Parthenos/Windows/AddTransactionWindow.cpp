@@ -51,8 +51,8 @@ void AddTransactionWindow::PaintSelf(D2D1_RECT_F windowRect, D2D1_RECT_F updateR
 		item->Paint(windowRect);
 	DrawTexts(windowRect);
 
-	m_accountButton->GetMenu().Paint(windowRect);
-	m_transactionTypeButton->GetMenu().Paint(windowRect);
+	m_accountButton->GetMenu()->Paint(windowRect);
+	m_transactionTypeButton->GetMenu()->Paint(windowRect);
 }
 
 void AddTransactionWindow::ProcessCTPMessages()

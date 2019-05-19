@@ -5,8 +5,8 @@ TransactionEditor::TransactionEditor(HWND hwnd, D2Objects const & d2, Table *par
 	: TableRowItem(hwnd, d2, parent)
 {
 	// Create AppItems
-	m_accountButton			= new DropMenuButton(m_hwnd, m_d2, this);
-	m_transactionTypeButton = new DropMenuButton(m_hwnd, m_d2, this);
+	m_accountButton			= new DropMenuButton(m_hwnd, m_d2, this, true, false);
+	m_transactionTypeButton = new DropMenuButton(m_hwnd, m_d2, this, true, false);
 	m_dateBox		= new TextBox(m_hwnd, m_d2, this, m_parent->m_format, m_parent->m_hTextPad, false);
 	m_tickerBox		= new TextBox(m_hwnd, m_d2, this, m_parent->m_format, m_parent->m_hTextPad, false);
 	m_nsharesBox	= new TextBox(m_hwnd, m_d2, this, m_parent->m_format, m_parent->m_hTextPad, false);
@@ -52,9 +52,6 @@ void TransactionEditor::Paint(D2D1_RECT_F updateRect)
 {
 	if (!overlapRect(m_dipRect, updateRect)) return;
 	for (AppItem *item : m_items) item->Paint(updateRect);
-
-	m_accountButton->GetMenu().Paint(updateRect); // BUG these need to be painted after EVERYTHING else
-	m_transactionTypeButton->GetMenu().Paint(updateRect);
 }
 
 bool TransactionEditor::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
@@ -68,7 +65,7 @@ bool TransactionEditor::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 {
 	for (AppItem *item : m_items)
 		handeled = item->OnLButtonDown(cursor, handeled) || handeled;
-	//ProcessCTPMessages();
+	ProcessCTPMessages();
 	return handeled;
 }
 
@@ -102,6 +99,24 @@ bool TransactionEditor::OnKeyDown(WPARAM wParam, LPARAM lParam)
 void TransactionEditor::OnTimer(WPARAM wParam, LPARAM lParam)
 {
 	for (AppItem *item : m_items) item->OnTimer(wParam, lParam);
+}
+
+void TransactionEditor::ProcessCTPMessages()
+{
+	for (ClientMessage msg : m_messages)
+	{
+		switch (msg.imsg)
+		{
+		case CTPMessage::DROPMENU_ACTIVE:
+		case CTPMessage::DROPMENU_SELECTED: // forward
+			m_parent->PostClientMessage(msg);
+			break;
+		default:
+			OutputMessage(L"Unused message: %d\n", msg.imsg);
+		}
+	}
+	if (!m_messages.empty()) m_messages.clear();
+
 }
 
 std::wstring TransactionEditor::GetData(size_t iColumn) const

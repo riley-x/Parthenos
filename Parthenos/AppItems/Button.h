@@ -162,13 +162,14 @@ private:
 };
 
 // Creates a drop down menu when clicked. Initialize with SetItems and either SetText or SetActive, before SetSize().
-// Make sure the owner of the button calls GetMenu().Paint() so the popup can be on top.
+// Make sure the owner of the button calls GetMenu()->Paint() so the popup can be on top.
 class DropMenuButton : public Button
 {
 public:
 	// Constructors
-	DropMenuButton(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent, bool dynamic = true) :
-		Button(hwnd, d2, parent), m_menu(hwnd, d2, this), m_dynamic(dynamic) {}
+	DropMenuButton(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent, 
+		bool dynamic = true, bool border = true) 
+		: Button(hwnd, d2, parent), m_menu(hwnd, d2, this), m_dynamic(dynamic), m_border(border) {}
 	~DropMenuButton() { if (!m_dynamic) SafeRelease(&m_activeLayout); }
 	
 	// AppItem overrides
@@ -181,8 +182,12 @@ public:
 	void SetText(std::wstring text, float width, float height); // For non-dynamic, the text of the button
 	inline void SetItems(std::vector<std::wstring> const & items) { m_menu.SetItems(items); }
 	void SetActive(size_t i);
+	inline void SetBorder(bool border) { m_border = border; }
+	void SetOrientationDown(bool down);
+	void Deactivate(); // Hides the menu
+
 	inline int GetSelection() const { return m_activeSelection; }
-	inline PopupMenu & GetMenu() { return m_menu; }
+	inline PopupMenu* GetMenu() { return &m_menu; }
 	inline bool IsActive() const { return m_active; }
 
 private:
@@ -195,6 +200,8 @@ private:
 
 	// Flags
 	bool m_active = false;
+	bool m_menuDown = true;
+	bool m_border;
 	bool m_dynamic; // Does the text change with selection?
 
 	// Layout

@@ -34,7 +34,7 @@ void MenuBar::Paint(D2D1_RECT_F updateRect)
 	}
 	for (size_t i = 0; i < m_buttons.size(); i++)
 	{
-		m_buttons[i]->GetMenu().Paint(updateRect);
+		m_buttons[i]->GetMenu()->Paint(updateRect);
 	}
 }
 
@@ -125,7 +125,7 @@ void MenuBar::SetMenus(std::vector<std::wstring> const & menus,
 		DropMenuButton *temp = new DropMenuButton(m_hwnd, m_d2, this, false);
 		temp->SetText(menus[i], width, m_height);
 		temp->SetItems(items[i]);
-		temp->GetMenu().SetDivisions(divisions[i]);
+		temp->GetMenu()->SetDivisions(divisions[i]);
 		m_buttons.push_back(temp);
 		m_widths.push_back(width);
 	}
@@ -136,7 +136,7 @@ void MenuBar::SetMenuItems(size_t i, std::vector<std::wstring> const & items, st
 	if (i >= m_buttons.size()) return;
 
 	m_buttons[i]->SetItems(items);
-	m_buttons[i]->GetMenu().SetDivisions(divisions);
+	m_buttons[i]->GetMenu()->SetDivisions(divisions);
 }
 
 void MenuBar::Refresh()

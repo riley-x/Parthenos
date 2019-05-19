@@ -70,12 +70,11 @@ void DropMenuButton::SetSize(D2D1_RECT_F dipRect)
 		);
 	}
 
-	// Menu
-	m_menu.SetSize(D2D1::RectF(
-		dipRect.left,
-		dipRect.bottom + 1.0f,
-		0, 0 // menu calculates these
-	));
+	// Menu. Menu calculates width and height
+	if (m_menuDown)
+		m_menu.SetSize(D2D1::RectF(dipRect.left, dipRect.bottom + 1.0f, 0, 0));
+	else
+		m_menu.SetSize(D2D1::RectF(dipRect.left, 0, 0, dipRect.top));
 }
 
 // owner of button should call paint on popup
@@ -84,11 +83,12 @@ void DropMenuButton::Paint(D2D1_RECT_F updateRect)
 	if (m_dynamic)
 	{
 		// Draw bounding box
-		if (m_active)
-			m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
-		else
-			m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
-		m_d2.pD2DContext->DrawRectangle(m_dipRect, m_d2.pBrush, 0.5f);
+		if (m_border)
+		{
+			if (m_active) m_d2.pBrush->SetColor(Colors::BRIGHT_LINE);
+			else m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
+			m_d2.pD2DContext->DrawRectangle(m_dipRect, m_d2.pBrush, 0.5f);
+		}
 
 		// Arrow icon
 		if (m_d2.pD2DBitmaps[GetResourceIndex(IDB_DOWNARROWHEAD)])
@@ -124,15 +124,13 @@ bool DropMenuButton::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 			m_parent->PostClientMessage(this, str, CTPMessage::DROPMENU_SELECTED);
 			out = true;
 		}
-		// Deactivate on click, always
-		m_active = false;
-		m_menu.Show(false);
-		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+		Deactivate(); // Deactivate on click, always
 	}
 	else if (!handeled && inRect(cursor, m_dipRect))
 	{
 		m_active = true;
 		m_menu.Show();
+		m_parent->PostClientMessage(this, L"", CTPMessage::DROPMENU_ACTIVE);
 		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 		out = true;
 	}
@@ -164,6 +162,29 @@ void DropMenuButton::SetActive(size_t i)
 		m_activeSelection = i;
 		m_activeLayout = m_menu.GetLayout(i);
 		m_name = m_menu.GetItem(i);
+	}
+}
+
+void DropMenuButton::SetOrientationDown(bool down)
+{
+	if (m_menuDown != down)
+	{
+		m_menuDown = down;
+		m_menu.SetOrientationDown(down);
+		if (m_menuDown)
+			m_menu.SetSize(D2D1::RectF(m_dipRect.left, m_dipRect.bottom + 1.0f, 0, 0));
+		else
+			m_menu.SetSize(D2D1::RectF(m_dipRect.left, 0, 0, m_dipRect.top));
+	}
+}
+
+void DropMenuButton::Deactivate()
+{
+	if (m_active)
+	{
+		m_active = false;
+		m_menu.Show(false);
+		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 	}
 }
 

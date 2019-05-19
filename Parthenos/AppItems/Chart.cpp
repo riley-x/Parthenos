@@ -234,7 +234,7 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 		m_axes.Paint(updateRect);
 
 	// Popups -- need to be last
-	m_timeframeButton.GetMenu().Paint(updateRect);
+	m_timeframeButton.GetMenu()->Paint(updateRect);
 }
 
 bool Chart::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)

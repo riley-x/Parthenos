@@ -243,12 +243,20 @@ void Table::ProcessCTPMessages()
 {
 	for (ClientMessage msg : m_messages)
 	{
-		ProcessTableCTP(msg);
+		if (ProcessTableCTP(msg)) continue;
+
+		switch (msg.imsg)
+		{
+		case CTPMessage::DROPMENU_ACTIVE:
+		case CTPMessage::DROPMENU_SELECTED: // forward
+			m_parent->PostClientMessage(msg);
+			break;
+		}
 	}
 	if (!m_messages.empty()) m_messages.clear();
 }
 
-void Table::ProcessTableCTP(ClientMessage const & msg)
+bool Table::ProcessTableCTP(ClientMessage const & msg)
 {
 	switch (msg.imsg)
 	{
@@ -259,13 +267,15 @@ void Table::ProcessTableCTP(ClientMessage const & msg)
 		if (!IsVisible(m_hover)) m_hover = -2;
 		CalculatePositions();
 		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
-		break;
+		m_parent->PostClientMessage(this, msg.msg, CTPMessage::ITEM_SCROLLED, msg.iData, msg.dData);
+		return true;
 	}
 	case CTPMessage::MOUSE_CAPTURED: // from scrollbox
 		m_parent->PostClientMessage(this, msg.msg, msg.imsg, msg.iData, msg.dData);
 		// change sender to this to process scrollbox messages
-		break;
+		return true;
 	}
+	return false;
 }
 
 void Table::SetColumns(std::vector<std::wstring> const & names, std::vector<float> const & widths)

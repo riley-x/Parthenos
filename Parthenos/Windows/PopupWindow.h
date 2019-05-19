@@ -45,6 +45,7 @@ protected:
 	D2Objects m_d2;
 
 	// Layout
+	D2D1_RECT_F	m_dipRect;
 	float const	m_titleBarHeight = 30.0f;
 
 	// Helpers
@@ -55,7 +56,7 @@ protected:
 	virtual void ProcessCTPMessages() = 0;
 
 private:
-	// Name
+	// State
 	std::wstring m_name;
 
 	// Flags

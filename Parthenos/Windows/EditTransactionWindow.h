@@ -18,6 +18,7 @@ public:
 private:
 	// Items
 	Table *m_table;
+	DropMenuButton *m_activeButton = nullptr;
 	std::vector<std::wstring> const m_labels = { L"Account:", L"Transaction:", L"Date:", L"Ticker:",
 		L"Shares:", L"Price:", L"Value:",
 		L"Ex Date:", L"Strike:", L"Tax Lot:" };
