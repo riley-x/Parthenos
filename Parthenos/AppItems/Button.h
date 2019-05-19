@@ -187,6 +187,7 @@ public:
 	void Deactivate(); // Hides the menu
 
 	inline int GetSelection() const { return m_activeSelection; }
+	inline std::wstring GetText() const { return m_name; }
 	inline PopupMenu* GetMenu() { return &m_menu; }
 	inline bool IsActive() const { return m_active; }
 
@@ -196,7 +197,7 @@ private:
 
 	// State
 	int m_activeSelection = 0;
-	IDWriteTextLayout* m_activeLayout;
+	IDWriteTextLayout* m_activeLayout; // text stored in m_name
 
 	// Flags
 	bool m_active = false;

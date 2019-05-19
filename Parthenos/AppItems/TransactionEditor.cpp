@@ -119,12 +119,31 @@ void TransactionEditor::ProcessCTPMessages()
 
 }
 
-std::wstring TransactionEditor::GetData(size_t iColumn) const
+double TransactionEditor::GetData(size_t iColumn) const
 {
 	if (iColumn < 2)
 	{
 		DropMenuButton *but = static_cast<DropMenuButton*>(m_items[iColumn]);
-		return std::to_wstring(but->GetSelection());
+		return (double)but->GetSelection();
+	}
+	else if (iColumn == 3) // ticker
+	{
+		return 0.0;
+	}
+	else if (iColumn < m_items.size())
+	{
+		TextBox *box = static_cast<TextBox*>(m_items[iColumn]);
+		return stod(box->String());
+	}
+	else return 0.0;
+}
+
+std::wstring TransactionEditor::GetString(size_t iColumn) const
+{
+	if (iColumn < 2)
+	{
+		DropMenuButton *but = static_cast<DropMenuButton*>(m_items[iColumn]);
+		return but->Name();
 	}
 	else if (iColumn < m_items.size())
 	{

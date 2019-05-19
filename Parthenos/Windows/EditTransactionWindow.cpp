@@ -29,7 +29,7 @@ void EditTransactionWindow::PreShow()
 
 	// Create table
 	m_table = new Table(m_hwnd, m_d2, this, true);
-	m_table->SetColumns(m_labels, m_widths);
+	m_table->SetColumns(m_labels, m_widths, m_types);
 	std::vector<TableRowItem*> rows;
 	for (size_t i = 0; i < m_transactions.size() + 1; i++)
 	{

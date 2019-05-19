@@ -500,17 +500,17 @@ void Parthenos::InitItems()
 	m_chart->LoadHistory(trans);
 
 	// Watchlists
-	std::vector<Column> portColumns = {
-		{60.0f, Column::Ticker, L""},
-		{60.0f, Column::Last, L"%.2lf"},
-		{60.0f, Column::ChangeP, L"%.2lf"},
-		{50.0f, Column::Shares, L"%d"},
-		{60.0f, Column::AvgCost, L"%.2lf"},
-		{60.0f, Column::Equity, L"%.2lf"},
-		{60.0f, Column::ReturnsT, L"%.2lf"},
-		{60.0f, Column::ReturnsP, L"%.2lf"},
-		{55.0f, Column::APY, L"%.1lf"},
-		{60.0f, Column::ExDiv, L""},
+	std::vector<WatchlistColumn> portColumns = {
+		{60.0f, WatchlistColumn::Ticker, L""},
+		{60.0f, WatchlistColumn::Last, L"%.2lf"},
+		{60.0f, WatchlistColumn::ChangeP, L"%.2lf"},
+		{50.0f, WatchlistColumn::Shares, L"%d"},
+		{60.0f, WatchlistColumn::AvgCost, L"%.2lf"},
+		{60.0f, WatchlistColumn::Equity, L"%.2lf"},
+		{60.0f, WatchlistColumn::ReturnsT, L"%.2lf"},
+		{60.0f, WatchlistColumn::ReturnsP, L"%.2lf"},
+		{55.0f, WatchlistColumn::APY, L"%.1lf"},
+		{60.0f, WatchlistColumn::ExDiv, L""},
 	};
 	m_watchlist->SetColumns(); // use defaults
 	m_portfolioList->SetColumns(portColumns);

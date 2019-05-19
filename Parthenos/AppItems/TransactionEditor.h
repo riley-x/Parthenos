@@ -26,7 +26,8 @@ public:
 	void ProcessCTPMessages();
 
 	// Interface
-	std::wstring GetData(size_t iColumn) const;
+	double GetData(size_t iColumn) const;
+	std::wstring GetString(size_t iColumn) const;
 	void SetInfo(Transaction const & t);
 	//void GetTransaction() const;
 

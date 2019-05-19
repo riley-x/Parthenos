@@ -5,301 +5,29 @@
 #include "../Utilities/DataManaging.h"
 #include "../Windows/Parthenos.h"
 
-float const Watchlist::m_hTextPad = 4.0f;
-
-Watchlist::~Watchlist()
-{
-	for (auto item : m_items) if (item) delete item;
-	for (auto layout : m_pTextLayouts) SafeRelease(&layout);
-}
-
-void Watchlist::SetSize(D2D1_RECT_F dipRect)
-{
-	if (equalRect(m_dipRect, dipRect)) return;
-
-	m_dipRect = dipRect;
-	m_pixRect = DPIScale::DipsToPixels(m_dipRect);
-
-	m_headerBorder = DPIScale::SnapToPixelY(m_dipRect.top + m_headerHeight) - DPIScale::hpy();
-	m_visibleLines = static_cast<size_t>(floorf((m_dipRect.bottom - m_headerBorder) / m_rowHeight));
-
-	Refresh(); // also sets number of lines for scrollbar
-
-	// scroll bar auto sets left
-	m_scrollBar.SetSize(D2D1::RectF(0.0f, m_headerBorder + 1, m_dipRect.right, m_dipRect.bottom));
-}
-
-void Watchlist::Paint(D2D1_RECT_F updateRect)
-{
-	// When invalidating, converts to pixels then back to DIPs -> updateRect has smaller values
-	// than when invalidated.
-	if (!overlapRect(m_dipRect, updateRect)) return;
-
-	// Scrollbar only
-	if (updateRect.left + 1 >= m_dipRect.right - ScrollBar::Width) return m_scrollBar.Paint(updateRect);
-
-	// Background
-	m_d2.pBrush->SetColor(Colors::WATCH_BACKGROUND);
-	m_d2.pD2DContext->FillRectangle(m_dipRect, m_d2.pBrush);
-
-	// Column headers
-	float left = m_dipRect.left;
-	m_d2.pBrush->SetColor(Colors::MAIN_TEXT);
-	for (size_t i = 0; i < m_columns.size(); i++)
-	{
-		m_d2.pD2DContext->DrawTextLayout(
-			D2D1::Point2F(left + m_hTextPad, m_dipRect.top),
-			m_pTextLayouts[i],
-			m_d2.pBrush
-		);
-		left += m_columns[i].width;
-		if (left >= m_dipRect.right) break;
-	}
-
-	// Item texts
-	for (size_t i = m_currLine; i < m_items.size() && i < m_currLine + m_visibleLines; i++)
-		m_items[i]->Paint(m_dipRect); // pass watchlist rect as updateRect to force repaint
-
-	// Internal lines
-	m_d2.pBrush->SetColor(Colors::DULL_LINE);
-	for (float line : m_vLines)
-	{
-		m_d2.pD2DContext->DrawLine(
-			D2D1::Point2F(line, m_dipRect.top),
-			D2D1::Point2F(line, m_dipRect.bottom),
-			m_d2.pBrush,
-			0.5
-		);
-	}
-	for (float line : m_hLines)
-	{
-		m_d2.pD2DContext->DrawLine(
-			D2D1::Point2F(m_dipRect.left, line),
-			D2D1::Point2F(m_dipRect.right, line),
-			m_d2.pBrush,
-			0.5
-		);
-	}
-
-	// Scrollbar
-	m_scrollBar.Paint(updateRect);
-
-	// Header dividing line
-	m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
-	m_d2.pD2DContext->DrawLine(
-		D2D1::Point2F(m_dipRect.left, m_headerBorder),
-		D2D1::Point2F(m_dipRect.right, m_headerBorder),
-		m_d2.pBrush,
-		DPIScale::py()
-	);
-
-	// Drag-drop insertion line
-	if (m_LButtonDown >= 0 && m_hover >= 0)
-	{
-		float y = DPIScale::SnapToPixelY(GetHeight(m_hover)) - DPIScale::hpy();
-		m_d2.pBrush->SetColor(Colors::ACCENT);
-		m_d2.pD2DContext->DrawLine(
-			D2D1::Point2F(m_dipRect.left, y),
-			D2D1::Point2F(m_dipRect.right - ScrollBar::Width, y),
-			m_d2.pBrush,
-			DPIScale::py()
-		);
-	}
-}
-
-bool Watchlist::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
-{
-	int i = GetItem(cursor.y);
-	if (m_LButtonDown >= 0 && (wParam & MK_LBUTTON)) // is dragging
-	{
-		if (m_hover == -1) // First time
-		{
-			m_ignoreSelection = true; // is dragging, so don't update even if dropped in same location
-			m_parent->PostClientMessage(this, L"", CTPMessage::MOUSE_CAPTURED, 1);
-		}
-		if (i != m_hover)
-		{
-			if (IsVisible(i))
-				m_hover = i;
-			else
-				m_hover = -2; // don't set to -1 to avoid confusion with init
-			::InvalidateRect(m_hwnd, &m_pixRect, false);
-		}
-		handeled = true;
-	}
-
-	handeled = m_scrollBar.OnMouseMove(cursor, wParam, handeled) || handeled;
-	if (m_editableTickers)
-	{
-		for (size_t i = m_currLine; i < m_items.size() && i < m_currLine + m_visibleLines; i++)
-			handeled = m_items[i]->OnMouseMove(cursor, wParam, handeled) || handeled;
-	}
-
-	ProcessCTPMessages();
-	return handeled;
-}
-
-bool Watchlist::OnMouseWheel(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
-{
-	if (!handeled && inRect(cursor, m_dipRect))
-	{
-		m_scrollBar.OnMouseWheel(cursor, wParam, handeled);
-		ProcessCTPMessages();
-		return true;
-	}
-	return false;
-}
-
-bool Watchlist::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
-{
-	handeled = m_scrollBar.OnLButtonDown(cursor, handeled) || handeled;
-	for (size_t i = m_currLine; i < m_items.size() && i < m_currLine + m_visibleLines; i++)
-	{
-		handeled = m_items[i]->OnLButtonDown(cursor, handeled) || handeled;
-	}
-
-	if (!handeled && inRect(cursor, m_dipRect))
-	{
-		int i = GetItem(cursor.y);
-		if (IsVisible(i))
-		{
-			if (i == m_items.size() - 1 && m_items.back()->Ticker().empty()) return false; // can't select empty item at end
-			m_LButtonDown = i;
-			// Reset flags for dragging -- not dragging yet
-			m_hover = -1;
-			m_ignoreSelection = false; 
-			return true;
-		}
-	}
-	ProcessCTPMessages();
-	return handeled; // unused
-}
-
-void Watchlist::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)
-{
-	if (!inRect(cursor, m_dipRect)) return;
-	
-	int i = GetItem(cursor.y);
-	if (IsVisible(i) && m_editableTickers)
-	{
-		m_items[i]->OnLButtonDblclk(cursor, wParam);
-	}
-	else if (i < (int)m_currLine) // double click on header
-	{
-		auto it = lower_bound(m_vLines.begin(), m_vLines.end(), cursor.x);
-		if (it == m_vLines.end()) return;
-		size_t column = it - m_vLines.begin();
-		SortByColumn(column);
-		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
-	}
-
-	m_scrollBar.OnLButtonDown(cursor, false);
-	ProcessCTPMessages();
-}
-
-// If dragging an element, does the insertion above the drop location
-void Watchlist::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
-{
-	m_scrollBar.OnLButtonUp(cursor, wParam);
-	for (size_t i = m_currLine; i < m_items.size() && i < m_currLine + m_visibleLines; i++)
-		m_items[i]->OnLButtonUp(cursor, wParam);
-
-	if (m_LButtonDown >= 0)
-	{
-		int iNew = GetItem(cursor.y);
-		bool draw = false;
-
-		// check for drag + drop
-		if (IsVisible(iNew))
-		{
-			if (iNew < m_LButtonDown)
-				MoveItem(m_LButtonDown, iNew);
-			else if (iNew > m_LButtonDown + 1)
-				MoveItem(m_LButtonDown, iNew - 1); // want insertion above drop location, not below
-			if (m_hover >= 0) ::InvalidateRect(m_hwnd, &m_pixRect, false);
-		}
-		m_hover = -1;
-		m_LButtonDown = -1;
-		m_parent->PostClientMessage(this, L"", CTPMessage::MOUSE_CAPTURED, -1);
-	}
-	ProcessCTPMessages();
-}
-
-bool Watchlist::OnChar(wchar_t c, LPARAM lParam)
-{
-	if (m_editableTickers)
-	{
-		c = towupper(c);
-		for (size_t i = m_currLine; i < m_items.size() && i < m_currLine + m_visibleLines; i++)
-		{
-			if (m_items[i]->OnChar(c, lParam)) return true;
-		}
-	}
-	//ProcessCTPMessages();
-	return false;
-}
-
-bool Watchlist::OnKeyDown(WPARAM wParam, LPARAM lParam)
-{
-	bool out = false;
-	if (m_editableTickers)
-	{
-		for (size_t i = m_currLine; i < m_items.size() && i < m_currLine + m_visibleLines; i++)
-		{
-			if (m_items[i]->OnKeyDown(wParam, lParam)) out = true;
-		}
-		ProcessCTPMessages();
-	}
-	return out;
-}
-
-void Watchlist::OnTimer(WPARAM wParam, LPARAM lParam)
-{
-	if (m_editableTickers)
-	{
-		for (size_t i = m_currLine; i < m_items.size() && i < m_currLine + m_visibleLines; i++)
-			m_items[i]->OnTimer(wParam, lParam);
-	}
-	//ProcessCTPMessages();
-}
 
 void Watchlist::ProcessCTPMessages()
 {
 	for (ClientMessage msg : m_messages)
 	{
+		if (ProcessTableCTP(msg)) continue;
+
 		switch (msg.imsg)
 		{
 		case CTPMessage::WATCHLISTITEM_NEW:
 		{
-			float top = GetHeight(m_items.size());
-			if (top + m_rowHeight > m_dipRect.bottom) break;
-
 			WatchlistItem *temp = new WatchlistItem(m_hwnd, m_d2, this);
 			temp->Load(L"", m_columns);
-			temp->SetSize(D2D1::RectF(
-				m_dipRect.left,
-				top,
-				m_dipRect.right,
-				top + m_rowHeight
-			));
 			m_items.push_back(temp);
-			m_hLines.push_back(top + m_rowHeight);
-			m_currLine = m_scrollBar.SetSteps(m_items.size(), m_visibleLines, ScrollBar::SetPosMethod::MaintainOffsetBottom);
+			CalculatePositions();
 			break;
 		}
 		case CTPMessage::WATCHLISTITEM_EMPTY:
 		{
-			// Move empty watchlist item to end then delete
-			bool bDelete = m_items.back()->Ticker().empty(); // empty item at end already
+			// Move empty watchlist item to end then delete it
 			auto it = std::find(m_items.begin(), m_items.end(), msg.sender);
-			if (it == m_items.end() || it + 1 == m_items.end()) break;
-			MoveItem(it - m_items.begin(), m_items.size() - 1);
-			if (bDelete)
-			{
-				delete m_items.back();
-				m_items.pop_back();
-				m_hLines.pop_back();
-			}
+			if (it == m_items.end() || it + 1 == m_items.end()) break; // don't delete already empty item at end
+			DeleteItem(it - m_items.begin());
 			break;
 		}
 		case CTPMessage::WATCHLIST_SELECTED:
@@ -308,16 +36,6 @@ void Watchlist::ProcessCTPMessages()
 			m_parent->PostClientMessage(this, msg.msg, msg.imsg);
 			break;
 		}
-		case CTPMessage::SCROLLBAR_SCROLL:
-			m_currLine += msg.iData;
-			if (m_hover >= 0) m_hover += msg.iData;
-			if (!IsVisible(m_hover)) m_hover = -2;
-			CalculatePositions();
-			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
-			break;
-		case CTPMessage::MOUSE_CAPTURED: // from scrollbox
-			m_parent->PostClientMessage(this, msg.msg, msg.imsg, msg.iData, msg.dData);
-			// change sender to this to process scrollbox messages
 		}
 	}
 	if (!m_messages.empty()) m_messages.clear();
@@ -325,24 +43,35 @@ void Watchlist::ProcessCTPMessages()
 
 void Watchlist::SetColumns()
 {
-	m_columns = {
-			{90.0f, Column::Ticker, L""},
-			{60.0f, Column::Last, L"%.2lf"},
-			{60.0f, Column::ChangeP, L"%.2lf"},
-			{60.0f, Column::Change1YP, L"%.2lf"},
-			{60.0f, Column::DivP, L"%.2lf"}
-	};
+	SetColumns({
+			{90.0f, WatchlistColumn::Ticker, L""},
+			{60.0f, WatchlistColumn::Last, L"%.2lf"},
+			{60.0f, WatchlistColumn::ChangeP, L"%.2lf"},
+			{60.0f, WatchlistColumn::Change1YP, L"%.2lf"},
+			{60.0f, WatchlistColumn::DivP, L"%.2lf"}
+	});
 }
 
-void Watchlist::SetColumns(std::vector<Column> const & columns)
+void Watchlist::SetColumns(std::vector<WatchlistColumn> const & columns)
 {
 	if (columns.empty()) SetColumns();
 	else
 	{
 		m_columns = columns;
-		if (m_columns.front().field != Column::Ticker)
-			m_columns.insert(m_columns.begin(), { 60.0f, Column::Ticker, L"" });
+		if (m_columns.front().field != WatchlistColumn::Ticker)
+			m_columns.insert(m_columns.begin(), { 60.0f, WatchlistColumn::Ticker, L"" });
 	}
+
+	std::vector<std::wstring> names;
+	std::vector<float> widths;
+	std::vector<ColumnType> types;
+	for (WatchlistColumn const & col : m_columns)
+	{
+		names.push_back(col.Name());
+		widths.push_back(col.width);
+		types.push_back(col.Type());
+	}
+	Table::SetColumns(names, widths, types);
 }
 
 // Get data via batch request
@@ -362,13 +91,12 @@ void Watchlist::Load(std::vector<std::wstring> const & tickers, std::vector<Posi
 void Watchlist::Load(std::vector<std::wstring> const & tickers, std::vector<Position> const & positions,
 	std::vector<std::pair<Quote, Stats>> const & data)
 {
-	if (tickers.size() != data.size())
-		return OutputMessage(L"Watchlist tickers and data don't line up\n");
+	if (tickers.size() != data.size()) throw ws_exception(L"Watchlist::Load() tickers and data don't line up");
 
 	m_positions = positions;
 
 	std::vector<std::wstring> _tickers = tickers;
-	_tickers.push_back(L""); // Empty WatchlistItem at end for input
+	if (m_editableTickers) _tickers.push_back(L""); // Empty WatchlistItem at end for input
 
 	for (auto x : m_items) if (x) delete x;
 	m_items.clear();
@@ -376,8 +104,9 @@ void Watchlist::Load(std::vector<std::wstring> const & tickers, std::vector<Posi
 	for (size_t i = 0; i < _tickers.size(); i++)
 	{
 		WatchlistItem *temp = new WatchlistItem(m_hwnd, m_d2, this, m_editableTickers);
-		if (i == _tickers.size() - 1)
+		if (m_editableTickers && i == _tickers.size() - 1)
 		{
+
 			temp->Load(_tickers[i], m_columns, nullptr, nullptr);
 		}
 		else
@@ -392,166 +121,14 @@ void Watchlist::Load(std::vector<std::wstring> const & tickers, std::vector<Posi
 	}
 }
 
-void Watchlist::CalculatePositions()
-{
-	m_currLine = m_scrollBar.SetSteps(m_items.size(), m_visibleLines, ScrollBar::SetPosMethod::MaintainOffsetTop);
 
-	// Set size of WatchlistItems, horizontal divider lines
-	m_hLines.clear();
-	float top = m_dipRect.top + m_headerHeight;
-	for (size_t i = m_currLine; i < m_items.size() && i < m_currLine + m_visibleLines; i++)
-	{
-		m_items[i]->SetSize(D2D1::RectF(
-			m_dipRect.left,
-			top,
-			m_dipRect.right,
-			top + m_rowHeight
-		));
-
-		top += m_rowHeight;
-		m_hLines.push_back(top); // i.e. bottom of item i
-	}
-}
-
-void Watchlist::CreateTextLayouts()
-{
-	// Create column headers, vertical divider lines
-	float left = m_dipRect.left;
-	m_vLines.resize(m_columns.size());
-	for (auto x : m_pTextLayouts) SafeRelease(&x);
-	m_pTextLayouts.resize(m_columns.size());
-
-	for (size_t i = 0; i < m_columns.size(); i++)
-	{
-		if (left + m_columns[i].width > m_dipRect.right - ScrollBar::Width)
-		{
-			OutputMessage(L"Warning: Columns exceed watchlist width\n");
-			if (i > 0)
-			{
-				m_vLines.resize(i - 1);
-				m_pTextLayouts.resize(i - 1);
-				m_columns.resize(i - 1);
-				for (auto item : m_items) item->TruncateColumns(i - 1);
-			}
-			else
-			{
-				m_vLines.clear();
-				m_pTextLayouts.clear();
-				m_columns.clear();
-				for (auto item : m_items) item->TruncateColumns(0);
-			}
-			break;
-		}
-
-		HRESULT hr = m_d2.pDWriteFactory->CreateTextLayout(
-			m_columns[i].Name().c_str(),	// The string to be laid out and formatted.
-			m_columns[i].Name().size(),		// The length of the string.
-			m_d2.pTextFormats[m_format],	// The text format to apply to the string (contains font information, etc).
-			m_columns[i].width - 2 * m_hTextPad, // The width of the layout box.
-			m_headerHeight,					// The height of the layout box.
-			&m_pTextLayouts[i]				// The IDWriteTextLayout interface pointer.
-		);
-		if (FAILED(hr)) throw Error(L"CreateTextLayout failed");
-
-		left += m_columns[i].width;
-		m_vLines[i] = left; // i.e. right sisde of column i
-	}
-
-	for (WatchlistItem *item : m_items)
-	{
-		item->CreateTextLayouts();
-	}
-}
-
-// Move item iOld to iNew, shifting everything in between appropriately.
-// If iNew < iOld, moves iOld to above the current item at iNew.
-// If iNew > iOld, moves iOld to below the current item at iNew.
-// No bounds check. Make sure iOld and iNew are valid indices.
-void Watchlist::MoveItem(int iOld, int iNew)
-{
-	if (iOld == iNew) return;
-	WatchlistItem *temp = m_items[iOld];
-
-	// need to shift stuff down
-	if (iNew < iOld)
-	{
-		for (int j = iOld; j > iNew; j--) // j is new position of j-1
-		{
-			m_items[j] = m_items[j - 1];
-			//m_items[j]->SetSize(D2D1::RectF(
-			//	m_dipRect.left,
-			//	GetHeight(j),
-			//	m_dipRect.right,
-			//	GetHeight(j + 1)
-			//));
-		}
-	}
-	// need to shift stuff up
-	else
-	{
-		for (int j = iOld; j < iNew; j++) // j is new position of j+1
-		{
-			m_items[j] = m_items[j + 1];
-			//m_items[j]->SetSize(D2D1::RectF(
-			//	m_dipRect.left,
-			//	GetHeight(j),
-			//	m_dipRect.right,
-			//	GetHeight(j + 1)
-			//));
-		}
-	}
-
-	m_items[iNew] = temp;
-	//m_items[iNew]->SetSize(D2D1::RectF(
-	//	m_dipRect.left,
-	//	GetHeight(iNew),
-	//	m_dipRect.right,
-	//	GetHeight(iNew + 1)
-	//));
-
-	CalculatePositions();
-}
-
-void Watchlist::SortByColumn(size_t iColumn)
-{
-	if (iColumn >= m_columns.size()) throw std::invalid_argument("SortByColumn invalid column");
-	
-	auto end = m_items.end();
-	if (m_items.back()->Ticker().empty()) end--; // don't sort empty item
-
-	if (iColumn == m_sortColumn) // sort descending
-	{
-		std::sort(m_items.begin(), end, [iColumn](WatchlistItem const * i1, WatchlistItem const * i2)
-		{
-			if (iColumn == 0)
-				return i1->Ticker() > i2->Ticker();
-			else
-				return i1->GetData(iColumn) > i2->GetData(iColumn);
-		});
-		m_sortColumn = -1;
-	}
-	else // sort ascending
-	{
-		std::sort(m_items.begin(), end, [iColumn](WatchlistItem const * i1, WatchlistItem const * i2)
-		{ 
-			if (iColumn == 0)
-				return i1->Ticker() < i2->Ticker();
-			else
-				return i1->GetData(iColumn) < i2->GetData(iColumn); 
-		});
-		m_sortColumn = iColumn;
-	}
-
-	// Reset position of everything
-	CalculatePositions();
-}
 
 ///////////////////////////////////////////////////////////
 // --- WatchlistItem ---
 ///////////////////////////////////////////////////////////
 
 WatchlistItem::WatchlistItem(HWND hwnd, D2Objects const & d2, Watchlist *parent, bool editable) :
-	AppItem(hwnd, d2, parent), m_parent(parent), m_ticker(hwnd, d2, this), m_editableTickers(editable)
+	TableRowItem(hwnd, d2, parent), m_parent(parent), m_ticker(hwnd, d2, this), m_editableTickers(editable)
 {
 	m_ticker.SetParameters(Watchlist::m_hTextPad, false, 7);
 }
@@ -579,7 +156,27 @@ void WatchlistItem::Paint(D2D1_RECT_F updateRect)
 	}
 }
 
-inline void WatchlistItem::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
+inline bool WatchlistItem::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
+{
+	if (m_editableTickers) return m_ticker.OnMouseMove(cursor, wParam, handeled);
+	return false;
+}
+
+bool WatchlistItem::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
+{
+	if (m_editableTickers) handeled = m_ticker.OnLButtonDown(cursor, handeled) || handeled;
+	if (!handeled && inRect(cursor, m_dipRect)) m_LButtonDown = true;
+
+	ProcessCTPMessages();
+	return handeled;
+}
+
+inline void WatchlistItem::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)
+{
+	if (m_editableTickers) m_ticker.OnLButtonDblclk(cursor, wParam);
+}
+
+void WatchlistItem::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 {
 	if (m_editableTickers) m_ticker.OnLButtonUp(cursor, wParam);
 	if (m_LButtonDown)
@@ -592,6 +189,25 @@ inline void WatchlistItem::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 		}
 	}
 	//ProcessCTPMessages(); // not needed
+}
+
+inline bool WatchlistItem::OnChar(wchar_t c, LPARAM lParam)
+{
+	if (m_editableTickers) return m_ticker.OnChar(c, lParam);
+	return false;
+}
+
+bool WatchlistItem::OnKeyDown(WPARAM wParam, LPARAM lParam)
+{
+	bool out = false;
+	if (m_editableTickers) out = m_ticker.OnKeyDown(wParam, lParam);
+	ProcessCTPMessages();
+	return out;
+}
+
+inline void WatchlistItem::OnTimer(WPARAM wParam, LPARAM lParam)
+{
+	if (m_editableTickers) m_ticker.OnTimer(wParam, lParam);
 }
 
 void WatchlistItem::ProcessCTPMessages()
@@ -616,14 +232,28 @@ void WatchlistItem::ProcessCTPMessages()
 	if (!m_messages.empty()) m_messages.clear();
 }
 
+double WatchlistItem::GetData(size_t iColumn) const
+{
+	if (iColumn == 0) return 0.0; // Ticker
+	else if (iColumn - 1 < m_data.size()) return m_data[iColumn - 1].first;
+	else return -std::numeric_limits<double>::infinity();
+}
+
+std::wstring WatchlistItem::GetString(size_t iColumn) const
+{
+	if (iColumn == 0) return m_ticker.String();
+	else if (iColumn - 1 < m_data.size()) return m_data[iColumn - 1].second;
+	else return L"";
+}
+
 // Copies ticker, columns to member variables and populates 'm_data' with the data and formatted strings
 // Fetches data from IEX if 'data' == nullptr. Set 'reload' to not change columns.
-void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const & columns,
+void WatchlistItem::Load(std::wstring const & ticker, std::vector<WatchlistColumn> const & columns,
 	std::pair<Quote, Stats> const * data, Position const * position, bool reload)
 {
 	m_currTicker = ticker;
 	if (!reload) {
-		if (columns.empty() || columns.front().field != Column::Ticker)
+		if (columns.empty() || columns.front().field != WatchlistColumn::Ticker)
 			return OutputMessage(L"Misformed column vector: WatchlistItem Load()\n");
 		m_columns = columns;
 	}
@@ -634,8 +264,7 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const 
 		return;
 	}
 
-	// m_columns[0] == Ticker
-	m_data.resize(m_columns.size() - 1);
+	m_data.resize(m_columns.size() - 1); // m_columns[0] == Ticker
 	try
 	{
 		std::pair<Quote, Stats> qs;
@@ -650,23 +279,23 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const 
 			double data = 0; // handle non-double types separately
 			switch (m_columns[i].field)
 			{
-			case Column::Last:
+			case WatchlistColumn::Last:
 				data = quote.latestPrice;
 				break;
-			case Column::ChangeP:
+			case WatchlistColumn::ChangeP:
 				data = quote.changePercent * 100;
 				break;
-			case Column::Change1YP:
+			case WatchlistColumn::Change1YP:
 				data = stats.year1ChangePercent * 100;
 				break;
-			case Column::DivP:
+			case WatchlistColumn::DivP:
 				data = stats.dividendYield;
 				break;
-			case Column::ExDiv:
+			case WatchlistColumn::ExDiv:
 				wcscpy_s(buffer, _countof(buffer), DateToWString(stats.exDividendDate).c_str());
 				m_data[i - 1] = { stats.exDividendDate, buffer };
 				continue;
-			case Column::Shares:
+			case WatchlistColumn::Shares:
 				if (position)
 				{
 					swprintf_s(buffer, _countof(buffer), m_columns[i].format.c_str(), position->n);
@@ -675,31 +304,31 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const 
 				else
 					m_data[i - 1] = { 0.0, L"" };
 				continue;
-			case Column::AvgCost:
+			case WatchlistColumn::AvgCost:
 				if (position) data = position->avgCost;
 				break;
-			case Column::Equity:
+			case WatchlistColumn::Equity:
 				if (position) data = quote.latestPrice * position->n;
 				break;
-			case Column::Realized:
+			case WatchlistColumn::Realized:
 				if (position) data = position->realized_held + position->realized_unheld;
 				break;
-			case Column::Unrealized:
+			case WatchlistColumn::Unrealized:
 				if (position) data = position->unrealized;
 				break;
-			case Column::ReturnsT:
+			case WatchlistColumn::ReturnsT:
 				if (position)
 					data = position->realized_held + position->realized_unheld + position->unrealized;
 				break;
-			case Column::ReturnsP:
+			case WatchlistColumn::ReturnsP:
 				if (position && (position->n > 0 || position->cash_collateral > 0))
 					data = (position->realized_held + position->unrealized) / 
 						(position->avgCost * position->n + position->cash_collateral) * 100.0f;
 				break;
-			case Column::APY:
+			case WatchlistColumn::APY:
 				if (position) data = position->APY * 100.0f;
 				break;
-			case Column::None:
+			case WatchlistColumn::None:
 			default:
 				m_data[i - 1] = { 0.0, L"" };
 				continue;
@@ -713,12 +342,6 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<Column> const 
 		OutputDebugStringA(ia.what()); OutputDebugStringA("\n");
 		m_data.clear();
 	}
-}
-
-void WatchlistItem::TruncateColumns(size_t i)
-{
-	if (m_columns.size() > i) m_columns.resize(i);
-	if (m_data.size() > i) m_data.resize(i);
 }
 
 void WatchlistItem::CreateTextLayouts()

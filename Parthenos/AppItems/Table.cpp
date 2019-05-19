@@ -278,12 +278,16 @@ bool Table::ProcessTableCTP(ClientMessage const & msg)
 	return false;
 }
 
-void Table::SetColumns(std::vector<std::wstring> const & names, std::vector<float> const & widths)
+void Table::SetColumns(std::vector<std::wstring> const & names, std::vector<float> const & widths, 
+	std::vector<ColumnType> const & types)
 {
-	if (names.size() != widths.size()) throw ws_exception(L"Table::SetColumns size mismatch");
+	if (names.size() != widths.size() || names.size() != types.size()) 
+		throw ws_exception(L"Table::SetColumns size mismatch");
 	m_columnHeaders = names;
 	m_columnWidths = widths;
+	m_columnTypes = types;
 }
+
 
 void Table::Load(std::vector<TableRowItem*> const & items)
 {
@@ -362,26 +366,39 @@ void Table::MoveItem(int iOld, int iNew)
 	CalculatePositions();
 }
 
+// Move item to end and then delete it
+void Table::DeleteItem(size_t i)
+{
+	if (i >= m_items.size()) throw ws_exception(L"Table::DeleteItem() invalid index");
+	MoveItem(i, m_items.size() - 1);
+	delete m_items.back();
+	m_items.pop_back();
+	m_hLines.pop_back();
+}
+
 void Table::SortByColumn(size_t iColumn)
 {
-	if (iColumn >= m_columnHeaders.size()) throw std::invalid_argument("SortByColumn invalid column");
+	if (iColumn >= m_columnTypes.size()) throw std::invalid_argument("SortByColumn invalid column");
 
+	ColumnType type = m_columnTypes[iColumn];
 	auto end = m_items.end();
 	if (m_emptyEnd) end--; // don't sort empty item
 
 	if (iColumn == m_sortColumn) // sort descending
 	{
-		std::sort(m_items.begin(), end, [iColumn](TableRowItem const * i1, TableRowItem const * i2)
+		std::sort(m_items.begin(), end, [iColumn, type](TableRowItem const * i1, TableRowItem const * i2)
 		{
-			return i1->GetData(iColumn) > i2->GetData(iColumn);
+			if (type == ColumnType::Double) return i1->GetData(iColumn) > i2->GetData(iColumn);
+			else return i1->GetString(iColumn) > i2->GetString(iColumn);
 		});
 		m_sortColumn = -1;
 	}
 	else // sort ascending
 	{
-		std::sort(m_items.begin(), end, [iColumn](TableRowItem const * i1, TableRowItem const * i2)
+		std::sort(m_items.begin(), end, [iColumn, type](TableRowItem const * i1, TableRowItem const * i2)
 		{
-			return i1->GetData(iColumn) < i2->GetData(iColumn);
+			if (type == ColumnType::Double) return i1->GetData(iColumn) < i2->GetData(iColumn);
+			else return i1->GetString(iColumn) < i2->GetString(iColumn);
 		});
 		m_sortColumn = iColumn;
 	}

@@ -5,11 +5,13 @@
 #include "ScrollBar.h"
 
 class TableRowItem;
+enum class ColumnType { Double, String };
+
 
 class Table : public AppItem
 {
 public:
-	Table(HWND hwnd, D2Objects const & d2, CTPMessageReceiver * parent, bool emptyEnd)
+	Table(HWND hwnd, D2Objects const & d2, CTPMessageReceiver * parent, bool emptyEnd = true)
 		: AppItem(hwnd, d2, parent), m_scrollBar(hwnd, d2, this), m_emptyEnd(emptyEnd)
 	{
 		// Set 1 line per minStep == detent
@@ -32,7 +34,8 @@ public:
 	bool ProcessTableCTP(ClientMessage const & msg);
 
 	// Interface
-	void SetColumns(std::vector<std::wstring> const & names, std::vector<float> const & widths);
+	void SetColumns(std::vector<std::wstring> const & names, std::vector<float> const & widths, 
+		std::vector<ColumnType> const & types);
 	void Load(std::vector<TableRowItem*> const & items);
 	inline void Refresh() { CalculatePositions(); CreateTextLayouts(); } // Load creates items but not with position, so call refresh
 	inline std::vector<float> GetColumnWidths() const { return m_columnWidths; }
@@ -41,21 +44,49 @@ public:
 	static float const m_hTextPad; // 4.0f
 	static D2Objects::Formats const m_format = D2Objects::Segoe12;
 
+protected:
+	// Objects
+	std::vector<TableRowItem*>	m_items;
+
+	// Data
+	std::vector<std::wstring>	m_columnHeaders;
+	std::vector<float>			m_columnWidths;
+	std::vector<ColumnType>		m_columnTypes;
+
+	// Flags
+	bool m_ignoreSelection = false;	// Flag to check if drag + drop on same location
+
+	// Helpers
+	void CalculatePositions();
+	void CreateTextLayouts();
+
+	inline float GetHeight(int i) { return m_dipRect.top + m_headerHeight + (i - m_currLine) * m_rowHeight; }
+		// Get top of item i
+	inline int GetItem(float y) { return static_cast<int>(floor((y - (m_dipRect.top + m_headerHeight)) / m_rowHeight)) + m_currLine; }
+		// Get index given y coord
+	inline bool IsVisible(int i)
+	{
+		return i >= (int)m_currLine && i < (int)(m_currLine + m_visibleLines) && i < (int)m_items.size();
+	}
+
+	void MoveItem(int iOld, int iNew);
+		// Move item iOld to iNew, shifting everything in between appropriately.
+		// If iNew < iOld, moves iOld to above the current item at iNew.
+		// If iNew > iOld, moves iOld to below the current item at iNew.
+		// No bounds check. Make sure iOld and iNew are valid indices.
+	void DeleteItem(size_t i);
+	void SortByColumn(size_t iColumn);
+
+
 private:
 	// Objects
 	ScrollBar						m_scrollBar;
-	std::vector<TableRowItem*>		m_items;
-
-	// Data
-	std::vector<std::wstring>		m_columnHeaders;
-	std::vector<float>				m_columnWidths;
 	std::vector<IDWriteTextLayout*> m_columnLayouts; // For column headers
 
 	// Flags
 	bool		m_emptyEnd;					// Always maintain an 'empty' row at end
 	int			m_LButtonDown = -1;			// Item index of drag start point
 	int			m_hover = -1;				// Item index of where to draw hover line
-	bool		m_ignoreSelection = false;	// Flag to check if drag + drop on same location
 	int			m_sortColumn = -1;			// So that double clicking on the same column sorts in reverse
 
 	// Layout
@@ -68,25 +99,6 @@ private:
 	// Scroll State
 	size_t		m_visibleLines;
 	size_t		m_currLine = 0; // topmost visible line
-
-	// Helpers
-	void CalculatePositions();
-	void CreateTextLayouts();
-	// Get top of item i
-	inline float GetHeight(int i) { return m_dipRect.top + m_headerHeight + (i - m_currLine) * m_rowHeight; }
-	// Get index given y coord
-	inline int GetItem(float y) { return static_cast<int>(floor((y - (m_dipRect.top + m_headerHeight)) / m_rowHeight)) + m_currLine; }
-	inline bool IsVisible(int i)
-	{
-		return i >= (int)m_currLine && i < (int)(m_currLine + m_visibleLines) && i < (int)m_items.size();
-	}
-
-	// Move item iOld to iNew, shifting everything in between appropriately.
-	// If iNew < iOld, moves iOld to above the current item at iNew.
-	// If iNew > iOld, moves iOld to below the current item at iNew.
-	// No bounds check. Make sure iOld and iNew are valid indices.
-	void MoveItem(int iOld, int iNew);
-	void SortByColumn(size_t iColumn);
 
 	// Deleted
 	Table(const Table&) = delete;				// non construction-copyable
@@ -101,7 +113,8 @@ public:
 	~TableRowItem() { for (auto item : m_items) if (item) delete item; }
 
 	// Interface
-	virtual std::wstring GetData(size_t iColumn) const { return L""; }
+	virtual double GetData(size_t iColumn) const { return 0.0; }
+	virtual std::wstring GetString(size_t iColumn) const { return L""; }
 
 protected:
 	Table *m_parent;

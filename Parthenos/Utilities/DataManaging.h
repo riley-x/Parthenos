@@ -250,7 +250,7 @@ typedef struct Option_struct
 
 	inline std::wstring to_wstring(bool dump = false) const
 	{
-		if (!dump) return OptToLetter(type) + FormatMsg(L"%.2f-%u", strike, date);
+		if (!dump) return OptToLetter(type) + FormatMsg(L"%.2f-%u", strike, expiration);
 		return L"type: "		+ std::to_wstring(static_cast<int>(type))
 			+ L", n: "			+ std::to_wstring(n)
 			+ L", date: "		+ DateToWString(date)
