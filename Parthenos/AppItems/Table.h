@@ -17,7 +17,7 @@ public:
 		// Set 1 line per minStep == detent
 		m_scrollBar.SetMinStep(WHEEL_DELTA);
 	}
-	~Table();
+	virtual ~Table();
 
 	// AppItem
 	void Paint(D2D1_RECT_F updateRect);
@@ -110,7 +110,7 @@ class TableRowItem : public AppItem
 public:
 	TableRowItem(HWND hwnd, D2Objects const & d2, Table *parent) 
 		: AppItem(hwnd, d2, parent), m_parent(parent) {}
-	~TableRowItem() { for (auto item : m_items) if (item) delete item; }
+	virtual ~TableRowItem() { for (auto item : m_items) if (item) delete item; }
 
 	// Interface
 	virtual double GetData(size_t iColumn) const { return 0.0; }

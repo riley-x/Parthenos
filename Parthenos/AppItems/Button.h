@@ -9,6 +9,8 @@ class Button : public AppItem
 public:
 	// AppItem
 	using AppItem::AppItem;
+	virtual ~Button() {}
+
 	virtual bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled);
 
 	// Interface

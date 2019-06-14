@@ -63,6 +63,8 @@ class AppItem : public CTPMessageReceiver
 {
 public:
 	AppItem(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent) : m_hwnd(hwnd), m_d2(d2), m_parent(parent) {}
+	virtual ~AppItem() {}
+	
 	virtual void SetSize(D2D1_RECT_F dipRect) // provide item's rect
 	{ 
 		m_dipRect = dipRect; 

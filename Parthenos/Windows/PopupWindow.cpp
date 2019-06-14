@@ -2,6 +2,21 @@
 #include "PopupWindow.h"
 #include "Parthenos.h"
 
+
+PopupWindow::~PopupWindow()
+{
+	for (auto item : m_items) if (item) delete item;
+	for (int i = 1; i < Timers::n_timers + 1; i++)
+	{
+		if (m_timers.nActiveP1[i] == 1)
+		{
+			BOOL err = ::KillTimer(m_hwnd, i);
+			if (err == 0) OutputError(L"Kill timer failed");
+			m_timers.nActiveP1[i] = 0;
+		}
+	}
+}
+
 BOOL PopupWindow::Create(HINSTANCE hInstance)
 {
 	if (m_created) return FALSE;

@@ -273,7 +273,7 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<WatchlistColum
 		Quote & quote = qs.first;
 		Stats & stats = qs.second;
 
-		wchar_t buffer[50] = {};
+		wchar_t buffer[200] = {};
 		for (size_t i = 1; i < m_columns.size(); i++)
 		{
 			double data = 0; // handle non-double types separately

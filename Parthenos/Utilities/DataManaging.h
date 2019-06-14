@@ -1,5 +1,7 @@
 #pragma once
 
+//#define TEST_IEX
+
 #include "../stdafx.h"
 #include "utilities.h"
 

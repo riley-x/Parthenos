@@ -3,13 +3,20 @@
 #include "FileIO.h"
 #include "HTTP.h"
 
-const std::wstring IEXHOST(L"api.iextrading.com"); // api.iextrading.com
-const std::wstring ALPHAHOST(L"www.alphavantage.co");
-const std::wstring ALPHAKEY(L"FJHB2XGE0A43171J"); // FJHB2XGE0A43171J
+#ifdef TEST_IEX
+const std::wstring IEXHOST(L"sandbox.iexapis.com"); 
+const std::wstring IEXTOKEN(L"Tpk_385b81e3a3754032b6e9af9e67bc03c3");
+#else
+const std::wstring IEXHOST(L"cloud.iexapis.com");
+const std::wstring IEXTOKEN(L"pk_d150988c47f74c71863b8501c0457b94");
+#endif
 
-const std::wstring QUOTEFILTERS(L"open, close, latestPrice, latestSource, latestUpdate, latestVolume, avgTotalVolume,"
+const std::wstring ALPHAHOST(L"www.alphavantage.co");
+const std::wstring ALPHAKEY(L"FJHB2XGE0A43171J");
+
+const std::wstring QUOTEFILTERS(L"open,close,latestPrice,latestSource,latestUpdate,latestVolume,avgTotalVolume,"
 	L"previousClose,change,changePercent,closeTime");
-const std::wstring STATSFILTERS(L"beta,week52high,week52low,dividendRate,dividendYield,year1ChangePercent,exDividendDate");
+const std::wstring STATSFILTERS(L"beta,week52high,week52low,ttmDividendRate,dividendYield,year1ChangePercent,exDividendDate");
 
 ///////////////////////////////////////////////////////////
 // --- Forward declarations ---
@@ -41,7 +48,7 @@ inline double GetWeightedAPY(double gain, date_t start_date, date_t end_date);
 double GetPrice(std::wstring ticker)
 {
 	std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::tolower);
-	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/" + ticker + L"/price");
+	std::string json = SendHTTPSRequest_GET(IEXHOST, L"v1/stock/" + ticker + L"/price", L"token=" + IEXTOKEN);
 	if (json.empty())
 	{
 		OutputMessage(L"GetPrice HTTP request empty\n");
@@ -63,8 +70,8 @@ double GetPrice(std::wstring ticker)
 Quote GetQuote(std::wstring ticker)
 {
 	std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::tolower);
-	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/" + ticker + L"/quote",
-		L"filter=" + QUOTEFILTERS);
+	std::string json = SendHTTPSRequest_GET(IEXHOST, L"v1/stock/" + ticker + L"/quote",
+		L"filter=" + QUOTEFILTERS + L"&token=" + IEXTOKEN);
 	if (json.empty())
 	{
 		OutputMessage(L"GetQuote HTTP request empty\n");
@@ -79,8 +86,8 @@ Quote GetQuote(std::wstring ticker)
 Stats GetStats(std::wstring ticker)
 {
 	std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::tolower);
-	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/" + ticker + L"/stats",
-		L"filter=" + STATSFILTERS);
+	std::string json = SendHTTPSRequest_GET(IEXHOST, L"v1/stock/" + ticker + L"/stats",
+		L"filter=" + STATSFILTERS + L"&token=" + IEXTOKEN);
 	if (json.empty())
 	{
 		OutputMessage(L"GetStats HTTP request empty\n");
@@ -93,8 +100,8 @@ Stats GetStats(std::wstring ticker)
 std::pair<Quote, Stats> GetQuoteStats(std::wstring ticker)
 {
 	std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::tolower);
-	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/" + ticker + L"/batch",
-		L"types=quote,stats&filter=" + QUOTEFILTERS + L"," + STATSFILTERS);
+	std::string json = SendHTTPSRequest_GET(IEXHOST, L"v1/stock/" + ticker + L"/batch",
+		L"types=quote,stats&filter=" + QUOTEFILTERS + L"," + STATSFILTERS + L"&token=" + IEXTOKEN);
 	if (json.empty())
 	{
 		OutputMessage(L"GetQuoteStats HTTP request empty\n");
@@ -115,8 +122,8 @@ std::vector<std::pair<Quote, Stats>> GetBatchQuoteStats(std::vector<std::wstring
 		ticks.append(x + L",");
 	}
 	
-	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/market/batch",
-		L"symbols=" + ticks + L"&types=quote,stats&filter=" + QUOTEFILTERS + L"," + STATSFILTERS);
+	std::string json = SendHTTPSRequest_GET(IEXHOST, L"v1/stock/market/batch",
+		L"symbols=" + ticks + L"&types=quote,stats&filter=" + QUOTEFILTERS + L"," + STATSFILTERS + L"&token=" + IEXTOKEN);
 	if (json.empty())
 	{
 		OutputMessage(L"GetBatchQuoteStats HTTP request empty\n");
@@ -682,31 +689,44 @@ Stats parseFilteredStats(std::string const & json)
 	Stats stats;
 	char buffer[50] = { 0 };
 
-	const char format[] = R"({"beta":%lf,"week52high":%lf,"week52low":%lf,"dividendRate":%lf,"dividendYield":%lf,)"
+	const char format[] = R"({"beta":%lf,"week52high":%lf,"week52low":%lf,"ttmDividendRate":%lf,"dividendYield":%lf,)"
 		R"("year1ChangePercent":%lf,"exDividendDate":"%49[^"]"})";
-
 	int n = sscanf_s(json.c_str(), format, &stats.beta, &stats.week52high, &stats.week52low, &stats.dividendRate,
 		&stats.dividendYield, &stats.year1ChangePercent, buffer, static_cast<unsigned>(_countof(buffer))
 	);
-	if (n == 6) // exDividendDate failed
+
+	bool err = (n != 7);
+	bool has_div = true;
+
+	if (n == 3) // check if failed because dividend is null
 	{
-		stats.exDividendDate = 0;
-		return stats;
-	}
-	else if (n != 7)
-	{
-		OutputMessage(L"GetStats sscanf_s failed! Only read %d/%d\n", n, 7);
-		throw std::invalid_argument("GetQuote failed");
+		const char format[] = R"({"beta":%lf,"week52high":%lf,"week52low":%lf,"ttmDividendRate":null,"dividendYield":null,)"
+			R"("year1ChangePercent":%lf,"exDividendDate":null})";
+		int n = sscanf_s(json.c_str(), format, &stats.beta, &stats.week52high, &stats.week52low,
+			&stats.year1ChangePercent, buffer, static_cast<unsigned>(_countof(buffer))
+		);
+		if (n == 4)
+		{
+			err = false;
+			has_div = false;
+			stats.dividendRate = 0;
+			stats.dividendYield = 0;
+			stats.exDividendDate = 0;
+		}
 	}
 
-	int year, month, date;
-	n = sscanf_s(buffer, "%d-%d-%d", &year, &month, &date);
-	if (n != 3)
+	if (err) throw std::invalid_argument(FormatMsg("GetStats sscanf_s failed! Only read %d/%d\n", n, 7));
+
+	if (has_div)
 	{
-		OutputMessage(L"GetStats sscanf_s 2 failed! Only read %d/%d\n", n, 3);
-		throw std::invalid_argument("praseIEXChartItem failed");
+		int year, month, date;
+		n = sscanf_s(buffer, "%d-%d-%d", &year, &month, &date);
+		if (n != 3)
+		{
+			throw std::invalid_argument(FormatMsg("GetStats sscanf_s 2 failed! Only read %d/%d\n", n, 3));
+		}
+		stats.exDividendDate = MkDate(year, month, date);
 	}
-	stats.exDividendDate = MkDate(year, month, date);
 
 	return stats;
 }
@@ -794,8 +814,8 @@ std::vector<OHLC> GetOHLC_IEX(std::wstring const ticker, size_t last_n, date_t &
 	if (ohlcData.size() > 0)
 		latestDate = ohlcData.back().date;
 
-	std::string json = SendHTTPSRequest_GET(IEXHOST, L"1.0/stock/" + ticker + L"/chart/" + chart_range,
-		L"filter=date,open,high,low,close,volume");
+	std::string json = SendHTTPSRequest_GET(IEXHOST, L"v1/stock/" + ticker + L"/chart/" + chart_range,
+		L"filter=date,open,high,low,close,volume&token=" + IEXTOKEN);
 	if (json.empty())
 	{
 		OutputMessage(L"GetOHLC_IEX HTTP request empty\n");

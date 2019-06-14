@@ -11,19 +11,7 @@ class PopupWindow : public BorderlessWindow<PopupWindow>, public CTPMessageRecei
 {
 public:
 	PopupWindow(std::wstring const & name) : BorderlessWindow(L"PARTHENOSPOPUP"), m_name(name) {}
-	~PopupWindow() 
-	{ 
-		for (auto item : m_items) if (item) delete item;
-		for (int i = 1; i < Timers::n_timers + 1; i++)
-		{
-			if (m_timers.nActiveP1[i] == 1)
-			{
-				BOOL err = ::KillTimer(m_hwnd, i);
-				if (err == 0) OutputError(L"Kill timer failed");
-				m_timers.nActiveP1[i] = 0;
-			}
-		}
-	}
+	virtual ~PopupWindow();
 
 	BOOL Create(HINSTANCE hInstance);
 	LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);

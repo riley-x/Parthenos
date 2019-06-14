@@ -226,6 +226,12 @@ void Parthenos::InitRealtimeData()
 
 	CalculatePositions(holdings);
 	CalculateReturns();
+
+#ifdef TEST_IEX
+	throw ws_exception(L"Testing IEX; breaking!");
+	// Test gives garbled data; don't write anything to file
+#endif
+
 	CalculateHistories();
 }
 
