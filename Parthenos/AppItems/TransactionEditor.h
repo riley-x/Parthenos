@@ -11,7 +11,6 @@ class TransactionEditor : public TableRowItem
 {
 public:
 	TransactionEditor(HWND hwnd, D2Objects const & d2, Table *parent, std::vector<std::wstring> accounts);
-	~TransactionEditor();
 
 	// AppItem
 	void SetSize(D2D1_RECT_F dipRect);

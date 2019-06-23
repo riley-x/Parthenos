@@ -25,11 +25,6 @@ TransactionEditor::TransactionEditor(HWND hwnd, D2Objects const & d2, Table *par
 	m_transactionTypeButton->SetActive(0);
 }
 
-TransactionEditor::~TransactionEditor()
-{
-	for (AppItem *item : m_items) if (item) delete item;
-}
-
 void TransactionEditor::SetSize(D2D1_RECT_F dipRect)
 {
 	if (equalRect(dipRect, m_dipRect)) return;
