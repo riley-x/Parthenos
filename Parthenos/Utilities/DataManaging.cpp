@@ -613,7 +613,7 @@ void UpdateEquityHistory(std::vector<TimeSeries>& hist, std::vector<Position> co
 		auto it = FindQStat(qstats, p.ticker);
 		if (it != qstats.end())
 		{
-			if (lastCloseDate == 0) lastCloseDate = GetDate(it->first.closeTime);
+			if (lastCloseDate == 0 && it->first.closeTime != 0) lastCloseDate = GetDate(it->first.closeTime);
 			if (currDate > it->second.exDividendDate) source = apiSource::iex;
 			// this is a bit too strict since exDivDate could be in the future, but would have to check
 			// ex div history instead
@@ -648,14 +648,29 @@ void UpdateEquityHistory(std::vector<TimeSeries>& hist, std::vector<Position> co
 Quote parseFilteredQuote(std::string const & json, std::wstring const & ticker)
 {
 	Quote quote;
-	char buffer[50] = { 0 };
+	char buffer[11][50] = { 0 };
 
-	const char format[] = R"({"open":%lf,"close":%lf,"latestPrice":%lf,"latestSource":"%49[^"]","latestUpdate":%I64d,)"
-		R"("latestVolume":%d,"avgTotalVolume":%d,"previousClose":%lf,"change":%lf,"changePercent":%lf,"closeTime":%I64d})";
+	enum vars {
+		open, close, latestPrice, latestSource, latestUpdate, latestVolume, avgTotalVolume, previousClose,
+		change, changePercent, closeTime
+	};
 
-	int n = sscanf_s(json.c_str(), format, &quote.open, &quote.close, &quote.latestPrice, buffer,
-		static_cast<unsigned>(_countof(buffer)), &quote.latestUpdate, &quote.latestVolume, &quote.avgTotalVolume,
-		&quote.previousClose, &quote.change, &quote.changePercent, &quote.closeTime
+	const char format[] = R"({"open":%49[^,],"close":%49[^,],"latestPrice":%49[^,],"latestSource":"%49[^"]",)"
+		R"("latestUpdate":%49[^,],"latestVolume":%49[^,],"avgTotalVolume":%49[^,],"previousClose":%49[^,],)"
+		R"("change":%49[^,],"changePercent":%49[^,],"closeTime":%49[^}]})";
+
+	int n = sscanf_s(json.c_str(), format,
+		buffer[0], static_cast<unsigned>(_countof(buffer[0])), // open
+		buffer[1], static_cast<unsigned>(_countof(buffer[1])), // close
+		buffer[2], static_cast<unsigned>(_countof(buffer[2])), // latestPrice
+		buffer[3], static_cast<unsigned>(_countof(buffer[3])), // latestSource
+		buffer[4], static_cast<unsigned>(_countof(buffer[4])), // latestUpdate
+		buffer[5], static_cast<unsigned>(_countof(buffer[5])), // latestVolume
+		buffer[6], static_cast<unsigned>(_countof(buffer[6])), // avgTotalVolume
+		buffer[7], static_cast<unsigned>(_countof(buffer[7])), // previousClose
+		buffer[8], static_cast<unsigned>(_countof(buffer[8])), // change
+		buffer[9], static_cast<unsigned>(_countof(buffer[9])), // changePercent
+		buffer[10], static_cast<unsigned>(_countof(buffer[10])) // closeTime
 	);
 	if (n != 11)
 	{
@@ -663,13 +678,24 @@ Quote parseFilteredQuote(std::string const & json, std::wstring const & ticker)
 		throw std::invalid_argument("GetQuote failed");
 	}
 
-	if (strcmp(buffer, "IEX real time price") == 0)
+	if (!sscanf_s(buffer[open], "%lf", &quote.open)) quote.open = 0;
+	if (!sscanf_s(buffer[close], "%lf", &quote.close)) quote.close = 0;
+	if (!sscanf_s(buffer[latestPrice], "%lf", &quote.latestPrice)) quote.latestPrice = 0;
+	if (!sscanf_s(buffer[latestUpdate], "%I64d", &quote.latestUpdate)) quote.latestUpdate = 0;
+	if (!sscanf_s(buffer[latestVolume], "%d", &quote.latestVolume)) quote.latestVolume = 0;
+	if (!sscanf_s(buffer[avgTotalVolume], "%d", &quote.avgTotalVolume)) quote.avgTotalVolume = 0;
+	if (!sscanf_s(buffer[previousClose], "%lf", &quote.previousClose)) quote.previousClose = 0;
+	if (!sscanf_s(buffer[change], "%lf", &quote.change)) quote.change = 0;
+	if (!sscanf_s(buffer[changePercent], "%lf", &quote.changePercent)) quote.changePercent = 0;
+	if (!sscanf_s(buffer[closeTime], "%I64d", &quote.closeTime)) quote.closeTime = 0;
+
+	if (strcmp(buffer[latestSource], "IEX real time price") == 0)
 		quote.latestSource = iexLSource::real;
-	else if (strcmp(buffer, "15 minute delayed price") == 0)
+	else if (strcmp(buffer[latestSource], "15 minute delayed price") == 0)
 		quote.latestSource = iexLSource::delayed;
-	else if (strcmp(buffer, "Close") == 0)
+	else if (strcmp(buffer[latestSource], "Close") == 0)
 		quote.latestSource = iexLSource::close;
-	else if (strcmp(buffer, "Previous close") == 0)
+	else if (strcmp(buffer[latestSource], "Previous close") == 0)
 		quote.latestSource = iexLSource::prevclose;
 	else
 	{
@@ -774,7 +800,9 @@ std::vector<OHLC> GetSavedOHLC(std::wstring const & ticker, std::wstring const &
 			if (lastCloseDate == 0)
 			{
 				Quote quote = GetQuote(ticker);
-				lastCloseDate = GetDate(quote.closeTime);
+				lastCloseDate = (quote.closeTime != 0) ? GetDate(quote.closeTime):
+								(quote.latestUpdate != 0) ? GetDate(quote.latestUpdate) :
+								throw ws_exception(L"GetSavedOHLC() couldn't calculate lastCloseDate");
 			}
 
 			if (lastCloseDate > latestDate)

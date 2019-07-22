@@ -972,10 +972,9 @@ inline std::wstring MakeLongLabel(std::wstring const & ticker, double val, doubl
 	return std::wstring(buffer);
 }
 
+// Get data, colors, etc. then sort into inputs to pie chart
 void Parthenos::LoadPieChart()
 {
-	// Get data, colors, etc. then sort into inputs to pie chart
-
 	struct Collat
 	{
 		size_t i; // index into tickers

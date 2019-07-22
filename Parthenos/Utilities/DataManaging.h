@@ -32,7 +32,7 @@ typedef struct OHLC_struct
 	std::wstring to_wstring(bool mini = false) const;
 } OHLC;
 
-typedef struct Quote_struct 
+struct Quote 
 {
 	int latestVolume;
 	int avgTotalVolume;
@@ -64,7 +64,7 @@ typedef struct Quote_struct
 			+ L", closeTime: "		+ TimeToWString(closeTime)
 			+ L"\n";
 	}
-} Quote;
+};
 
 typedef struct Stats_struct 
 {
