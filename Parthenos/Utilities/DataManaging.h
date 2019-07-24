@@ -69,6 +69,7 @@ struct Quote
 typedef struct Stats_struct 
 {
 	date_t exDividendDate;
+	date_t nextEarningsDate;
 	double beta;
 	double week52high;
 	double week52low;

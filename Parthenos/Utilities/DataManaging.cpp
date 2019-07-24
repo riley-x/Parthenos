@@ -16,7 +16,8 @@ const std::wstring ALPHAKEY(L"FJHB2XGE0A43171J");
 
 const std::wstring QUOTEFILTERS(L"open,close,latestPrice,latestSource,latestUpdate,latestVolume,avgTotalVolume,"
 	L"previousClose,change,changePercent,closeTime");
-const std::wstring STATSFILTERS(L"beta,week52high,week52low,ttmDividendRate,dividendYield,year1ChangePercent,exDividendDate");
+const std::wstring STATSFILTERS(L"beta,week52high,week52low,ttmDividendRate,dividendYield,year1ChangePercent,"
+	L"exDividendDate,nextEarningsDate");
 
 ///////////////////////////////////////////////////////////
 // --- Forward declarations ---
@@ -713,46 +714,47 @@ Quote parseFilteredQuote(std::string const & json, std::wstring const & ticker)
 Stats parseFilteredStats(std::string const & json)
 {
 	Stats stats;
-	char buffer[50] = { 0 };
+	char buffer[8][50] = { 0 };
 
-	const char format[] = R"({"beta":%lf,"week52high":%lf,"week52low":%lf,"ttmDividendRate":%lf,"dividendYield":%lf,)"
-		R"("year1ChangePercent":%lf,"exDividendDate":"%49[^"]"})";
-	int n = sscanf_s(json.c_str(), format, &stats.beta, &stats.week52high, &stats.week52low, &stats.dividendRate,
-		&stats.dividendYield, &stats.year1ChangePercent, buffer, static_cast<unsigned>(_countof(buffer))
+	enum vars {
+		beta, week52high, week52low, ttmDividendRate, dividendYield, year1ChangePercent, exDividendDate, nextEarningsDate
+	};
+
+	const char format[] = R"({"beta":%49[^,],"week52high":%49[^,],"week52low":%49[^,],"ttmDividendRate":%49[^,],)"
+		R"("dividendYield":%49[^,],"year1ChangePercent":%49[^,],"exDividendDate":%49[^,],"nextEarningsDate":%49[^,]})";
+
+	int n = sscanf_s(json.c_str(), format,
+		buffer[0], static_cast<unsigned>(_countof(buffer[0])),
+		buffer[1], static_cast<unsigned>(_countof(buffer[1])),
+		buffer[2], static_cast<unsigned>(_countof(buffer[2])),
+		buffer[3], static_cast<unsigned>(_countof(buffer[3])),
+		buffer[4], static_cast<unsigned>(_countof(buffer[4])),
+		buffer[5], static_cast<unsigned>(_countof(buffer[5])),
+		buffer[6], static_cast<unsigned>(_countof(buffer[6])),
+		buffer[7], static_cast<unsigned>(_countof(buffer[7]))
 	);
-
-	bool err = (n != 7);
-	bool has_div = true;
-
-	if (n == 3) // check if failed because dividend is null
+	if (n != 8)
 	{
-		const char format[] = R"({"beta":%lf,"week52high":%lf,"week52low":%lf,"ttmDividendRate":null,"dividendYield":null,)"
-			R"("year1ChangePercent":%lf,"exDividendDate":null})";
-		int n = sscanf_s(json.c_str(), format, &stats.beta, &stats.week52high, &stats.week52low,
-			&stats.year1ChangePercent, buffer, static_cast<unsigned>(_countof(buffer))
-		);
-		if (n == 4)
-		{
-			err = false;
-			has_div = false;
-			stats.dividendRate = 0;
-			stats.dividendYield = 0;
-			stats.exDividendDate = 0;
-		}
+		std::wstring msg = FormatMsg(L"parseFilteredStats sscanf_s 1 failed! Only read %d/%d\n", n, 8);
+		OutputDebugStringA(json.c_str());
+		throw ws_exception(msg);
 	}
 
-	if (err) throw std::invalid_argument(FormatMsg("GetStats sscanf_s failed! Only read %d/%d\n", n, 7));
-
-	if (has_div)
-	{
-		int year, month, date;
-		n = sscanf_s(buffer, "%d-%d-%d", &year, &month, &date);
-		if (n != 3)
-		{
-			throw std::invalid_argument(FormatMsg("GetStats sscanf_s 2 failed! Only read %d/%d\n", n, 3));
-		}
+	int year, month, date; // temps for dates
+	if (!sscanf_s(buffer[beta], "%lf", &stats.beta)) stats.beta = 0;
+	if (!sscanf_s(buffer[week52high], "%lf", &stats.week52high)) stats.week52high = 0;
+	if (!sscanf_s(buffer[week52low], "%lf", &stats.week52low)) stats.week52low = 0;
+	if (!sscanf_s(buffer[ttmDividendRate], "%lf", &stats.dividendRate)) stats.dividendRate = 0;
+	if (!sscanf_s(buffer[dividendYield], "%lf", &stats.dividendYield)) stats.dividendYield = 0;
+	if (!sscanf_s(buffer[year1ChangePercent], "%lf", &stats.year1ChangePercent)) stats.year1ChangePercent = 0;
+	if (sscanf_s(buffer[exDividendDate], R"("%d-%d-%d")", &year, &month, &date) != 3)
+		stats.exDividendDate = 0;
+	else
 		stats.exDividendDate = MkDate(year, month, date);
-	}
+	if (sscanf_s(buffer[nextEarningsDate], R"("%d-%d-%d")", &year, &month, &date) != 3)
+		stats.nextEarningsDate = 0;
+	else
+		stats.nextEarningsDate = MkDate(year, month, date);
 
 	return stats;
 }

@@ -11,7 +11,7 @@ class WatchlistItem;
 struct WatchlistColumn
 {
 	enum Field { None, Ticker, Last, ChangeP, Change1YP, DivP, ExDiv, Shares, AvgCost, Equity, 
-		Realized, Unrealized, ReturnsT, ReturnsP, APY };
+		Realized, Unrealized, ReturnsT, ReturnsP, APY, EarningsDate };
 
 	float width;
 	Field field = None;
@@ -35,6 +35,7 @@ struct WatchlistColumn
 		case ReturnsT:	return L"Returns";
 		case ReturnsP:	return L"Return %";
 		case APY:		return L"APY %";
+		case EarningsDate: return L"Earnings";
 		case None:
 		default:
 			return L"";

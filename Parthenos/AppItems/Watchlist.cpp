@@ -48,7 +48,7 @@ void Watchlist::SetColumns()
 			{60.0f, WatchlistColumn::Last, L"%.2lf"},
 			{60.0f, WatchlistColumn::ChangeP, L"%.2lf"},
 			{60.0f, WatchlistColumn::Change1YP, L"%.2lf"},
-			{60.0f, WatchlistColumn::DivP, L"%.2lf"}
+			{60.0f, WatchlistColumn::EarningsDate, L""}
 	});
 }
 
@@ -328,6 +328,10 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<WatchlistColum
 			case WatchlistColumn::APY:
 				if (position) data = position->APY * 100.0f;
 				break;
+			case WatchlistColumn::EarningsDate:
+				wcscpy_s(buffer, _countof(buffer), DateToWString(stats.nextEarningsDate).c_str());
+				m_data[i - 1] = { stats.nextEarningsDate, buffer };
+				continue;
 			case WatchlistColumn::None:
 			default:
 				m_data[i - 1] = { 0.0, L"" };
