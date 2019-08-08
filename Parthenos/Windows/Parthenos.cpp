@@ -1075,7 +1075,7 @@ void Parthenos::LoadPieChart()
 	for (Collat const & x : collaterals)
 	{
 		if (x.i == -1) slider_pos.push_back(data.size()); // cash collateral
-		else slider_pos.push_back(inds[x.i]);
+		else slider_pos.push_back(GetIndex(inds, x.i));
 		slider_vals.push_back(x.value);
 		slider_labels.push_back(MakeLongLabel(x.name, x.value, 100.0 * x.value / sum));
 		slider_colors.push_back(x.color);

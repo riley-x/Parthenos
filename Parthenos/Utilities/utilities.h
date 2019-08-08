@@ -197,7 +197,7 @@ inline std::vector<size_t> sort_indexes(const std::vector<T> &v, Compare comp = 
 // to keys in 'filter'. Assumes 'keys' and 'filter' are ordered in the same sense. If 'filter' contains
 // a value not in 'keys', the function will return values up to that filter.
 template <typename T1, typename T2>
-std::vector<T2> FilterByKeyMatch(std::vector<T1> keys, std::vector<T2> vals, std::vector<T1> filter)
+std::vector<T2> FilterByKeyMatch(std::vector<T1> const & keys, std::vector<T2> const & vals, std::vector<T1> const & filter)
 {
 	std::vector<T2> out;
 	out.reserve(filter.size());
@@ -219,13 +219,20 @@ std::vector<T2> FilterByKeyMatch(std::vector<T1> keys, std::vector<T2> vals, std
 
 // Given 'keys' and 'vals' as above, returns the value corresponding to 'key'.
 template <typename T1, typename T2>
-T2 KeyMatch(std::vector<T1> keys, std::vector<T2> vals, T1 key)
+T2 KeyMatch(std::vector<T1> const & keys, std::vector<T2> const & vals, T1 key)
 {
 	for (size_t i = 0; i < keys.size(); i++)
 	{
 		if (keys[i] == key) return vals[i];
 	}
 	return T2();
+}
+
+template <typename T>
+inline size_t GetIndex(std::vector<T> const & arr, T val)
+{
+	auto it = std::find(arr.begin(), arr.end(), val);
+	return std::distance(arr.begin(), it);
 }
 
 ///////////////////////////////////////////////////////////

@@ -12,7 +12,7 @@ const std::wstring ROOTDIR(L"C:/Users/Riley/Documents/Finances/Parthenos/"); // 
 
 enum class apiSource { iex, alpha };
 
-enum class iexLSource { real, delayed, close, prevclose };
+enum class iexLSource { real, delayed, close, prevclose, null };
 
 typedef struct TimeSeries_struct
 {

@@ -649,14 +649,15 @@ void UpdateEquityHistory(std::vector<TimeSeries>& hist, std::vector<Position> co
 Quote parseFilteredQuote(std::string const & json, std::wstring const & ticker)
 {
 	Quote quote;
-	char buffer[11][50] = { 0 };
+	static const int nFields = 11;
+	char buffer[nFields][50] = { 0 };
 
 	enum vars {
 		open, close, latestPrice, latestSource, latestUpdate, latestVolume, avgTotalVolume, previousClose,
 		change, changePercent, closeTime
 	};
 
-	const char format[] = R"({"open":%49[^,],"close":%49[^,],"latestPrice":%49[^,],"latestSource":"%49[^"]",)"
+	const char format[] = R"({"open":%49[^,],"close":%49[^,],"latestPrice":%49[^,],"latestSource":%49[^,],)"
 		R"("latestUpdate":%49[^,],"latestVolume":%49[^,],"avgTotalVolume":%49[^,],"previousClose":%49[^,],)"
 		R"("change":%49[^,],"changePercent":%49[^,],"closeTime":%49[^}]})";
 
@@ -673,10 +674,10 @@ Quote parseFilteredQuote(std::string const & json, std::wstring const & ticker)
 		buffer[9], static_cast<unsigned>(_countof(buffer[9])), // changePercent
 		buffer[10], static_cast<unsigned>(_countof(buffer[10])) // closeTime
 	);
-	if (n != 11)
+	if (n != nFields)
 	{
-		OutputMessage(L"sscanf_s failed! Only read %d/%d\n", n, 11);
-		throw std::invalid_argument("GetQuote failed");
+		OutputDebugStringA(json.c_str());
+		throw ws_exception(FormatMsg(L"parseFilteredQuote sscanf_s 1 failed! Only read %d/%d\n", n, nFields));
 	}
 
 	if (!sscanf_s(buffer[open], "%lf", &quote.open)) quote.open = 0;
@@ -690,19 +691,16 @@ Quote parseFilteredQuote(std::string const & json, std::wstring const & ticker)
 	if (!sscanf_s(buffer[changePercent], "%lf", &quote.changePercent)) quote.changePercent = 0;
 	if (!sscanf_s(buffer[closeTime], "%I64d", &quote.closeTime)) quote.closeTime = 0;
 
-	if (strcmp(buffer[latestSource], "IEX real time price") == 0)
+	if (strcmp(buffer[latestSource], "\"IEX real time price\"") == 0)
 		quote.latestSource = iexLSource::real;
-	else if (strcmp(buffer[latestSource], "15 minute delayed price") == 0)
+	else if (strcmp(buffer[latestSource], "\"15 minute delayed price\"") == 0)
 		quote.latestSource = iexLSource::delayed;
-	else if (strcmp(buffer[latestSource], "Close") == 0)
+	else if (strcmp(buffer[latestSource], "\"Close\"") == 0)
 		quote.latestSource = iexLSource::close;
-	else if (strcmp(buffer[latestSource], "Previous close") == 0)
+	else if (strcmp(buffer[latestSource], "\"Previous close\"") == 0)
 		quote.latestSource = iexLSource::prevclose;
 	else
-	{
-		OutputMessage(L"Couldn't decipher latestSource %hs\n", buffer);
-		throw std::invalid_argument("GetQuote failed");
-	}
+		quote.latestSource = iexLSource::null;
 
 	quote.latestUpdate /= 1000; // remove milliseconds
 	quote.closeTime /= 1000;
@@ -735,9 +733,8 @@ Stats parseFilteredStats(std::string const & json)
 	);
 	if (n != 8)
 	{
-		std::wstring msg = FormatMsg(L"parseFilteredStats sscanf_s 1 failed! Only read %d/%d\n", n, 8);
 		OutputDebugStringA(json.c_str());
-		throw ws_exception(msg);
+		throw ws_exception(FormatMsg(L"parseFilteredStats sscanf_s 1 failed! Only read %d/%d\n", n, 8));
 	}
 
 	int year, month, date; // temps for dates
@@ -761,13 +758,24 @@ Stats parseFilteredStats(std::string const & json)
 
 std::pair<Quote, Stats> parseQuoteStats(std::string const & json, std::wstring const & ticker)
 {
+	Stats stats; Quote quote;
+	bool quote_first = false;
+	if (json.size() > 3 && (json[2] == 'q' || json[2] == 'Q')) quote_first = true;
+
+
 	size_t start = json.find("{", 1); // skip first opening {
 	size_t end = json.find("}", start) + 1; // include closing }
-	Quote quote = parseFilteredQuote(json.substr(start, end - start), ticker);
+	if (quote_first)
+		quote = parseFilteredQuote(json.substr(start, end - start), ticker);
+	else
+		stats = parseFilteredStats(json.substr(start, end - start));
 
 	start = json.find("{", end);
 	end = json.find("}", start) + 1;
-	Stats stats = parseFilteredStats(json.substr(start, end - start));
+	if (!quote_first)
+		quote = parseFilteredQuote(json.substr(start, end - start), ticker);
+	else
+		stats = parseFilteredStats(json.substr(start, end - start));
 
 	return { quote, stats };
 }
