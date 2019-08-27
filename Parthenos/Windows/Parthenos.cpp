@@ -452,21 +452,26 @@ void Parthenos::AddTransaction(Transaction t)
 		[](TimeSeries const & ts, date_t date) {return ts.date < date; }
 	);
 	portHist.erase(it, portHist.end());
-	UpdateEquityHistory(portHist, m_accounts[t.account].positions, m_stats);
 
-	// Write equity history
-	histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
-	histFile.Close();
+	try { // non-critical fail here - just show not up-to-date history
+		UpdateEquityHistory(portHist, m_accounts[t.account].positions, m_stats);
+		histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
 
-	// Update hist data (TODO update all history too?)
-	m_accounts[t.account].histDate.clear();
-	m_accounts[t.account].histEquity.clear();
-	double cash_in = GetCash(m_accounts[t.account].positions).second;
-	for (auto const & x : portHist)
-	{
-		m_accounts[t.account].histDate.push_back(x.date);
-		m_accounts[t.account].histEquity.push_back(x.prices + cash_in);
+		// Update hist data (TODO update all history too?)
+		m_accounts[t.account].histDate.clear();
+		m_accounts[t.account].histEquity.clear();
+		double cash_in = GetCash(m_accounts[t.account].positions).second;
+		for (auto const & x : portHist)
+		{
+			m_accounts[t.account].histDate.push_back(x.date);
+			m_accounts[t.account].histEquity.push_back(x.prices + cash_in);
+		}
 	}
+	catch (const std::exception & e) {
+		if (m_msgBox) m_msgBox->Print(SPrintException(e));
+	}
+
+	histFile.Close();
 
 	// Update plots
 	if (m_currAccount == t.account || m_currAccount == m_accounts.size() - 1)
