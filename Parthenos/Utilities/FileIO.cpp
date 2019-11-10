@@ -58,6 +58,94 @@ void FileIO::Open(DWORD dwDesiredAccess)
 	}
 }
 
+// Reads from end of file - bytesToRead
+// Caller must delete returned array.
+// Updates bytesToRead with bytes read.
+char* FileIO::_Read(DWORD & bytesToRead, bool all)
+{
+	BOOL bErrorFlag;
+
+	if (m_hFile == INVALID_HANDLE_VALUE)
+	{
+		OutputMessage(L"Handle not initialized!\n");
+		return nullptr;
+	}
+
+	// Get file size
+	LONGLONG fileSize;
+	LARGE_INTEGER fileSize_struct;
+
+	bErrorFlag = GetFileSizeEx(m_hFile, &fileSize_struct);
+	if (bErrorFlag == 0)
+	{
+		OutputMessage(L"Couldn't get filesize.\n");
+		return nullptr;
+	}
+	fileSize = fileSize_struct.QuadPart;
+
+	if (all || bytesToRead > static_cast<DWORD>(fileSize))
+		bytesToRead = static_cast<DWORD>(fileSize);
+
+	char *ReadBuffer = new char[bytesToRead];
+
+	if (m_access == GENERIC_READ)
+	{
+		OVERLAPPED ol = { 0 };
+		ol.Offset = static_cast<DWORD>(fileSize) - bytesToRead;
+
+		bErrorFlag = ReadFileEx(m_hFile, ReadBuffer, bytesToRead, &ol, CompletionRoutine);
+		if (bErrorFlag == FALSE)
+		{
+			OutputError(L"Unable to read from file.\n");
+			delete[] ReadBuffer;
+			return nullptr;
+		}
+
+		// Shouldn't sleep? Check https://docs.microsoft.com/en-us/windows/desktop/api/synchapi/nf-synchapi-sleepex
+		DWORD sleepResult = SleepEx(2000, TRUE); // 2 seconds
+		if (sleepResult == 0) // timeout
+		{
+			OutputMessage(L"Warning: sleep timed-out\n");
+		}
+	}
+	else // Synchronous R/W
+	{
+		// Set file pointer
+		LARGE_INTEGER offset; offset.QuadPart = 0;
+		if (all)
+		{
+			bErrorFlag = SetFilePointerEx(m_hFile, offset, NULL, FILE_BEGIN);
+		}
+		else
+		{
+			offset.QuadPart = -static_cast<LONGLONG>(bytesToRead);
+			bErrorFlag = SetFilePointerEx(m_hFile, offset, NULL, FILE_END);
+		}
+		if (bErrorFlag == FALSE)
+		{
+			OutputError(L"Seek failed");
+			delete[] ReadBuffer;
+			return nullptr;
+		}
+
+		// Do the read
+		bErrorFlag = ReadFile(m_hFile, ReadBuffer, bytesToRead, &g_bytes, NULL);
+		if (bErrorFlag == FALSE)
+		{
+			OutputError(L"Unable to read from file.\n");
+			delete[] ReadBuffer;
+			return nullptr;
+		}
+	}
+
+	if (g_bytes != bytesToRead)
+	{
+		OutputMessage(L"Warning: Improper amount of bytes read: %lu out of %lu.\n", g_bytes, bytesToRead);
+	}
+	bytesToRead = g_bytes;
+	return ReadBuffer;
+}
+
 // Overwrites file, with truncating
 bool FileIO::Write(LPCVOID data, DWORD nBytes)
 {

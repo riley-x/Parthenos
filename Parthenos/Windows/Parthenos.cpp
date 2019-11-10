@@ -9,7 +9,9 @@
 #include "../Utilities/DataManaging.h"
 #include "../Utilities/FileIO.h"
 #include "../Utilities/utilities.h"
+#include "../Utilities/jsonette.h"
 
+using namespace jsonette;
 
 ///////////////////////////////////////////////////////////
 // --- Forward declarations ---
@@ -198,8 +200,15 @@ void Parthenos::PreShow()
 
 void Parthenos::InitData()
 {
-	// TODO hardcoded
-	m_accountNames = { L"Robinhood", L"Arista" };
+	// Get account names
+	FileIO accountsFile;
+	accountsFile.Init(ROOTDIR + L"accounts.json");
+	accountsFile.Open(GENERIC_READ);
+	JSON json(accountsFile.ReadText());
+	std::vector<JSON> const & names = json.get_arr();
+	for (JSON const & name : names)
+		m_accountNames.push_back(s2w(name.get_str()));
+	accountsFile.Close();
 	m_currAccount = 0;
 
 	m_accounts.resize(m_accountNames.size() + 1);
@@ -251,7 +260,7 @@ NestedHoldings Parthenos::CalculateHoldings() const
 	FileIO transFile;
 	transFile.Init(ROOTDIR + L"hist.trans");
 	transFile.Open(GENERIC_READ);
-	std::vector<Transaction> trans = transFile.Read<Transaction>();;
+	std::vector<Transaction> trans = transFile.Read<Transaction>();
 	transFile.Close();
 
 	// Transaction -> Holdings

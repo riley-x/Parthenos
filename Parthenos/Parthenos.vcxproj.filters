@@ -126,6 +126,9 @@
     <ClInclude Include="Windows\PopupWindow.h">
       <Filter>Header Files\Windows</Filter>
     </ClInclude>
+    <ClInclude Include="Utilities\jsonette.h">
+      <Filter>Header Files\Utilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
