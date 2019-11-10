@@ -13,7 +13,7 @@
 #include "../AppItems/MessageScrollBox.h"
 
 
-typedef struct Account_struct
+struct Account
 {
 	std::wstring name;
 	std::vector<Position> positions;
@@ -23,7 +23,13 @@ typedef struct Account_struct
 	std::vector<std::pair<double, D2D1_COLOR_F>> returnsPercBarData; // in stock equity order
 	std::vector<std::wstring> tickers; // in equity order
 	std::vector<std::wstring> percTickers; // for % return graph
-} Account;
+
+	bool Empty() const
+	{
+		return positions.empty() || histDate.empty() || histEquity.empty() || returnsBarData.empty()
+			|| returnsPercBarData.empty() || tickers.empty() || percTickers.empty();
+	}
+};
 
 class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver
 {
@@ -96,6 +102,8 @@ private:
 	void CalculatePositions(NestedHoldings const & holdings);
 	void CalculateReturns();
 	void CalculateHistories();
+	void CalculateAllHistory();
+	std::vector<TimeSeries> GetHist(size_t i);
 	void AddTransaction(Transaction t);
 
 	// Child management

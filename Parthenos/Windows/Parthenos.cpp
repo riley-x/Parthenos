@@ -333,42 +333,9 @@ void Parthenos::CalculateHistories()
 	for (size_t i = 0; i < m_accountNames.size(); i++)
 	{
 		Account & acc = m_accounts[i];
-		bool exists = FileExists((ROOTDIR + acc.name + L".hist").c_str());
+		std::vector<TimeSeries> portHist = GetHist(i);
 
-		FileIO histFile;
-		histFile.Init(ROOTDIR + acc.name + L".hist");
-		histFile.Open();
-		std::vector<TimeSeries> portHist;
-
-		if (!exists)
-		{
-			// Read transaction history
-			FileIO transFile;
-			transFile.Init(ROOTDIR + L"hist.trans");
-			transFile.Open(GENERIC_READ);
-			std::vector<Transaction> trans = transFile.Read<Transaction>();;
-			transFile.Close();
-
-			// Calculate full equity history
-			portHist = CalculateFullEquityHistory((char)i, trans);
-
-			// Write to file
-			histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
-		}
-		else // assumes that holdings haven't changed since last update (add transaction will properly invalidate history)
-		{
-			portHist = histFile.Read<TimeSeries>();
-			try { // non-critical fail here - just show not up-to-date history
-				UpdateEquityHistory(portHist, acc.positions, m_stats);
-				histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
-			}
-			catch (const std::exception & e) {
-				if (m_msgBox) m_msgBox->Print(SPrintException(e));
-			}
-		}
-		histFile.Close();
-
-		// Add to account for plotting
+		// Add to Account object for plotting
 		acc.histDate.clear();
 		acc.histEquity.clear();
 		acc.histDate.reserve(portHist.size());
@@ -381,9 +348,15 @@ void Parthenos::CalculateHistories()
 		}
 	}
 
-	// Sum all accounts for "All".
+	CalculateAllHistory();
+}
+
+// Calculate equity history for "All Accounts" and update m_accounts.
+void Parthenos::CalculateAllHistory()
+{
 	Account & accAll = m_accounts.back();
-	std::vector<size_t> iAccDate(m_accounts.size() - 1); // index into each account's histDate
+
+	// Find account with longest history, and total cash in.
 	std::vector<double> cashIn(m_accounts.size() - 1);
 	size_t maxSize = 0;
 	size_t iAccMax; // index of account with maximum history length
@@ -398,10 +371,10 @@ void Parthenos::CalculateHistories()
 	}
 	double totCashIn = std::accumulate(cashIn.begin(), cashIn.end(), 0.0);
 
-	accAll.histDate.clear();
-	accAll.histEquity.clear();
-	accAll.histDate.reserve(maxSize);
-	accAll.histEquity.reserve(maxSize);
+
+	std::vector<size_t> iAccDate(m_accounts.size() - 1); // index into each account's histDate
+	accAll.histDate.clear();	accAll.histDate.reserve(maxSize);
+	accAll.histEquity.clear();	accAll.histEquity.reserve(maxSize);
 	while (iAccDate[iAccMax] < m_accounts[iAccMax].histDate.size())
 	{
 		date_t date = m_accounts[iAccMax].histDate[iAccDate[iAccMax]];
@@ -410,7 +383,7 @@ void Parthenos::CalculateHistories()
 		{
 			Account & acc = m_accounts[iAcc];
 			size_t iDate = iAccDate[iAcc];
-			if (acc.histDate[iDate] == date)
+			if (iDate < acc.histDate.size() && acc.histDate[iDate] == date)
 			{
 				val += acc.histEquity[iDate] - cashIn[iAcc];
 				iAccDate[iAcc]++;
@@ -419,6 +392,49 @@ void Parthenos::CalculateHistories()
 		accAll.histDate.push_back(date);
 		accAll.histEquity.push_back(val + totCashIn);
 	}
+}
+
+// Reads account price history from file, or calculates full history if file DNE (and writes back).
+std::vector<TimeSeries> Parthenos::GetHist(size_t i)
+{
+	std::vector<TimeSeries> portHist; // output
+
+	Account & acc = m_accounts[i];
+	bool exists = FileExists((ROOTDIR + acc.name + L".hist").c_str());
+
+	FileIO histFile;
+	histFile.Init(ROOTDIR + acc.name + L".hist");
+	histFile.Open();
+
+	if (!exists) // Calculate full history
+	{
+		// Read transaction history
+		FileIO transFile;
+		transFile.Init(ROOTDIR + L"hist.trans");
+		transFile.Open(GENERIC_READ);
+		std::vector<Transaction> trans = transFile.Read<Transaction>();;
+		transFile.Close();
+
+		// Calculate full equity history
+		portHist = CalculateFullEquityHistory(static_cast<char>(i), trans);
+
+		// Write to file
+		histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
+	}
+	else // assumes that holdings haven't changed since last update (add transaction will properly invalidate history)
+	{
+		portHist = histFile.Read<TimeSeries>();
+		try { // non-critical fail here - just show not up-to-date history
+			UpdateEquityHistory(portHist, acc.positions, m_stats);
+			histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
+		}
+		catch (const std::exception & e) {
+			if (m_msgBox) m_msgBox->Print(SPrintException(e));
+		}
+	}
+	histFile.Close();
+
+	return portHist;
 }
 
 void Parthenos::AddTransaction(Transaction t)
@@ -1111,6 +1127,11 @@ void Parthenos::UpdatePortfolioPlotters(char account, bool init)
 {
 	if (m_currAccount != account) return;
 	Account const & acc = m_accounts[account];
+	if (acc.Empty())
+	{
+		if (m_msgBox) m_msgBox->Print(L"Account " + acc.name + L" has no data!\n");
+		return;
+	}
 	std::vector<std::wstring> tickers = GetTickers(acc.positions);
 	std::pair<double, double> cash = GetCash(acc.positions);
 
