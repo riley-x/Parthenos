@@ -35,8 +35,19 @@ void PieChart::Paint(D2D1_RECT_F updateRect)
 	m_d2.pD2DContext->FillRectangle(m_dipRect, m_d2.pBrush);
 
 	// Wedges
-	for (size_t i = 0; i < m_wedges.size(); i++)
-		PaintWedge(m_wedges[i], m_angles[i], m_colors[i]);
+	if (m_wedges.size() == 1) // one wedge (cash) only is not well-formed by CreateWedge
+	{
+		m_d2.pBrush->SetColor(m_colors[0]);
+		m_d2.pD2DContext->FillEllipse(D2D1::Ellipse(m_center, m_trueRadius * m_outerRadius, m_trueRadius * m_outerRadius), m_d2.pBrush);
+		m_d2.pBrush->SetColor(Colors::AXES_BACKGROUND);
+		m_d2.pD2DContext->FillEllipse(D2D1::Ellipse(m_center, m_trueRadius * m_innerRadius, m_trueRadius * m_innerRadius), m_d2.pBrush);
+	}
+	else
+	{
+		for (size_t i = 0; i < m_wedges.size(); i++)
+			PaintWedge(m_wedges[i], m_angles[i], m_colors[i]);
+	}
+
 
 	// Sliders
 	for (size_t i = 0; i < m_sliders.size(); i++)

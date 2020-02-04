@@ -24,11 +24,6 @@ struct Account
 	std::vector<std::wstring> tickers; // in equity order
 	std::vector<std::wstring> percTickers; // for % return graph
 
-	bool Empty() const
-	{
-		return positions.empty() || histDate.empty() || histEquity.empty() || returnsBarData.empty()
-			|| returnsPercBarData.empty() || tickers.empty() || percTickers.empty();
-	}
 };
 
 class Parthenos : public BorderlessWindow<Parthenos>, public CTPMessageReceiver

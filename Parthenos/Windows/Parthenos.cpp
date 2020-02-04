@@ -25,6 +25,13 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 Parthenos::Parthenos(PCWSTR szClassName)
 	: BorderlessWindow(szClassName)
 {	
+	//FileIO transFile;
+	//transFile.Init(ROOTDIR + L"hist.trans");
+	//transFile.Open();
+	//std::vector<Transaction> trans = transFile.Read<Transaction>();
+	//trans.back().strike = 41.0;
+	//transFile.Write(trans.data(), sizeof(Transaction)*trans.size());
+	//transFile.Close();
 }
 
 Parthenos::~Parthenos()
@@ -1127,11 +1134,7 @@ void Parthenos::UpdatePortfolioPlotters(char account, bool init)
 {
 	if (m_currAccount != account) return;
 	Account const & acc = m_accounts[account];
-	if (acc.Empty())
-	{
-		if (m_msgBox) m_msgBox->Print(L"Account " + acc.name + L" has no data!\n");
-		return;
-	}
+
 	std::vector<std::wstring> tickers = GetTickers(acc.positions);
 	std::pair<double, double> cash = GetCash(acc.positions);
 
