@@ -362,7 +362,7 @@ inline double GetIntrinsicValue(Option const & opt, double latest)
 // --- Positions ---
 
 // Current position for a stock at a given day
-typedef struct Position_struct
+struct Position
 {
 	int n;					
 	int shares_collateral;
@@ -390,7 +390,7 @@ typedef struct Position_struct
 			+ L", collat (cash): "		+ std::to_wstring(cash_collateral)
 			+ L"\n";
 	}
-} Position;
+};
 
 std::vector<Position> HoldingsToPositions(NestedHoldings const & holdings,
 	char account, date_t date, std::vector<double> prices);
@@ -419,10 +419,7 @@ inline std::vector<double> GetMarketValues(std::vector<Position> const & positio
 	out.reserve(positions.size());
 	for (auto const & x : positions)
 	{
-		if (x.ticker == L"CASH")
-		{
-			if (cash) out.push_back(x.marketPrice + x.realized_held);
-		}
+		if (cash && x.ticker == L"CASH") out.push_back(x.marketPrice + x.realized_held);
 		else out.push_back(x.n * x.marketPrice);
 	}
 	return out;

@@ -24,8 +24,18 @@ void EditTransactionWindow::PreShow()
 	transFile.Close();
 
 	// Create title bar
+	float titleBarBottom = DPIScale::SnapToPixelY(m_titleBarHeight);
 	m_titleBar = new TitleBar(m_hwnd, m_d2, this);
-	m_titleBar->SetSize(D2D1::RectF(0, 0, dipRect.right, DPIScale::SnapToPixelY(m_titleBarHeight)));
+	m_titleBar->SetSize(D2D1::RectF(0, 0, dipRect.right, titleBarBottom));
+
+	// Create menu bar
+	float menuBarBottom = DPIScale::SnapToPixelY(m_titleBarHeight + m_menuBarHeight);
+	m_menuBar = new MenuBar(m_hwnd, m_d2, this, menuBarBottom - titleBarBottom);
+	std::vector<std::wstring> menus = { L"File" };
+	std::vector<std::vector<std::wstring>> items = { { L"Save" } };
+	std::vector<std::vector<size_t>> divisions = { {} };
+	m_menuBar->SetMenus(menus, items, divisions);
+	m_menuBar->SetSize(D2D1::RectF(0, titleBarBottom, dipRect.right, menuBarBottom));
 
 	// Create table
 	m_table = new Table(m_hwnd, m_d2, this, true);
@@ -38,9 +48,9 @@ void EditTransactionWindow::PreShow()
 		rows.push_back(temp);
 	}
 	m_table->Load(rows);
-	m_table->SetSize(D2D1::RectF(0, DPIScale::SnapToPixelY(m_titleBarHeight), dipRect.right, dipRect.bottom));
+	m_table->SetSize(D2D1::RectF(0, menuBarBottom, dipRect.right, dipRect.bottom));
 
-	m_items = { m_titleBar, m_table };
+	m_items = { m_titleBar, m_table, m_menuBar };
 }
 
 
@@ -83,6 +93,15 @@ void EditTransactionWindow::ProcessCTPMessages()
 			{
 				m_activeButton->Deactivate();
 				m_activeButton = nullptr;
+			}
+			break;
+		}
+		case CTPMessage::MENUBAR_SELECTED:
+		{
+			if (msg.iData == 0) // File
+			{
+				if (msg.msg == L"Save")
+					OutputMessage(L"TODO");
 			}
 			break;
 		}

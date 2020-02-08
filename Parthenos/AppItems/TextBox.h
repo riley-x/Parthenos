@@ -27,7 +27,7 @@ public:
 	void OnTimer(WPARAM wParam, LPARAM lParam);
 
 	inline std::wstring String() const { return m_text; }
-	void SetText(std::wstring text); // initalizes
+	void SetText(std::wstring const & text);
 	inline void SetParameters(float leftOffset, bool border, size_t maxChars = 9) 
 	{
 		m_leftOffset = leftOffset; m_border = border; m_maxChars = maxChars;

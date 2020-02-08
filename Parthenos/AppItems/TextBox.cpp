@@ -12,12 +12,13 @@ void TextBox::SetSize(D2D1_RECT_F dipRect)
 	if (equalRect(dipRect, m_dipRect)) return;
 	m_dipRect = dipRect;
 	m_pixRect = DPIScale::DipsToPixels(m_dipRect);
-	CreateTextLayout();
+	m_stale = true;
 }
 
 void TextBox::Paint(D2D1_RECT_F updateRect)
 {
 	if (!overlapRect(m_dipRect, updateRect)) return;
+	if (m_stale) CreateTextLayout();
 
 	// Draw highlight
 	if (m_selection)
@@ -205,7 +206,7 @@ bool TextBox::OnChar(wchar_t c, LPARAM lParam)
 		}
 		if (m_text.length() == 0 || m_ipos == 0) break;
 		m_text.erase(m_ipos - 1, 1);
-		CreateTextLayout();
+		m_stale = true;
 		MoveCaret(-1);
 		break;
 	}
@@ -223,7 +224,7 @@ bool TextBox::OnChar(wchar_t c, LPARAM lParam)
 		else
 			m_text.insert(m_ipos, 1, c);
 
-		CreateTextLayout();
+		m_stale = true;
 		MoveCaret(1);
 		break;
 	}
@@ -288,7 +289,7 @@ bool TextBox::OnKeyDown(WPARAM wParam, LPARAM lParam)
 		{
 			if (m_ipos == m_text.length()) return true;
 			m_text.erase(m_ipos, 1);
-			CreateTextLayout();
+			m_stale = true;
 			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 		}
 		return true;
@@ -315,7 +316,7 @@ void TextBox::OnTimer(WPARAM wParam, LPARAM lParam)
 }
 
 // This acts as the initalizer for the text box too
-void TextBox::SetText(std::wstring text)
+void TextBox::SetText(std::wstring const & text)
 {
 	if (text != m_text || m_pTextLayout == NULL) // first check will fail if initialized with empty string
 	{
@@ -325,7 +326,7 @@ void TextBox::SetText(std::wstring text)
 			return;
 		}
 		m_text = text;
-		CreateTextLayout();
+		m_stale = true;
 	}
 	Deactivate();
 }
@@ -364,6 +365,7 @@ void TextBox::CreateTextLayout()
 		&m_pTextLayout					// The IDWriteTextLayout interface pointer.
 	);
 	if (FAILED(hr)) OutputError(L"TextBox CreateTextLayout failed");
+	m_stale = false;
 }
 
 // Moves the caret, with error checking, and invalidates
@@ -408,7 +410,7 @@ void TextBox::DeleteSelection(bool invalidate)
 
 	if (invalidate)
 	{
-		CreateTextLayout();
+		m_stale = true;
 		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 	}
 }

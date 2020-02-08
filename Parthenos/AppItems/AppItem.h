@@ -97,4 +97,5 @@ protected:
 	RECT				m_pixRect; // pixels in main window client coordinates
 	D2D1_RECT_F			m_dipRect = D2D1::RectF(-1, -1, -1, -1);
 
+	bool m_stale = true; // Check on each OnPaint. If stale, need to recreate layouts, etc.
 };

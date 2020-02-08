@@ -3,6 +3,7 @@
 #include "../stdafx.h"
 #include "PopupWindow.h"
 #include "../AppItems/Table.h"
+#include "../AppItems/MenuBar.h"
 #include "../Utilities/DataManaging.h"
 
 
@@ -17,8 +18,12 @@ public:
 
 private:
 	// Items
-	Table *m_table;
+	Table *m_table = nullptr;
 	DropMenuButton *m_activeButton = nullptr;
+	MenuBar *m_menuBar = nullptr;
+
+	// Layout
+	float const	m_menuBarHeight = 20.0f;
 
 	// Table columns
 	std::vector<std::wstring> const m_labels = { L"Account:", L"Transaction:", L"Date:", L"Ticker:",

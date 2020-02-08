@@ -29,7 +29,7 @@ Parthenos::Parthenos(PCWSTR szClassName)
 	//transFile.Init(ROOTDIR + L"hist.trans");
 	//transFile.Open();
 	//std::vector<Transaction> trans = transFile.Read<Transaction>();
-	//trans.back().strike = 41.0;
+	//trans[trans.size() - 11].value = 61.33;
 	//transFile.Write(trans.data(), sizeof(Transaction)*trans.size());
 	//transFile.Close();
 }
@@ -510,6 +510,9 @@ void Parthenos::AddTransaction(Transaction t)
 		UpdatePortfolioPlotters(m_currAccount);
 }
 
+// asdf
+
+
 
 ///////////////////////////////////////////////////////////
 // --- Child Management ---
@@ -543,16 +546,16 @@ void Parthenos::InitItems()
 	m_chart->LoadHistory(trans);
 
 	// Watchlists
-	std::vector<WatchlistColumn> portColumns = {
+	std::vector<WatchlistColumn> portColumns = { // m_portfolioListWidth is 600, -15 for ScrollBar::Width
 		{60.0f, WatchlistColumn::Ticker, L""},
 		{60.0f, WatchlistColumn::Last, L"%.2lf"},
 		{60.0f, WatchlistColumn::ChangeP, L"%.2lf"},
-		{50.0f, WatchlistColumn::Shares, L"%d"},
+		{45.0f, WatchlistColumn::Shares, L"%d"},
 		{60.0f, WatchlistColumn::AvgCost, L"%.2lf"},
 		{60.0f, WatchlistColumn::Equity, L"%.2lf"},
 		{60.0f, WatchlistColumn::ReturnsT, L"%.2lf"},
 		{60.0f, WatchlistColumn::ReturnsP, L"%.2lf"},
-		{55.0f, WatchlistColumn::APY, L"%.1lf"},
+		{60.0f, WatchlistColumn::Realized, L"%.2lf"},
 		{60.0f, WatchlistColumn::ExDiv, L""},
 	};
 	m_watchlist->SetColumns(); // use defaults
@@ -1012,6 +1015,9 @@ inline std::wstring MakeLongLabel(std::wstring const & ticker, double val, doubl
 // Get data, colors, etc. then sort into inputs to pie chart
 void Parthenos::LoadPieChart()
 {
+	// First get list of tickers and equities of all long positions.
+	// Also, store collateral information to plot sliders.
+
 	struct Collat
 	{
 		size_t i; // index into tickers
@@ -1071,15 +1077,10 @@ void Parthenos::LoadPieChart()
 	sum += cash;
 
 	// Pie inputs
-	std::vector<double> data; 
-	std::vector<std::wstring> short_labels;
-	std::vector<std::wstring> long_labels;
-	std::vector<D2D1_COLOR_F> wedge_colors;
-
-	data.reserve(tickers.size() + 1); // Add one for cash
-	short_labels.reserve(tickers.size() + 1);
-	long_labels.reserve(tickers.size() + 2); // Add another for default label
-	wedge_colors.reserve(tickers.size() + 1);
+	std::vector<double> data;					data.reserve(tickers.size() + 1); // Add one for cash
+	std::vector<std::wstring> short_labels;		short_labels.reserve(tickers.size() + 1);
+	std::vector<std::wstring> long_labels;		long_labels.reserve(tickers.size() + 2); // Add another for default label
+	std::vector<D2D1_COLOR_F> wedge_colors;		wedge_colors.reserve(tickers.size() + 1);
 
 	// Slider inputs
 	std::vector<size_t> slider_pos;
