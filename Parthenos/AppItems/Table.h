@@ -38,7 +38,9 @@ public:
 		std::vector<ColumnType> const & types);
 	void Load(std::vector<TableRowItem*> const & items);
 	inline void Refresh() { CalculatePositions(); CreateTextLayouts(); } // Load creates items but not with position, so call refresh
+	
 	inline std::vector<float> GetColumnWidths() const { return m_columnWidths; }
+	inline std::vector<TableRowItem*> const & GetItems() const { return m_items; }
 
 	// Statics
 	static float const m_hTextPad; // 4.0f

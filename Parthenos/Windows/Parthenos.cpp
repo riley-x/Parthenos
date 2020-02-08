@@ -717,7 +717,7 @@ void Parthenos::ProcessMenuMessage(bool & pop_front)
 
 			std::wstring out;
 			for (Transaction const & t : trans)
-				out.append(t.to_wstring(m_accountNames));
+				out.append(t.to_wstring(m_accountNames) + L"\n");
 			m_msgBox->Overwrite(out);
 		}
 		else if (msg.msg == L"Print Holdings")

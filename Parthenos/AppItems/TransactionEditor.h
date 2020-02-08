@@ -28,7 +28,7 @@ public:
 	double GetData(size_t iColumn) const;
 	std::wstring GetString(size_t iColumn) const;
 	void SetInfo(Transaction const & t);
-	//void GetTransaction() const;
+	Transaction GetTransaction() const;
 
 private:
 	// State

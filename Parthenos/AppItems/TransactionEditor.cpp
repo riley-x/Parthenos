@@ -172,3 +172,28 @@ void TransactionEditor::SetInfo(Transaction const & t)
 	m_taxLotBox->SetText(std::to_wstring(t.tax_lot));
 }
 
+Transaction TransactionEditor::GetTransaction() const
+{
+	Transaction t;
+	try {
+		t.account = static_cast<char>(m_accountButton->GetSelection());
+		t.type = static_cast<TransactionType>(m_transactionTypeButton->GetSelection());
+		t.tax_lot = static_cast<short>(std::stoi(m_taxLotBox->String()));
+
+		std::wstring ticker = m_tickerBox->String();
+		std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::toupper);
+		wcscpy_s(t.ticker, PortfolioObjects::maxTickerLen + 1, ticker.c_str());
+
+		t.n = stoi(m_nsharesBox->String());
+		t.date = stoi(m_dateBox->String());
+		t.expiration = stoi(m_expirationBox->String());
+		t.value = stod(m_valueBox->String());
+		t.price = stod(m_priceBox->String());
+		t.strike = stod(m_strikeBox->String());
+	}
+	catch (const std::exception& ia) {
+		OutputDebugStringA(ia.what()); OutputDebugStringA("\n");
+	}
+	return t;
+}
+

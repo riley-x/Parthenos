@@ -20,7 +20,7 @@ void EditTransactionWindow::PreShow()
 	FileIO transFile;
 	transFile.Init(m_filepath);
 	transFile.Open(GENERIC_READ);
-	m_transactions = transFile.Read<Transaction>();
+	std::vector<Transaction> trans = transFile.Read<Transaction>();
 	transFile.Close();
 
 	// Create title bar
@@ -38,13 +38,13 @@ void EditTransactionWindow::PreShow()
 	m_menuBar->SetSize(D2D1::RectF(0, titleBarBottom, dipRect.right, menuBarBottom));
 
 	// Create table
-	m_table = new Table(m_hwnd, m_d2, this, true);
+	m_table = new Table(m_hwnd, m_d2, this, false);
 	m_table->SetColumns(m_labels, m_widths, m_types);
 	std::vector<TableRowItem*> rows;
-	for (size_t i = 0; i < m_transactions.size() + 1; i++)
+	for (size_t i = 0; i < trans.size(); i++)
 	{
 		TransactionEditor *temp = new TransactionEditor(m_hwnd, m_d2, m_table, m_accounts);
-		if (i < m_transactions.size()) temp->SetInfo(m_transactions[i]);
+		temp->SetInfo(trans[i]);
 		rows.push_back(temp);
 	}
 	m_table->Load(rows);
@@ -101,7 +101,32 @@ void EditTransactionWindow::ProcessCTPMessages()
 			if (msg.iData == 0) // File
 			{
 				if (msg.msg == L"Save")
-					OutputMessage(L"TODO");
+				{
+					std::vector<Transaction> trans;
+					std::vector<TableRowItem*> const & rows = m_table->GetItems();
+					for (TableRowItem *item : rows)
+					{
+						TransactionEditor *tedit = dynamic_cast<TransactionEditor*>(item);
+						trans.push_back(tedit->GetTransaction());
+					}
+
+					//OutputMessage(L"hi\n");
+					//if (trans.size() != m_transactions.size()) OutputMessage(L"uhoh\n");
+					//for (size_t i = 0; i < trans.size(); i++)
+					//{
+					//	if (trans[i] != m_transactions[i])
+					//	{
+					//		OutputMessage(L"%d\n\t%s\n\t%s\n", i, trans[i].to_wstring(), m_transactions[i].to_wstring());
+					//	}
+					//}
+
+					// Save transactions
+					FileIO transFile;
+					transFile.Init(m_filepath);
+					transFile.Open(GENERIC_READ);
+					transFile.Write(trans.data(), sizeof(Transaction)*trans.size());
+					transFile.Close();
+				}
 			}
 			break;
 		}

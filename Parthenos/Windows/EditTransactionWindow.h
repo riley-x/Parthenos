@@ -36,7 +36,6 @@ private:
 	// Data
 	std::wstring				m_filepath;
 	std::vector<std::wstring>	m_accounts;
-	std::vector<Transaction>	m_transactions;
 
 	// Functions
 	void PaintSelf(D2D1_RECT_F windowRect, D2D1_RECT_F updateRect);
