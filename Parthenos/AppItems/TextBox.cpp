@@ -206,7 +206,7 @@ bool TextBox::OnChar(wchar_t c, LPARAM lParam)
 		}
 		if (m_text.length() == 0 || m_ipos == 0) break;
 		m_text.erase(m_ipos - 1, 1);
-		m_stale = true;
+		CreateTextLayout();
 		MoveCaret(-1);
 		break;
 	}
@@ -224,7 +224,7 @@ bool TextBox::OnChar(wchar_t c, LPARAM lParam)
 		else
 			m_text.insert(m_ipos, 1, c);
 
-		m_stale = true;
+		CreateTextLayout();
 		MoveCaret(1);
 		break;
 	}
@@ -289,7 +289,7 @@ bool TextBox::OnKeyDown(WPARAM wParam, LPARAM lParam)
 		{
 			if (m_ipos == m_text.length()) return true;
 			m_text.erase(m_ipos, 1);
-			m_stale = true;
+			CreateTextLayout();
 			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 		}
 		return true;
@@ -410,7 +410,7 @@ void TextBox::DeleteSelection(bool invalidate)
 
 	if (invalidate)
 	{
-		m_stale = true;
+		CreateTextLayout();
 		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 	}
 }
