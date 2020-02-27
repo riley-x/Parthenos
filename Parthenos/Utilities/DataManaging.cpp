@@ -1234,7 +1234,7 @@ void AddTransactionToTickerHoldings(std::vector<Holdings> & h, Transaction const
 			temp.lot.date = t.date;
 			temp.lot.tax_lot = 0;
 			temp.lot.price = t.price;
-			temp.lot.realized = 0.0;
+			temp.lot.realized = t.value + t.n * t.price; // Catch rounding error here :(
 
 			h.insert(h.begin() + i_header + header->nLots, temp);
 		}
