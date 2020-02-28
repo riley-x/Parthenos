@@ -123,7 +123,7 @@ void EditTransactionWindow::ProcessCTPMessages()
 					// Save transactions
 					FileIO transFile;
 					transFile.Init(m_filepath);
-					transFile.Open(GENERIC_READ);
+					transFile.Open();
 					transFile.Write(trans.data(), sizeof(Transaction)*trans.size());
 					transFile.Close();
 				}
