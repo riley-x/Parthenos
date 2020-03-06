@@ -234,9 +234,13 @@ std::vector<Transaction> CSVtoTransactions(std::wstring filepath);
 
 ///////////////////////////////////////////////////////////
 // --- Holdings ---
+// Store holdings using a 32 byte union. This allows all holdings to be stored
+// as a single vector. The holding header struct identifies the type of subsequent
+// structs.
+
 
 // Store sell lots in addition to buy lots to properly wait for dividends
-typedef struct TaxLot_struct 
+struct TaxLot
 {
 	int active; // 1 = buy, -1 = sale
 	int n;
@@ -256,9 +260,9 @@ typedef struct TaxLot_struct
 			+ L", realized: "	+ std::to_wstring(realized)
 			+ L"\n";
 	}
-} TaxLot;
+};
 
-typedef struct Option_struct
+struct Option
 {
 	TransactionType type;
 	char PAD[3];
@@ -267,7 +271,7 @@ typedef struct Option_struct
 	date_t expiration;
 	float price;
 	float strike;
-	float realized; // from sell-to-open or partial sell-to-close
+	float realized; // from sell-to-open or partial sell-to-close, also fees and rounding error
 	float RESERVED;
 	// 32 bytes
 
@@ -283,9 +287,9 @@ typedef struct Option_struct
 			+ L", realized: "	+ std::to_wstring(realized)
 			+ L"\n";
 	}
-} Option;
+};
 
-typedef struct HoldingHeader_struct
+struct HoldingHeader
 {
 	char account;
 	char PAD[3];
@@ -309,21 +313,21 @@ typedef struct HoldingHeader_struct
 			+ L", sumReal: "	+ std::to_wstring(sumReal)
 			+ L"\n";
 	}
-} HoldingHeader;
+};
 
-typedef struct TickerInfo_struct
+struct TickerInfo
 {
 	int nAccounts;
 	wchar_t ticker[14];
-} TickerInfo;
+};
 
-typedef union Holdings_union
+union Holdings
 {
 	TickerInfo tickerInfo;
 	TaxLot lot;
 	HoldingHeader head;
 	Option option;
-} Holdings;
+};
 
 // A vector sorted by tickers. Each ticker has a std::vector<Holdings> with the following elements:
 //		[0]: A TickerInfo struct with the ticker and the number of accounts

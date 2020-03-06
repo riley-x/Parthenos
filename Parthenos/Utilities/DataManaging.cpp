@@ -304,7 +304,7 @@ std::wstring TickerHoldingsToWString(std::vector<Holdings> const & h)
 		out.append(L"\tOptions:\n");
 		for (int i = header->nLots + 1; i <= header->nLots + header->nOptions; i++)
 		{
-			out.append(FormatMsg(L"\t\t%s\n", h[i_header + i].option.to_wstring().c_str()));
+			out.append(FormatMsg(L"\t\t%s\n", h[i_header + i].option.to_wstring(true).c_str()));
 		}
 	}
 	return out;
@@ -404,7 +404,7 @@ std::vector<Position> HoldingsToPositions(NestedHoldings const & holdings,
 					sumWeights += opt.strike * opt.n; // approximate weight as collateral of option
 					break;
 				case TransactionType::PutLong:
-					temp.realized_unheld += -opt.price * opt.n;
+					temp.realized_unheld += -opt.price * opt.n + opt.realized;
 					temp.APY += GetWeightedAPY(-opt.price * opt.n, opt.date, date);
 					sumWeights += opt.price * opt.n;
 					break;
@@ -415,7 +415,7 @@ std::vector<Position> HoldingsToPositions(NestedHoldings const & holdings,
 					sumWeights += opt.strike * opt.n; // approximate weight as strike of option
 					break;
 				case TransactionType::CallLong:
-					temp.realized_unheld += -opt.price * opt.n;
+					temp.realized_unheld += -opt.price * opt.n + opt.realized;
 					temp.APY += GetWeightedAPY(-opt.price * opt.n, opt.date, date);
 					sumWeights += opt.price * opt.n;
 					break;
@@ -1219,6 +1219,7 @@ void AddTransactionToTickerHoldings(std::vector<Holdings> & h, Transaction const
 			opt.price = static_cast<float>(t.price);
 			opt.strike = static_cast<float>(t.strike);
 			if (isShort(t.type)) opt.realized = static_cast<float>(t.value);
+			else opt.realized = static_cast<float>(t.value) + opt.n * opt.price; // Catch rounding error / fees here
 
 			Holdings temp;
 			temp.option = opt;
