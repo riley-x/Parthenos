@@ -1296,7 +1296,7 @@ void AddTransactionToTickerHoldings(std::vector<Holdings> & h, Transaction const
 				}
 				else
 				{
-					realized = -(opt->n * opt->price) + t.value;
+					realized = opt->realized - (opt->n * opt->price) + t.value;
 					header->sumWeights += opt->n * opt->price;
 				}
 				header->sumReal += realized;

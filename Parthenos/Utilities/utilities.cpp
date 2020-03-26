@@ -1,6 +1,7 @@
 #include "../stdafx.h"
 #include "utilities.h"
 #include <stdarg.h>
+#include <limits>
 
 float DPIScale::scaleX = 1.0f;
 float DPIScale::scaleY = 1.0f;
@@ -15,6 +16,11 @@ std::map<void*, Timers::WndTimers*> Timers::WndTimersMap;
 
 bool Cursor::isSet = false;
 HCURSOR Cursor::active = Cursor::hArrow;
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Error Messaging
+
 
 std::wstring OutputError(const std::wstring & msg)
 {
@@ -97,6 +103,11 @@ std::wstring SPrintException(const std::exception & e)
 	SPrintExceptionHelper(out, e);
 	return out;
 }
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Time
+
 
 BOOL SystemTimeToEasternTime(SYSTEMTIME const * sysTime, SYSTEMTIME * eastTime)
 {
@@ -183,6 +194,10 @@ std::wstring DateToWString(date_t date)
 		+ std::to_wstring((date / 10000) % 100);
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
+// Colors
+
 // h [0, 360), s [0,1], v [0,1]
 D2D1_COLOR_F Colors::HSVtoRGB(float hsv[3])
 {
@@ -211,6 +226,7 @@ D2D1_COLOR_F Colors::HSVtoRGB(float hsv[3])
 	}
 }
 
+/*
 D2D1_COLOR_F Colors::Randomizer(std::wstring str)
 {
 	str = str + str;
@@ -237,6 +253,22 @@ D2D1_COLOR_F Colors::Randomizer(std::wstring str)
 		hsv[0] = hsv[0] - 360.0f * floor(hsv[0] / 360.0f);
 		i++;
 	}
+
+	return HSVtoRGB(hsv);
+}
+*/
+
+D2D1_COLOR_F Colors::Randomizer(std::wstring str)
+{
+#undef max
+	std::hash<std::wstring> hash_fn;
+	float hash1 = static_cast<float>(hash_fn(str)) / std::numeric_limits<std::size_t>::max();
+	float hash2 = static_cast<float>(hash_fn(str + str)) / std::numeric_limits<std::size_t>::max();
+	float hash3 = static_cast<float>(hash_fn(str + str + str)) / std::numeric_limits<std::size_t>::max();
+
+
+	float hsv[3] = { 280.0f * hash1, 0.3f + 0.4f * hash2, 0.4f + 0.2f * hash3 };
+	if (50.0f <= hsv[0]) hsv[0] += 80.0f; // remove yellow-green hues in range [50, 130)
 
 	return HSVtoRGB(hsv);
 }
