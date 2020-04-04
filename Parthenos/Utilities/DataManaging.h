@@ -7,20 +7,21 @@
 
 const std::wstring ROOTDIR(L"C:/Users/Riley/Documents/Finances/Parthenos/"); // C:/Users/Riley/Documents/Finances/Parthenos/
 
-///////////////////////////////////////////////////////////
-// --- Stock Information ---
+///////////////////////////////////////////////////////////////////////////////
+//                            Stock Information                              //
+///////////////////////////////////////////////////////////////////////////////
 
 enum class apiSource { iex, alpha };
 
 enum class iexLSource { real, delayed, close, prevclose, null };
 
-typedef struct TimeSeries_struct
+struct TimeSeries
 {
 	date_t date;
 	double prices;
-} TimeSeries;
+};
 
-typedef struct OHLC_struct 
+struct OHLC
 {
 	double open;
 	double high;
@@ -30,7 +31,7 @@ typedef struct OHLC_struct
 	uint32_t volume;
 
 	std::wstring to_wstring(bool mini = false) const;
-} OHLC;
+};
 
 struct Quote 
 {
@@ -47,26 +48,10 @@ struct Quote
 	time_t closeTime;
 	std::wstring ticker;
 
-	inline std::wstring to_wstring() const
-	{
-		return ticker + L": "
-			+ L", Date: "			+ TimeToWString(latestUpdate)
-			+ L", Open: "			+ std::to_wstring(open)
-			+ L", Close: "			+ std::to_wstring(close)
-			+ L", latestPrice: "	+ std::to_wstring(latestPrice)
-			+ L", latestSource: "	+ std::to_wstring(static_cast<int>(latestSource))
-			+ L", latestVolume: "	+ std::to_wstring(latestVolume)
-			+ L", avgTotalVolume: " + std::to_wstring(avgTotalVolume)
-			+ L"\nlatestUpdate: "	+ std::to_wstring(latestUpdate)
-			+ L", previousClose: "	+ std::to_wstring(previousClose)
-			+ L", change: "			+ std::to_wstring(change)
-			+ L", changePercent: "	+ std::to_wstring(changePercent)
-			+ L", closeTime: "		+ TimeToWString(closeTime)
-			+ L"\n";
-	}
+	std::wstring to_wstring() const;
 };
 
-typedef struct Stats_struct 
+struct Stats 
 {
 	date_t exDividendDate;
 	date_t nextEarningsDate;
@@ -77,18 +62,8 @@ typedef struct Stats_struct
 	double dividendYield;
 	double year1ChangePercent;
 
-	inline std::wstring to_wstring() const
-	{
-		return L"Beta: "			+ std::to_wstring(beta)
-			+ L", 52WeekHigh: "		+ std::to_wstring(week52high)
-			+ L", 52WeekLow: "		+ std::to_wstring(week52low)
-			+ L", dividendRate: "	+ std::to_wstring(dividendRate)
-			+ L", dividendYield: "	+ std::to_wstring(dividendYield)
-			+ L", exDividendDate: " + DateToWString(exDividendDate)
-			+ L", 1YearChange%: "	+ std::to_wstring(year1ChangePercent)
-			+ L"\n";
-	}
-} Stats;
+	std::wstring to_wstring() const;
+};
 
 typedef std::vector<std::pair<Quote, Stats>> QStats;
 
@@ -134,10 +109,10 @@ namespace PortfolioObjects
 ///////////////////////////////////////////////////////////
 // --- Transactions ---
 
-enum class TransactionType : char { Transfer, Stock, Dividend, Interest, Fee, PutShort, PutLong, CallShort, CallLong };
+enum class TransactionType : char { Transfer, Stock, Dividend, Interest, Fee, PutShort, PutLong, CallShort, CallLong, Custom };
 
 std::vector<std::wstring> const TRANSACTIONTYPE_STRINGS = { L"Transfer", L"Stock", L"Dividend", L"Interest", L"Fee",
-	L"Short Put", L"Long Put", L"Short Call", L"Long Call" };
+	L"Short Put", L"Long Put", L"Short Call", L"Long Call", L"Custom" };
 
 inline std::wstring to_wstring(TransactionType t)
 {
@@ -208,6 +183,8 @@ struct Transaction
 	std::wstring to_wstring() const;
 	std::wstring to_wstring(std::vector<std::wstring> const & accounts) const;
 
+	// For type==Custom, ticker is a tag that defines the custom operation,
+	// which is hard-coded in the add transaction functions.
 };
 
 inline bool operator==(const Transaction &t1, const Transaction &t2)
@@ -232,11 +209,13 @@ inline bool operator!=(const Transaction &t1, const Transaction &t2)
 std::vector<Transaction> CSVtoTransactions(std::wstring filepath);
 
 
-///////////////////////////////////////////////////////////
-// --- Holdings ---
-// Store holdings using a 32 byte union. This allows all holdings to be stored
-// as a single vector. The holding header struct identifies the type of subsequent
-// structs.
+///////////////////////////////////////////////////////////////////////////////
+//                                 Holdings                                  //
+///////////////////////////////////////////////////////////////////////////////
+// Store holdings using a 32 byte union. This allows all holdings to be      //
+// stored as a single vector. The holding header struct identifies the type  //
+// of subsequent structs.                                                    //
+///////////////////////////////////////////////////////////////////////////////
 
 
 // Store sell lots in addition to buy lots to properly wait for dividends
@@ -337,9 +316,16 @@ union Holdings
 //		[3]: The option lots
 typedef std::vector<std::vector<Holdings>> NestedHoldings;
 
-void AddTransactionToHoldings(NestedHoldings & holdings, Transaction const & transaction);
-NestedHoldings FullTransactionsToHoldings(std::vector<Transaction> const & transactions);
+
+// Unroll
 NestedHoldings FlattenedHoldingsToTickers(std::vector<Holdings> const & holdings);
+
+// Transaction --> Holdings
+void AddTransactionToHoldings(NestedHoldings & holdings, Transaction const & transaction);
+void AddCustomTransactionToHoldings(NestedHoldings & holdings, Transaction const & t);
+NestedHoldings FullTransactionsToHoldings(std::vector<Transaction> const & transactions);
+
+// To string
 std::wstring TickerHoldingsToWString(std::vector<Holdings> const & h);
 inline std::wstring NestedHoldingsToWString(NestedHoldings const & holdings)
 {
@@ -350,6 +336,11 @@ inline std::wstring NestedHoldingsToWString(NestedHoldings const & holdings)
 	}
 	return out;
 }
+
+// Misc utilities
+
+// Get the index of the header of a specific account, for a ticker's holdings
+size_t GetHeaderIndex(std::vector<Holdings> const & h, char acc);
 
 inline std::vector<std::wstring> GetTickers(NestedHoldings const & holdings, bool cash = false)
 {
@@ -380,6 +371,10 @@ inline double GetIntrinsicValue(Option const & opt, double latest)
 		return 0.0;
 	}
 }
+
+// In the case of a stock merger, add all return information from 'mergee' into 'target'.
+// The merger is indicated in the transactions via a sale of mergee stock and purchase of target stock.
+void MergeHoldings(std::vector<Holdings> & target, std::vector<Holdings> mergee);
 
 
 ///////////////////////////////////////////////////////////

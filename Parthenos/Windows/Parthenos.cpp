@@ -285,6 +285,7 @@ NestedHoldings Parthenos::CalculateHoldings() const
 	return holdings;
 }
 
+
 // Holdings -> Positions
 void Parthenos::CalculatePositions(NestedHoldings const & holdings)
 {
@@ -509,8 +510,6 @@ void Parthenos::AddTransaction(Transaction t)
 	if (m_currAccount == t.account || m_currAccount == m_accounts.size() - 1)
 		UpdatePortfolioPlotters(m_currAccount);
 }
-
-// asdf
 
 
 
