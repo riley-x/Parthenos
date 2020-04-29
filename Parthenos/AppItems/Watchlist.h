@@ -10,7 +10,7 @@ class WatchlistItem;
 
 struct WatchlistColumn
 {
-	enum Field { None, Ticker, Last, ChangeP, Change1YP, DivP, ExDiv, Shares, AvgCost, Equity, 
+	enum Field { None, Ticker, Last, ChangeP, Change1YP, Div, DivP, EffectiveYield, ExDiv, Shares, AvgCost, Equity, 
 		Realized, Unrealized, ReturnsT, ReturnsP, APY, EarningsDate };
 
 	float width;
@@ -25,7 +25,9 @@ struct WatchlistColumn
 		case Last:		return L"Last";
 		case ChangeP:	return L"\u0394 %"; // \u0394 == \Delta
 		case Change1YP: return L"\u03941Y %";
+		case Div:		return L"Ann Div";
 		case DivP:		return L"Div %";
+		case EffectiveYield: return L"Div Eff %";
 		case ExDiv:		return L"Ex Div";
 		case Shares:	return L"Shares";
 		case AvgCost:	return L"Avg Cost";

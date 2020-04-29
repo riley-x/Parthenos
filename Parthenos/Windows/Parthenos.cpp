@@ -545,7 +545,7 @@ void Parthenos::InitItems()
 	m_chart->LoadHistory(trans);
 
 	// Watchlists
-	std::vector<WatchlistColumn> portColumns = { // m_portfolioListWidth is 600, -15 for ScrollBar::Width
+	std::vector<WatchlistColumn> portColumns = { // m_portfolioListWidth is 720, -15 for ScrollBar::Width
 		{60.0f, WatchlistColumn::Ticker, L""},
 		{60.0f, WatchlistColumn::Last, L"%.2lf"},
 		{60.0f, WatchlistColumn::ChangeP, L"%.2lf"},
@@ -555,6 +555,8 @@ void Parthenos::InitItems()
 		{60.0f, WatchlistColumn::ReturnsT, L"%.2lf"},
 		{60.0f, WatchlistColumn::ReturnsP, L"%.2lf"},
 		{60.0f, WatchlistColumn::Realized, L"%.2lf"},
+		{60.0f, WatchlistColumn::Div, L"%.2lf"},
+		{60.0f, WatchlistColumn::EffectiveYield, L"%.2lf"},
 		{60.0f, WatchlistColumn::ExDiv, L""},
 	};
 	m_watchlist->SetColumns(); // use defaults
@@ -575,12 +577,13 @@ void Parthenos::InitItems()
 void Parthenos::InitItemsWithRealtimeData()
 {
 	// Set initial watchlist and load portfolio trackers
+	m_watchlist->Load(m_tickers, m_accounts.back().positions, m_stats);
+	m_watchlist->Refresh();
 	if ((size_t)m_currAccount < m_accounts.size())
 	{
-		std::vector<std::wstring> tickers = GetTickers(m_accounts[m_currAccount].positions);
-		std::vector<std::pair<Quote, Stats>> stats = FilterByKeyMatch(m_tickers, m_stats, tickers);
-		m_watchlist->Load(tickers, m_accounts[m_currAccount].positions, stats);
-		m_watchlist->Refresh();
+		//std::vector<std::wstring> tickers = GetTickers(m_accounts[m_currAccount].positions);
+		//std::vector<std::pair<Quote, Stats>> stats = FilterByKeyMatch(m_tickers, m_stats, tickers);
+		//m_watchlist->Load(tickers, m_accounts[m_currAccount].positions, stats);
 		UpdatePortfolioPlotters(m_currAccount, false);
 	}
 

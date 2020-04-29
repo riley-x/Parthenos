@@ -288,22 +288,32 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<WatchlistColum
 			case WatchlistColumn::Change1YP:
 				data = stats.year1ChangePercent * 100;
 				break;
+			case WatchlistColumn::Div:
+				data = stats.dividendRate;
+				break;
 			case WatchlistColumn::DivP:
 				data = stats.dividendYield;
 				break;
+			case WatchlistColumn::EffectiveYield:
+				if (position && position->avgCost > 0)
+					data = stats.dividendRate / position->avgCost * 100;
+				break;
 			case WatchlistColumn::ExDiv:
-				wcscpy_s(buffer, _countof(buffer), DateToWString(stats.exDividendDate).c_str());
-				m_data[i - 1] = { stats.exDividendDate, buffer };
-				continue;
+				if (stats.exDividendDate != 0)
+				{
+					wcscpy_s(buffer, _countof(buffer), DateToWString(stats.exDividendDate).c_str());
+					m_data[i - 1] = { stats.exDividendDate, buffer };
+					continue;
+				}
+				break;
 			case WatchlistColumn::Shares:
-				if (position)
+				if (position && position->n != 0)
 				{
 					swprintf_s(buffer, _countof(buffer), m_columns[i].format.c_str(), position->n);
 					m_data[i - 1] = { position->n, buffer };
+					continue;
 				}
-				else
-					m_data[i - 1] = { 0.0, L"" };
-				continue;
+				break;
 			case WatchlistColumn::AvgCost:
 				if (position) data = position->avgCost;
 				break;
@@ -337,8 +347,14 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<WatchlistColum
 				m_data[i - 1] = { 0.0, L"" };
 				continue;
 			}
-			swprintf_s(buffer, _countof(buffer), m_columns[i].format.c_str(), data);
-			m_data[i - 1] = { data, buffer };
+
+
+			if (data != 0 || m_columns[i].field == WatchlistColumn::ChangeP || m_columns[i].field == WatchlistColumn::Change1YP)
+			{
+				swprintf_s(buffer, _countof(buffer), m_columns[i].format.c_str(), data);
+				m_data[i - 1] = { data, buffer };
+			}
+			else m_data[i - 1] = { 0.0, L"" };
 		}
 	}
 	catch (const std::invalid_argument& ia) {

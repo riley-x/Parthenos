@@ -74,7 +74,7 @@ private:
 	float const	m_titleBarHeight		= 30.0f;
 	float const	m_menuBarHeight			= 20.0f;
 	float const	m_watchlistWidth		= 350.0f;
-	float const	m_portfolioListWidth	= 600.0f;
+	float const	m_portfolioListWidth	= 720.0f;
 	float		m_titleBarBottom; // snapped to pixel boundry
 	float		m_menuBarBottom;
 	float		m_watchlistRight;
