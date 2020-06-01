@@ -448,7 +448,7 @@ void Chart::DrawMainChart(MainChartType type, Timeframe timeframe)
 			return;
 		}
 		start += iStart;
-		n = iEnd - iStart + 1; // inclusive
+		n = static_cast<int>(iEnd - iStart + 1); // inclusive
 	}
 	else
 	{
@@ -501,7 +501,6 @@ int Chart::FindStart(Timeframe timeframe, std::vector<OHLC>::iterator & it)
 		return -1;
 	}
 
-	int n;
 	date_t end = m_ohlc.back().date;
 	OHLC start; // store start date in OHLC for easy compare
 
@@ -555,8 +554,8 @@ int Chart::FindStart(Timeframe timeframe, std::vector<OHLC>::iterator & it)
 		return -1;
 	}
 
-	n = m_ohlc.end() - it;
-	return n;
+	size_t n = m_ohlc.end() - it;
+	return static_cast<int>(n);
 }
 
 void Chart::Candlestick(std::vector<OHLC>::iterator start, int n)

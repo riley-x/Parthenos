@@ -5,7 +5,7 @@
 #include "../stdafx.h"
 #include "utilities.h"
 
-const std::wstring ROOTDIR(L"C:/Users/Riley/Documents/Finances/Parthenos/"); // C:/Users/Riley/Documents/Finances/Parthenos/
+const std::wstring ROOTDIR(L"C:/Users/riley/Documents/Finances/Parthenos/"); // C:/Users/riley/Documents/Finances/Parthenos/
 
 ///////////////////////////////////////////////////////////////////////////////
 //                            Stock Information                              //

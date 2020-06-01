@@ -22,8 +22,8 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 ///////////////////////////////////////////////////////////
 // --- Interface functions ---
 
-Parthenos::Parthenos(PCWSTR szClassName)
-	: BorderlessWindow(szClassName)
+Parthenos::Parthenos(PCWSTR szClassName) : 
+	BorderlessWindow(szClassName)
 {	
 	//FileIO transFile;
 	//transFile.Init(ROOTDIR + L"hist.trans");
@@ -763,7 +763,7 @@ void Parthenos::ProcessMenuMessage(bool & pop_front)
 	else if (msg.iData == 1) // Account
 	{
 		int account = AccountToIndex(msg.msg);
-		if (account < 0) account = m_accounts.size() - 1; // last entry is 'all'
+		if (account < 0) account = static_cast<int>(m_accounts.size()) - 1; // last entry is 'all'
 		if (account != m_currAccount)
 		{
 			m_currAccount = account;
@@ -1053,7 +1053,7 @@ void Parthenos::LoadPieChart()
 			{
 				temp_collat.name = p.ticker + L"-" + opt.to_wstring();
 				temp_collat.i = -1;
-				temp_collat.value = opt.strike * opt.n;
+				temp_collat.value = static_cast<double>(opt.strike) * opt.n;
 				temp_collat.color = KeyMatch(m_tickers, m_tickerColors, p.ticker);
 				collaterals.push_back(temp_collat);
 			}
@@ -1068,7 +1068,7 @@ void Parthenos::LoadPieChart()
 			else
 			{
 				tickers.push_back(p.ticker + L"-" + opt.to_wstring());
-				equities.push_back(opt.price * opt.n + GetIntrinsicValue(opt, p.marketPrice));
+				equities.push_back(static_cast<double>(opt.price) * opt.n + GetIntrinsicValue(opt, p.marketPrice));
 				colors.push_back(Colors::Randomizer(tickers.back()));
 			}
 		}

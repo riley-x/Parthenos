@@ -30,7 +30,8 @@
 #include <exception>
 #include <algorithm>
 #include <numeric>
-
+#include <system_error>
+#include <typeinfo>
 
 // reference additional headers your program requires here
 #include <d2d1.h>

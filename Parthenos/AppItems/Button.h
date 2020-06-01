@@ -37,7 +37,7 @@ public:
 	}
 
 	// Interface
-	inline void SetIcon(size_t i) { m_iBitmap = i; } // index into d2.pD2DBitmaps
+	inline void SetIcon(int i) { m_iBitmap = i; } // index into d2.pD2DBitmaps
 	inline void SetClickRect(D2D1_RECT_F rect) { m_clickRect = rect; }
 	inline D2D1_RECT_F GetClickRect() { return m_clickRect; }
 
@@ -105,7 +105,7 @@ public:
 	}
 	inline bool SetActive(std::wstring const & name)
 	{
-		for (size_t i = 0; i < m_buttons.size(); i++)
+		for (int i = 0; i < static_cast<int>(m_buttons.size()); i++)
 		{
 			if (m_buttons[i]->Name() == name)
 			{
@@ -183,7 +183,7 @@ public:
 	// Interface
 	void SetText(std::wstring text, float width, float height); // For non-dynamic, the text of the button
 	inline void SetItems(std::vector<std::wstring> const & items) { m_menu.SetItems(items); }
-	void SetActive(size_t i);
+	void SetActive(int i);
 	inline void SetBorder(bool border) { m_border = border; }
 	void SetOrientationDown(bool down);
 	void Deactivate(); // Hides the menu

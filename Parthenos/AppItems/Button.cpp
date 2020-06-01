@@ -146,7 +146,7 @@ void DropMenuButton::SetText(std::wstring text, float width, float height)
 	SafeRelease(&m_activeLayout);
 	HRESULT hr = m_d2.pDWriteFactory->CreateTextLayout(
 		text.c_str(),		// The string to be laid out and formatted.
-		text.size(),		// The length of the string.
+		static_cast<UINT32>(text.size()),		// The length of the string.
 		m_d2.pTextFormats[m_menu.m_format],   // The text format
 		width,				// The width of the layout box.
 		height,				// The height of the layout box.
@@ -155,7 +155,7 @@ void DropMenuButton::SetText(std::wstring text, float width, float height)
 	m_d2.pTextFormats[m_menu.m_format]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
 }
 
-void DropMenuButton::SetActive(size_t i)
+void DropMenuButton::SetActive(int i)
 {
 	if (m_dynamic)
 	{
@@ -212,7 +212,7 @@ void TextButton::Paint(D2D1_RECT_F updateRect)
 	m_d2.pBrush->SetColor(m_textColor);
 	m_d2.pD2DContext->DrawText(
 		m_name.c_str(),
-		m_name.size(),
+		static_cast<UINT32>(m_name.size()),
 		m_d2.pTextFormats[m_format],
 		m_dipRect,
 		m_d2.pBrush

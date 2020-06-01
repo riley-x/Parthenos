@@ -130,7 +130,7 @@ void PopupMenu::SetItems(std::vector<std::wstring> const & items)
 		// TODO instead of 500.0f for the width, do another loop after calculating widths
 		HRESULT hr = m_d2.pDWriteFactory->CreateTextLayout(
 			items[i].c_str(),		// The string to be laid out and formatted.
-			items[i].size(),		// The length of the string.
+			static_cast<UINT32>(items[i].size()),		// The length of the string.
 			m_d2.pTextFormats[m_format],   // The text format to apply to the string (contains font information, etc).
 			500.0f,					// The width of the layout box.
 			m_fontSize,				// The height of the layout box.

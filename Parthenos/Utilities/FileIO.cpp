@@ -147,15 +147,15 @@ char* FileIO::_Read(DWORD & bytesToRead, bool all)
 }
 
 // Overwrites file, with truncating
-bool FileIO::Write(LPCVOID data, DWORD nBytes)
+bool FileIO::Write(LPCVOID data, size_t nBytes)
 {
-	return _Write(data, nBytes, false);
+	return _Write(data, static_cast<DWORD>(nBytes), false);
 }
 
 // Appends data to current file
-bool FileIO::Append(LPCVOID data, DWORD nBytes)
+bool FileIO::Append(LPCVOID data, size_t nBytes)
 {
-	return _Write(data, nBytes, true);
+	return _Write(data, static_cast<DWORD>(nBytes), true);
 }
 
 bool FileIO::_Write(LPCVOID data, DWORD nBytes, bool append)

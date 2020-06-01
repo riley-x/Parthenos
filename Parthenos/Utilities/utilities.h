@@ -1,4 +1,6 @@
 #pragma once
+#include "../stdafx.h"
+
 
 ///////////////////////////////////////////////////////////
 // --- Messaging --- 
@@ -178,7 +180,7 @@ inline std::wstring FormatDollar(double x)
 	swprintf_s(buffer, _countof(buffer), L"%.2lf", x);
 	std::wstring out(buffer);
 
-	int insertPosition = out.length() - 6;
+	int insertPosition = static_cast<int>(out.length()) - 6;
 	int leftmostPos = (x < 0) ? 1 : 0;
 	while (insertPosition > leftmostPos) {
 		out.insert(insertPosition, L",");
@@ -353,9 +355,11 @@ class DPIScale
 
 public:
 
-	static inline void Initialize(ID2D1Factory *pFactory)
+	static inline void Initialize(HWND hwnd)
 	{
-		pFactory->GetDesktopDpi(&dpiX, &dpiY);
+		dpiX = static_cast<float>(GetDpiForWindow(hwnd));
+		//dpiX = 96;
+		dpiY = dpiX;
 		scaleX = dpiX / 96.0f;
 		scaleY = dpiY / 96.0f;
 

@@ -4,6 +4,9 @@
 
 HRESULT D2Objects::CreateLifetimeResources(HWND hwnd)
 {
+	// Initialize DPI settings
+	DPIScale::Initialize(hwnd);
+
 	// Create a Direct2D factory
 	HRESULT hr = D2D1CreateFactory(
 		D2D1_FACTORY_TYPE_SINGLE_THREADED, 
@@ -12,11 +15,6 @@ HRESULT D2Objects::CreateLifetimeResources(HWND hwnd)
 		reinterpret_cast<void**>(&pFactory)
 	);
 
-	// Initialize DPI settings
-	if (SUCCEEDED(hr))
-	{
-		DPIScale::Initialize(pFactory);
-	}
 
 	// This flag adds support for surfaces with a different color channel ordering than the API default.
 	// You need it for compatibility with Direct2D.

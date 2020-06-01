@@ -64,7 +64,7 @@ protected:
 
 	inline float GetHeight(int i) { return m_dipRect.top + m_headerHeight + (i - m_currLine) * m_rowHeight; }
 		// Get top of item i
-	inline int GetItem(float y) { return static_cast<int>(floor((y - (m_dipRect.top + m_headerHeight)) / m_rowHeight)) + m_currLine; }
+	inline int GetItem(float y) { return static_cast<int>(floor((y - (m_dipRect.top + m_headerHeight)) / m_rowHeight)) + static_cast<int>(m_currLine); }
 		// Get index given y coord
 	inline bool IsVisible(int i)
 	{

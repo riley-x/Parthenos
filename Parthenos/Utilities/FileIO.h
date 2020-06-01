@@ -28,8 +28,8 @@ public:
 	void Init(std::wstring filename);
 	void Open(DWORD dwDesiredAccess = GENERIC_READ | GENERIC_WRITE);
 	void Close();
-	bool Write(LPCVOID data, DWORD nBytes);
-	bool Append(LPCVOID data, DWORD nBytes);
+	bool Write(LPCVOID data, size_t nBytes);
+	bool Append(LPCVOID data, size_t nBytes);
 
 	template <typename T>
 	std::vector<T> Read()

@@ -231,7 +231,7 @@ D2D1_COLOR_F Colors::HSVtoRGB(float hsv[3])
 D2D1_COLOR_F Colors::Randomizer(std::wstring str)
 {
 #undef max
-	std::mt19937 mt(std::hash<std::wstring>()(str));
+	std::mt19937 mt(static_cast<unsigned>(std::hash<std::wstring>()(str)));
 	float r1 = static_cast<float>(mt()) / mt.max();
 	float r2 = static_cast<float>(mt()) / mt.max();
 	float r3 = static_cast<float>(mt()) / mt.max();
@@ -239,10 +239,10 @@ D2D1_COLOR_F Colors::Randomizer(std::wstring str)
 	float hsv[3] = { 250.0f * r1, 0.1f + 0.7f * r2, 0.3f + 0.4f * r3 };
 	if (50.0f <= hsv[0]) hsv[0] += 110.0f; // remove yellow-green hues in range [50, 160)
 
-	OutputDebugString((str + L": "
-		+ std::to_wstring(hsv[0]) + L" "
-		+ std::to_wstring(hsv[1]) + L" "
-		+ std::to_wstring(hsv[2]) + L"\n").c_str());
+	//OutputDebugString((str + L": "
+	//	+ std::to_wstring(hsv[0]) + L" "
+	//	+ std::to_wstring(hsv[1]) + L" "
+	//	+ std::to_wstring(hsv[2]) + L"\n").c_str());
 
 	return HSVtoRGB(hsv);
 }

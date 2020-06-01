@@ -54,16 +54,16 @@ private:
 	// Logical components
 	std::vector<AppItem*>	m_activeItems; // items that need to be painted
 	std::vector<AppItem*>	m_allItems;
-	TitleBar				*m_titleBar;
-	Chart					*m_chart;
-	Watchlist				*m_watchlist;
-	Watchlist				*m_portfolioList;
-	MenuBar					*m_menuBar;
-	PieChart				*m_pieChart;
-	Axes					*m_eqHistoryAxes;
-	Axes					*m_returnsAxes;
-	Axes					*m_returnsPercAxes;
-	MessageScrollBox		*m_msgBox;
+	TitleBar				*m_titleBar			= nullptr;
+	Chart					*m_chart			= nullptr;
+	Watchlist				*m_watchlist		= nullptr;
+	Watchlist				*m_portfolioList	= nullptr;
+	MenuBar					*m_menuBar			= nullptr;
+	PieChart				*m_pieChart			= nullptr;
+	Axes					*m_eqHistoryAxes	= nullptr;
+	Axes					*m_returnsAxes		= nullptr;
+	Axes					*m_returnsPercAxes	= nullptr;
+	MessageScrollBox		*m_msgBox			= nullptr;
 
 	// Resource management
 	MouseTrackEvents		m_mouseTrack;
@@ -75,12 +75,12 @@ private:
 	float const	m_menuBarHeight			= 20.0f;
 	float const	m_watchlistWidth		= 350.0f;
 	float const	m_portfolioListWidth	= 720.0f;
-	float		m_titleBarBottom; // snapped to pixel boundry
-	float		m_menuBarBottom;
-	float		m_watchlistRight;
-	float		m_portfolioListRight;
-	float		m_halfBelowMenu;
-	float		m_centerX;
+	float		m_titleBarBottom		= 0; // snapped to pixel boundry
+	float		m_menuBarBottom			= 0;
+	float		m_watchlistRight		= 0;
+	float		m_portfolioListRight	= 0;
+	float		m_halfBelowMenu			= 0;
+	float		m_centerX				= 0;
 	std::vector<Line_t> m_dividingLines;
 
 	// Flags and state

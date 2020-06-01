@@ -109,7 +109,7 @@ void MenuBar::SetMenus(std::vector<std::wstring> const & menus,
 		DWRITE_TEXT_METRICS metrics;
 		HRESULT hr = m_d2.pDWriteFactory->CreateTextLayout(
 			menus[i].c_str(),	// The string to be laid out and formatted.
-			menus[i].size(),	// The length of the string.
+			static_cast<UINT32>(menus[i].size()),	// The length of the string.
 			m_d2.pTextFormats[D2Objects::Formats::Segoe12],	// The text format to apply to the string
 			500,				// The width of the layout box (make extra large since left aligned anyways)
 			m_height,			// The height of the layout box.
