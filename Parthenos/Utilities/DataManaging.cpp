@@ -367,8 +367,6 @@ void AddTransactionToTickerHoldings(std::vector<Holdings> & h, Transaction const
 		{
 		case TransactionType::Dividend: // Search through lots to assign realized to lot
 		{
-			ReduceSalesLots(h, i_header, t.expiration);
-
 			int nshares = static_cast<int>(round(t.value / t.price));
 			double rounding_error = t.value;
 			for (size_t i = i_header + 1; i < i_header + header->nLots + 1; i++)
@@ -380,7 +378,8 @@ void AddTransactionToTickerHoldings(std::vector<Holdings> & h, Transaction const
 				nshares -= lot->n;
 				rounding_error -= lot->n * t.price;
 			}
-			if (nshares != 0) OutputMessage(L"Shares did not equal dividend payout\n");
+			if (nshares < 0)
+				throw ws_exception(L"AddTransactionToTickerHoldings() dividend negative nshares: " + std::to_wstring(nshares));
 			header->sumReal += rounding_error; // give extra to header (includes partial cents)
 			break;
 		}
@@ -443,12 +442,11 @@ void AddTransactionToTickerHoldings(std::vector<Holdings> & h, Transaction const
 			}
 		}
 		else // stock
-		// Don't delete stock lots in case between ex-dividend and payout.
-		// Add a negative lot to the chain and delete on dividend receipt instead.
 		{
 			if (t.type != TransactionType::Stock)
 				return OutputMessage(L"Unrecognized transaction:\n%s", t.to_wstring().c_str());
 
+			// Add a negative lot to the chain and call ReduceSalesLots
 			header->nLots++;
 
 			Holdings temp;
@@ -460,6 +458,7 @@ void AddTransactionToTickerHoldings(std::vector<Holdings> & h, Transaction const
 			temp.lot.realized = t.value;
 
 			h.insert(h.begin() + i_header + header->nLots, temp);
+			ReduceSalesLots(h, i_header, t.date + 1);
 		}
 	}
 }
@@ -1287,7 +1286,7 @@ std::vector<OHLC> GetOHLC_IEX(std::wstring const ticker, size_t last_n, date_t &
 	std::vector<OHLC> extra = parseIEXChart(json, latestDate);
 
 	// Write to file
-	DWORD nBytes = sizeof(OHLC) * extra.size();
+	DWORD nBytes = static_cast<DWORD>(sizeof(OHLC) * extra.size());
 	if (nBytes > 0)
 	{
 		FileIO ohlcFile;
@@ -1342,7 +1341,7 @@ std::vector<OHLC> GetOHLC_Alpha(std::wstring ticker, size_t last_n, date_t & las
 	std::reverse(extra.begin(), extra.end());
 
 	// Write to file
-	DWORD nBytes = sizeof(OHLC) * extra.size();
+	DWORD nBytes = static_cast<DWORD>(sizeof(OHLC) * extra.size());
 	if (nBytes > 0)
 	{
 		FileIO ohlcFile;
