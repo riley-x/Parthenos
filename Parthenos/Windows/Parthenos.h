@@ -100,6 +100,7 @@ private:
 	void CalculateAllHistory();
 	std::vector<TimeSeries> GetHist(size_t i);
 	void AddTransaction(Transaction t);
+	void PrintDividendSummary() const;
 
 	// Child management
 	void InitItems();

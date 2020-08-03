@@ -224,6 +224,7 @@ void Parthenos::InitData()
 	m_accounts.back().name = L"All Accounts";
 }
 
+
 // Data initializations dependent on realtime data (i.e. requires HTTP GET).
 void Parthenos::InitRealtimeData()
 {
@@ -250,6 +251,7 @@ void Parthenos::InitRealtimeData()
 
 	CalculateHistories();
 }
+
 
 int Parthenos::AccountToIndex(std::wstring account)
 {
@@ -301,6 +303,7 @@ void Parthenos::CalculatePositions(NestedHoldings const & holdings)
 	m_accounts.back().positions = positions;
 }
 
+
 void Parthenos::CalculateReturns()
 {
 	for (Account & acc : m_accounts)
@@ -334,6 +337,7 @@ void Parthenos::CalculateReturns()
 		}
 	}
 }
+
 
 // Calculate historical performance
 void Parthenos::CalculateHistories()
@@ -445,6 +449,7 @@ std::vector<TimeSeries> Parthenos::GetHist(size_t i)
 	return portHist;
 }
 
+
 void Parthenos::AddTransaction(Transaction t)
 {
 	// Update transaction history
@@ -512,6 +517,19 @@ void Parthenos::AddTransaction(Transaction t)
 }
 
 
+void Parthenos::PrintDividendSummary() const
+{
+	FileIO transFile;
+	transFile.Init(ROOTDIR + L"hist.trans");
+	transFile.Open();
+	std::vector<Transaction> trans = transFile.Read<Transaction>();
+	transFile.Close();
+
+	std::vector<Play> plays(GetOptionPerformance(trans));
+	for (Play const & p : plays)
+		m_msgBox->Print(p.to_wstring());
+}
+
 
 ///////////////////////////////////////////////////////////
 // --- Child Management ---
@@ -529,7 +547,7 @@ void Parthenos::InitItems()
 		{ L"Print Transaction History", L"Print Holdings", L"Print Equity History", L"Update Last Equity History Entry" },
 		m_accountNames, // Add "All Accounts" below
 		{ L"Add", L"Edit", L"Recalculate All" },
-		{ L"Print OHLC", L"Delete Last OHLC Entry" }
+		{ L"Print OHLC", L"Delete Last OHLC Entry", L"Print Dividend Summary" }
 	};
 	items[1].push_back(L"All Accounts");
 	std::vector<std::vector<size_t>> divisions = { {3}, {m_accountNames.size()}, {2}, {} };
@@ -703,6 +721,9 @@ void Parthenos::ProcessCTPMessages()
 }
 
 // Processes the first message in m_messages assuming it's a message from the menu bar
+//
+// @pop_front -- Set to false if ProcessCTPMessages() should not pop from the message queue,
+//		i.e. because this function already did the pop.
 void Parthenos::ProcessMenuMessage(bool & pop_front)
 {
 	ClientMessage & msg = m_messages.front();
@@ -846,32 +867,40 @@ void Parthenos::ProcessMenuMessage(bool & pop_front)
 			m_messages.pop_front(); // delete this message since file dialog blocks
 			pop_front = false; // tell ProcessCTPMessages not to pop front again
 			std::wstring file = LaunchFileDialog();
+			if (!file.empty())
+			{
+				FileIO ohlcFile;
+				ohlcFile.Init(file);
+				ohlcFile.Open(GENERIC_READ);
+				std::vector<OHLC> ohlcData = ohlcFile.ReadEnd<OHLC>(100); // Get last 100 for now
 
-			FileIO ohlcFile;
-			ohlcFile.Init(file);
-			ohlcFile.Open(GENERIC_READ);
-			std::vector<OHLC> ohlcData = ohlcFile.ReadEnd<OHLC>(100); // Get last 100 for now
-
-			std::wstring out;
-			for (OHLC const & x : ohlcData) out.append(x.to_wstring());
-			if (m_msgBox) m_msgBox->Overwrite(out);
+				std::wstring out;
+				for (OHLC const& x : ohlcData) out.append(x.to_wstring());
+				if (m_msgBox) m_msgBox->Overwrite(out);
+			}
 		}
 		else if (msg.msg == L"Delete Last OHLC Entry")
 		{
 			pop_front = false;
 			m_messages.pop_front(); // delete this message since file dialog blocks
 			std::wstring file = LaunchFileDialog();
+			if (!file.empty())
+			{
+				FileIO ohlcFile;
+				ohlcFile.Init(file);
+				ohlcFile.Open();
+				std::vector<OHLC> ohlcData = ohlcFile.Read<OHLC>(); // Get last 100 for now
+				ohlcData.erase(ohlcData.end() - 1);
+				ohlcFile.Write(ohlcData.data(), ohlcData.size() * sizeof(OHLC));
 
-			FileIO ohlcFile;
-			ohlcFile.Init(file);
-			ohlcFile.Open();
-			std::vector<OHLC> ohlcData = ohlcFile.Read<OHLC>(); // Get last 100 for now
-			ohlcData.erase(ohlcData.end() - 1);
-			ohlcFile.Write(ohlcData.data(), ohlcData.size() * sizeof(OHLC));
-
-			std::wstring out;
-			for (OHLC const & x : ohlcData) out.append(x.to_wstring());
-			if (m_msgBox) m_msgBox->Overwrite(out);
+				std::wstring out;
+				for (OHLC const& x : ohlcData) out.append(x.to_wstring());
+				if (m_msgBox) m_msgBox->Overwrite(out);
+			}
+		}
+		else if (msg.msg == L"Print Dividend Summary")
+		{
+			PrintDividendSummary();
 		}
 	}
 }

@@ -184,6 +184,7 @@
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="Utilities\API.h" />
     <ClInclude Include="Utilities\D2Objects.h" />
     <ClInclude Include="Utilities\DataManaging.h" />
     <ClInclude Include="Utilities\FileIO.h" />
@@ -225,6 +226,7 @@
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">stdafx.h</PrecompiledHeaderFile>
     </ClCompile>
+    <ClCompile Include="Utilities\API.cpp" />
     <ClCompile Include="Utilities\D2Objects.cpp" />
     <ClCompile Include="Utilities\DataManaging.cpp" />
     <ClCompile Include="Utilities\FileIO.cpp" />
