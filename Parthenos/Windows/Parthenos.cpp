@@ -516,7 +516,7 @@ void Parthenos::AddTransaction(Transaction t)
 		UpdatePortfolioPlotters(m_currAccount);
 }
 
-
+// Currently option summary
 void Parthenos::PrintDividendSummary() const
 {
 	FileIO transFile;
@@ -526,8 +526,41 @@ void Parthenos::PrintDividendSummary() const
 	transFile.Close();
 
 	std::vector<Play> plays(GetOptionPerformance(trans));
-	for (Play const & p : plays)
-		m_msgBox->Print(p.to_wstring());
+
+	date_t start = plays.front().start;
+	date_t today = GetCurrentDate();
+	std::vector<date_t> dates = MakeMonthRange(start, today);
+
+	std::vector<std::vector<double>> returns(m_tickers.size(), std::vector<double>(dates.size()));
+	for (Play const& p : plays)
+	{
+		if (!isShort(p.type)) continue; // just look at short options for now
+		size_t i_ticker = GetIndexSorted(m_tickers, p.ticker);
+		if (i_ticker >= m_tickers.size()) 
+		{
+			OutputDebugString(L"Uhoh"); 
+			continue;
+		}
+
+		size_t offset = MonthDiff(p.start, start);
+		size_t nMonths = 1ull + MonthDiff((p.end > 0) ? p.end : p.expiration, p.start);
+		double pl = (p.price_enter - p.price_exit) * 100 * p.n;
+		for (size_t i = offset; i < offset + nMonths && i < dates.size(); i++)
+			returns[i_ticker][i] += pl / nMonths;
+	}
+
+	std::wstringstream ss;
+	for (std::wstring const& t : m_tickers) ss << L'\t' << t;
+	ss << L'\n';
+	for (size_t i = 0; i < dates.size(); i++)
+	{
+		ss << DateToWString(dates[i]);
+		for (size_t j = 0; j < m_tickers.size(); j++)
+			ss << L'\t' << returns[j][i];
+		ss << L'\n';
+	}
+
+	m_msgBox->Print(ss.str());
 }
 
 

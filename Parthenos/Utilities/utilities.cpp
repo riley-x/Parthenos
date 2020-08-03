@@ -188,6 +188,33 @@ int ApproxDateDiff(date_t a, date_t b)
 }
 
 
+std::vector<date_t> MakeMonthRange(date_t begin, date_t end)
+{
+	std::vector<date_t> range;
+	if (begin >= end) return range;
+	int year = GetYear(begin);
+	int month = GetMonth(begin);
+	while (year < GetYear(end) || (year == GetYear(end) && month <= GetMonth(end)))
+	{
+		range.push_back(MkDate(year, month, 1));
+		if (month == 12)
+		{
+			year++;
+			month = 1;
+		}
+		else
+		{
+			month++;
+		}
+	}
+	return range;
+}
+
+int MonthDiff(date_t a, date_t b)
+{
+	return (GetYear(a) - GetYear(b)) * 12 + GetMonth(a) - GetMonth(b);
+}
+
 std::wstring DateToWString(date_t date)
 {
 	return std::to_wstring((date / 100) % 100) + L"/"

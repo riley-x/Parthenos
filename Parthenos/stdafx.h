@@ -20,6 +20,7 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <string>
+#include <sstream>
 #include <tuple>
 #include <vector>
 #include <deque>

@@ -79,6 +79,7 @@ std::wstring TimeToWString(time_t time);
 time_t DateToTime(date_t date);
 date_t GetDate(time_t time);
 date_t GetCurrentDate();
+
 inline date_t MkDate(int year, int month, int day) { return 10000 * year + 100 * month + day; }
 inline int GetYear(date_t date) { return (date / 10000); }
 inline int GetMonth(date_t date) { return (date / 100) % 100; }
@@ -88,7 +89,16 @@ inline void SetMonth(date_t & date, int month)
 	int year = GetYear(date); int day = GetDay(date);
 	date = MkDate(year, month, day);
 }
+
 int ApproxDateDiff(date_t a, date_t b); // returns a-b
+inline bool SameYrMo(date_t a, date_t b) { return (a / DATE_T_1M) == (b / DATE_T_1M); }
+
+// Returns a list of months (day = 1) from begin to end, inclusive.
+std::vector<date_t> MakeMonthRange(date_t begin, date_t end);
+
+// Returns the difference in months between two dates, a-b
+int MonthDiff(date_t a, date_t b);
+
 std::wstring DateToWString(date_t date);
 inline std::wstring toMonthWString_Short(date_t date)
 {
@@ -245,6 +255,15 @@ template <typename T>
 inline size_t GetIndex(std::vector<T> const & arr, T val)
 {
 	auto it = std::find(arr.begin(), arr.end(), val);
+	return std::distance(arr.begin(), it);
+}
+
+// Assumes arr is sorted
+template <typename T>
+inline size_t GetIndexSorted(std::vector<T> const& arr, T val)
+{
+	auto it = std::lower_bound(arr.begin(), arr.end(), val);
+	if (it == arr.end() || val < *it) return (arr.size());
 	return std::distance(arr.begin(), it);
 }
 
