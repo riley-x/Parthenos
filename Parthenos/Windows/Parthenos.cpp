@@ -516,8 +516,31 @@ void Parthenos::AddTransaction(Transaction t)
 		UpdatePortfolioPlotters(m_currAccount);
 }
 
-// Currently option summary
+
 void Parthenos::PrintDividendSummary() const
+{
+	Account const& acc = m_accounts[m_currAccount];
+
+	std::wstringstream ss;
+	ss << L"\tAnn Div\tEff Yield\n";
+	double total_div = 0;
+	double total_cost = 0;
+	for (Position const &p : acc.positions)
+	{
+		if (p.ticker == L"CASH" || p.n == 0) continue;
+		std::pair<Quote, Stats> stats = KeyMatch(m_tickers, m_stats, p.ticker);
+		total_div += stats.second.dividendRate * p.n;
+		total_cost += p.avgCost * p.n;
+		ss << p.ticker << L"\t" << stats.second.dividendRate * p.n
+			<< L"\t" << stats.second.dividendRate / p.avgCost << L"\n";
+	}
+	ss << L"Total\t" << total_div << L"\t" << total_div / total_cost << L"\n";
+	m_msgBox->Print(ss.str());
+}
+
+
+// For importing into excel
+void Parthenos::PrintOptionSummary() const
 {
 	FileIO transFile;
 	transFile.Init(ROOTDIR + L"hist.trans");
@@ -580,7 +603,7 @@ void Parthenos::InitItems()
 		{ L"Print Transaction History", L"Print Holdings", L"Print Equity History", L"Update Last Equity History Entry" },
 		m_accountNames, // Add "All Accounts" below
 		{ L"Add", L"Edit", L"Recalculate All" },
-		{ L"Print OHLC", L"Delete Last OHLC Entry", L"Print Dividend Summary" }
+		{ L"Print OHLC", L"Delete Last OHLC Entry", L"Print Dividend Summary", L"Print Option Summary" }
 	};
 	items[1].push_back(L"All Accounts");
 	std::vector<std::vector<size_t>> divisions = { {3}, {m_accountNames.size()}, {2}, {} };
@@ -610,7 +633,15 @@ void Parthenos::InitItems()
 		{60.0f, WatchlistColumn::EffectiveYield, L"%.2lf"},
 		{60.0f, WatchlistColumn::ExDiv, L""},
 	};
-	m_watchlist->SetColumns(); // use defaults
+	std::vector<WatchlistColumn> watchlistColumns = { // m_watchlistWidth = 350.0f;
+		{95.0f, WatchlistColumn::Ticker, L""},
+		{60.0f, WatchlistColumn::Last, L"%.2lf"},
+		{60.0f, WatchlistColumn::ChangeP, L"%.2lf"},
+		{60.0f, WatchlistColumn::Change1YP, L"%.2lf"},
+		{60.0f, WatchlistColumn::EarningsDate, L""}
+
+	};
+	m_watchlist->SetColumns(watchlistColumns); // use defaults
 	m_portfolioList->SetColumns(portColumns);
 
 	// Returns plots
@@ -639,7 +670,7 @@ void Parthenos::InitItemsWithRealtimeData()
 	}
 
 	// Initial chart
-	m_chart->Draw(L"AAPL");
+	m_chart->Draw(L"VOO");
 }
 
 void Parthenos::ProcessCTPMessages()
@@ -934,6 +965,10 @@ void Parthenos::ProcessMenuMessage(bool & pop_front)
 		else if (msg.msg == L"Print Dividend Summary")
 		{
 			PrintDividendSummary();
+		}
+		else if (msg.msg == L"Print Option Summary")
+		{
+			PrintOptionSummary();
 		}
 	}
 }
