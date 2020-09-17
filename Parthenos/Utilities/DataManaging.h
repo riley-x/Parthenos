@@ -392,7 +392,7 @@ struct Play
 	double price_exit;
 	double strike;
 	double collateral;
-	double assignment_cost;
+	double assignment_cost; // Unrealized P/L from assignment. +/- for long/short.
 	std::wstring ticker;
 
 	std::wstring to_wstring() const;

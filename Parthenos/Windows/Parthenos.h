@@ -102,6 +102,7 @@ private:
 	void AddTransaction(Transaction t);
 	void PrintDividendSummary() const;
 	void PrintOptionSummary() const;
+	std::vector<Transaction> GetTrans() const;
 
 	// Child management
 	void InitItems();

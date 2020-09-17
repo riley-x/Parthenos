@@ -32,6 +32,14 @@ Parthenos::Parthenos(PCWSTR szClassName) :
 	//trans[trans.size() - 11].value = 61.33;
 	//transFile.Write(trans.data(), sizeof(Transaction)*trans.size());
 	//transFile.Close();
+
+	//FileIO ohlcFile;
+	//ohlcFile.Init(ROOTDIR + L"spy.iex.ohlc");
+	//ohlcFile.Open();
+	//std::vector<OHLC> ohlcData = ohlcFile.Read<OHLC>();
+	//ohlcFile.Write(ohlcData.data(), sizeof(OHLC) * (ohlcData.size() - 5));
+	//ohlcFile.Close();
+
 }
 
 Parthenos::~Parthenos()
@@ -516,32 +524,89 @@ void Parthenos::AddTransaction(Transaction t)
 		UpdatePortfolioPlotters(m_currAccount);
 }
 
-
+// Prints dividend summary for the current account collected by year
 void Parthenos::PrintDividendSummary() const
 {
 	Account const& acc = m_accounts[m_currAccount];
+	std::vector<Transaction> trans = GetTrans();
+	int yrStart = GetYear(trans.front().date);
+	int yrEnd = GetYear(trans.back().date);
+	int nyr = yrEnd - yrStart + 1;
 
+	// Dividends by ticker and year (value size nyr + 1, back() is total).
+	std::map<std::wstring, std::vector<double>> dividends;
+	for (Transaction const& t : trans)
+	{
+		if (t.type == TransactionType::Dividend 
+			&& (m_currAccount == m_accounts.size() - 1 || t.account == m_currAccount))
+		{
+			if (dividends[t.ticker].empty()) dividends[t.ticker].resize(nyr + 1);
+			dividends[t.ticker][GetYear(t.date) - yrStart] += t.value;
+			dividends[t.ticker].back() += t.value;
+		}
+	}
+
+	// Column Headers
 	std::wstringstream ss;
-	ss << L"\tAnn Div\tEff Yield\n";
-	double total_div = 0;
+	ss << std::fixed << std::setprecision(2);
+	ss << L"\tAnn Div\tEff Yield\t";
+	for (int i = yrStart; i <= yrEnd; i++) ss << i << L"\t";
+	ss << L"Total\n";
+
+	// Print Table
+	double ann_div = 0;
 	double total_cost = 0;
+	std::vector<double> total_div(nyr + 1); // back() is all-time total
 	for (Position const &p : acc.positions)
 	{
-		if (p.ticker == L"CASH" || p.n == 0) continue;
+		if (p.ticker == L"CASH" ) continue;
+		ss << p.ticker << L"\t";
+
+		// Print yield
 		std::pair<Quote, Stats> stats = KeyMatch(m_tickers, m_stats, p.ticker);
-		total_div += stats.second.dividendRate * p.n;
-		total_cost += p.avgCost * p.n;
-		ss << p.ticker << L"\t" << stats.second.dividendRate * p.n
-			<< L"\t" << stats.second.dividendRate / p.avgCost << L"\n";
+		if (p.n != 0)
+		{
+			ann_div += stats.second.dividendRate * p.n;
+			total_cost += p.avgCost * p.n;
+			ss << stats.second.dividendRate * p.n << L"\t";
+			ss << stats.second.dividendRate / p.avgCost * 100.0 << L"\t";
+		}
+		else
+		{
+			ss << "-\t-\t";
+		}
+
+		// Print yearly totals
+		if (dividends.count(p.ticker))
+		{
+			for (int i = 0; i < nyr + 1; i++)
+			{
+				double x = dividends[p.ticker][i];
+				if (x > 0.009) ss << x;
+				else ss << L"-";
+				total_div[i] += x;
+				ss << L"\t";
+			}
+		}
+		else for (int i = 0; i < nyr + 1; i++) ss << L"-\t";
+		ss << L"\n";
 	}
-	ss << L"Total\t" << total_div << L"\t" << total_div / total_cost << L"\n";
-	m_msgBox->Print(ss.str());
+
+	// Print totals
+	ss << L"Total\t";
+	ss << ann_div << L"\t";
+	ss << ann_div / total_cost * 100.0 << L"\t";
+	for (double x : total_div)
+		ss << x << L"\t";
+	ss << L"\n";
+	m_msgBox->Overwrite(ss.str());
 }
 
 
 // For importing into excel
 void Parthenos::PrintOptionSummary() const
 {
+	// Get plays
 	FileIO transFile;
 	transFile.Init(ROOTDIR + L"hist.trans");
 	transFile.Open();
@@ -550,40 +615,58 @@ void Parthenos::PrintOptionSummary() const
 
 	std::vector<Play> plays(GetOptionPerformance(trans));
 
+	// Manually fix GM manual assignment
+	plays[16].price_exit = 0;
+	plays[16].assignment_cost = -1140.0;
+
+	// Get range of months
 	date_t start = plays.front().start;
 	date_t today = GetCurrentDate();
 	std::vector<date_t> dates = MakeMonthRange(start, today);
 
-	std::vector<std::vector<double>> returns(m_tickers.size(), std::vector<double>(dates.size()));
+	// Collect the returns
+	std::map<std::wstring, std::vector<double>> returns;
 	for (Play const& p : plays)
 	{
 		if (!isShort(p.type)) continue; // just look at short options for now
-		size_t i_ticker = GetIndexSorted(m_tickers, p.ticker);
-		if (i_ticker >= m_tickers.size()) 
-		{
-			OutputDebugString(L"Uhoh"); 
-			continue;
-		}
+		std::vector<double>& ticker_returns = returns[p.ticker];
+		if (ticker_returns.empty()) ticker_returns.resize(dates.size());
 
 		size_t offset = MonthDiff(p.start, start);
 		size_t nMonths = 1ull + MonthDiff((p.end > 0) ? p.end : p.expiration, p.start);
 		double pl = (p.price_enter - p.price_exit) * 100 * p.n;
 		for (size_t i = offset; i < offset + nMonths && i < dates.size(); i++)
-			returns[i_ticker][i] += pl / nMonths;
+			ticker_returns[i] += pl / nMonths;
+		// Ignore assignment cost here
 	}
 
+	// Print out
 	std::wstringstream ss;
-	for (std::wstring const& t : m_tickers) ss << L'\t' << t;
+	for (auto& t_r : returns) ss << L'\t' << t_r.first;
 	ss << L'\n';
 	for (size_t i = 0; i < dates.size(); i++)
 	{
 		ss << DateToWString(dates[i]);
-		for (size_t j = 0; j < m_tickers.size(); j++)
-			ss << L'\t' << returns[j][i];
+		for (auto & t_r : returns)
+			ss << L'\t' << t_r.second[i];
 		ss << L'\n';
 	}
 
 	m_msgBox->Print(ss.str());
+}
+
+
+
+std::vector<Transaction> Parthenos::GetTrans() const
+{
+	FileIO transFile;
+	transFile.Init(ROOTDIR + L"hist.trans");
+	transFile.Open();
+	std::vector<Transaction> trans = transFile.Read<Transaction>();
+	transFile.Close();
+
+	if (trans.empty()) throw ws_exception(L"Empty transactions");
+	return trans;
 }
 
 

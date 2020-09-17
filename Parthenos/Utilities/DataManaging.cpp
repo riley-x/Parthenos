@@ -1015,14 +1015,14 @@ double GetCollateral(std::vector<Transaction> const& trans, size_t iOpen)
 // Returns the unrealized profit/loss from an assigned option close, if applicable.
 double GetAssignment(Play& p, std::vector<Transaction> const& trans, size_t iClose)
 {
-	if (trans[iClose].price > 0) return 0;
-
 	// Price is zero in case of assignment OR expiration. If assignment, the next
 	// transaction should be the stock resolution.
+	if (trans[iClose].price > 0) return 0;
 	if (iClose + 1 >= trans.size()) return 0;
 	Transaction const& t_next = trans[iClose + 1];
 	if (t_next.ticker != p.ticker || abs(t_next.n) != p.n * 100 || t_next.price != p.strike) return 0;
 
+	// Get OHLC for date of assignment
 	int days_to_get;
 	date_t lastCloseDate = -1;
 	std::vector<OHLC> ohlc(GetSavedOHLC(p.ticker, apiSource::alpha, 0, days_to_get, lastCloseDate));
