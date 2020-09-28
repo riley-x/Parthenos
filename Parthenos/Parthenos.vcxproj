@@ -190,6 +190,7 @@
     <ClInclude Include="Utilities\FileIO.h" />
     <ClInclude Include="Utilities\HTTP.h" />
     <ClInclude Include="Utilities\jsonette.h" />
+    <ClInclude Include="Utilities\Studies.h" />
     <ClInclude Include="Utilities\utilities.h" />
     <ClInclude Include="Windows\AddTransactionWindow.h" />
     <ClInclude Include="Windows\BaseWindow.h" />
@@ -231,6 +232,7 @@
     <ClCompile Include="Utilities\DataManaging.cpp" />
     <ClCompile Include="Utilities\FileIO.cpp" />
     <ClCompile Include="Utilities\HTTP.cpp" />
+    <ClCompile Include="Utilities\Studies.cpp" />
     <ClCompile Include="Utilities\utilities.cpp" />
     <ClCompile Include="Windows\AddTransactionWindow.cpp" />
     <ClCompile Include="Windows\ConfirmationWindow.cpp" />

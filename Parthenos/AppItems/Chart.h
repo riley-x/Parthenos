@@ -40,22 +40,29 @@ private:
 	static const float	m_commandSize;
 	static const float	m_tickerBoxWidth;
 	static const float	m_timeframeWidth;
+	static const size_t	m_nStudies = 3;
 
 	// Parameters
 	float				m_menuHeight	= 26.0f;
 	float				m_commandHPad	= 5.0f;
 	const std::wstring  m_markerNames[MARK_NMARKERS] = { L"H" };
+	const std::wstring	m_studyNames[m_nStudies] = { L"SMA20", L"SMA100", L"RSI" };
+	const float			m_studyWidths[m_nStudies] = { 50.0f, 60.0f, 35.0f }; // Manually picked since these don't change dynamically
+	const D2D1_COLOR_F	m_studyColors[m_nStudies] = { D2D1::ColorF(0x2777d9), D2D1::ColorF(0xc28030) };
+		// Solid blue, dull orange
+
 
 	// State
 	std::wstring		m_ticker;
 	MainChartType		m_currentMChart = MainChartType::none;
 	Timeframe			m_currentTimeframe = Timeframe::none;
-	date_t				m_startDate; // for custom timeframe
-	date_t				m_endDate;
+	date_t				m_startDate; // First and last dates plotted. These are set by AXES_SELECTION or DrawMainChart.
+	date_t				m_endDate; // Inclusive
 	bool				m_markerActive[MARK_NMARKERS] = {};
+	bool				m_studyActive[m_nStudies] = {};
 
 	// Data
-	std::vector<OHLC>			m_ohlc;
+	std::vector<OHLC>			m_ohlc; // Set exclusively by Load(), and ATM always 1260 days
 	std::vector<Transaction>	m_history;
 
 	// Child objects
@@ -65,6 +72,7 @@ private:
 	ButtonGroup			m_chartTypeButtons;
 	ButtonGroup			m_mouseTypeButtons;
 	TextButton*			m_markerButtons[MARK_NMARKERS];
+	TextButton*			m_studyButtons[m_nStudies];
 
 	// Painting
 	D2D1_RECT_F			m_menuRect;
@@ -80,6 +88,7 @@ private:
 	void Envelope(std::vector<OHLC>::iterator start, int n);
 	void DrawMarker(Markers i);
 	void DrawHistory();
+	void DrawStudy(size_t i);
 };
 
 

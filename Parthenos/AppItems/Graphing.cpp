@@ -2,7 +2,6 @@
 #include "Graphing.h"
 #include "../Utilities/utilities.h"
 
-
 Axes::Axes(HWND hwnd, D2Objects const & d2, CTPMessageReceiver * parent)
 	: AppItem(hwnd, d2, parent)
 {
@@ -62,7 +61,7 @@ void Axes::Clear(GraphGroup group)
 
 void Axes::Remove(GraphGroup group, std::wstring name)
 {
-	for (int i = m_graphObjects[group].size() - 1; i >= 0; i--)
+	for (int i = (int)m_graphObjects[group].size() - 1; i >= 0; i--)
 	{
 		if (m_graphObjects[group][i]->m_name == name)
 		{
@@ -335,7 +334,7 @@ void Axes::Candlestick(std::vector<OHLC> const & ohlc, GraphGroup group)
 	m_ismade = false;
 }
 
-void Axes::Line(std::vector<date_t> const & dates, std::vector<double> const & ydata, LineProps props, GraphGroup group)
+void Axes::Line(std::vector<date_t> const & dates, std::vector<double> const & ydata, LineProps props, GraphGroup group, std::wstring name)
 {
 	size_t n = dates.size();
 	if (n == 0 || n != ydata.size()) return;
@@ -349,7 +348,7 @@ void Axes::Line(std::vector<date_t> const & dates, std::vector<double> const & y
 
 		// sets x values to [0, n-1]
 		double xmin = 0;
-		double xmax = n - 1;
+		double xmax = static_cast<double>(n - 1);
 		double ymin = ydata[0];
 		double ymax = ydata[0];
 		for (size_t i = 0; i < n; i++)
@@ -386,6 +385,7 @@ void Axes::Line(std::vector<date_t> const & dates, std::vector<double> const & y
 	}
 
 	auto graph = new LineGraph(this, offset);
+	graph->m_name = name;
 	graph->SetData(ydata);
 	graph->SetLineProperties(props);
 	m_graphObjects[group].push_back(graph);
@@ -533,7 +533,7 @@ void Axes::CalculateXTicks_Dates()
 	if (step == 0) return;
 
 	float xdip = XtoDIP(0); // assumes dates are plotted as [0, n-1]
-	float spacing = XtoDIP(step) - xdip;
+	float spacing = XtoDIP((double)step) - xdip;
 
 	int last_month = -1;
 	int last_year = -1;
@@ -736,7 +736,7 @@ void Axes::CreateCachedImage()
 		m_d2.pTextFormats[m_titleFormat]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
 		m_d2.pD2DContext->DrawTextW(
 			m_title.c_str(),
-			m_title.size(),
+			(UINT32)m_title.size(),
 			m_d2.pTextFormats[m_titleFormat],
 			D2D1::RectF(m_dipRect.left, m_dipRect.top, m_dipRect.right, m_axesRect.top),
 			m_d2.pBrush
@@ -754,7 +754,7 @@ void Axes::CreateCachedImage()
 
 			m_d2.pD2DContext->DrawText(
 				label.c_str(),
-				label.size(),
+				(UINT32)label.size(),
 				m_d2.pTextFormats[D2Objects::Segoe10],
 				D2D1::RectF(loc,
 					m_axesRect.bottom + m_labelPad,
@@ -771,7 +771,7 @@ void Axes::CreateCachedImage()
 
 		m_d2.pD2DContext->DrawText(
 			label.c_str(),
-			label.size(),
+			(UINT32)label.size(),
 			m_d2.pTextFormats[D2Objects::Segoe10],
 			D2D1::RectF(m_axesRect.right + m_labelPad,
 				loc - m_labelHeight / 2.0f,
@@ -876,7 +876,7 @@ void Axes::CreateHoverText(size_t xind, D2D1_POINT_2F cursor)
 		m_d2.pTextFormats[D2Objects::Formats::Segoe12]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
 		HRESULT hr = m_d2.pDWriteFactory->CreateTextLayout(
 			label.c_str(),	// The string to be laid out and formatted.
-			label.size(),	// The length of the string.
+			(UINT32)label.size(),	// The length of the string.
 			m_d2.pTextFormats[D2Objects::Formats::Segoe12],	// The text format to apply to the string
 			200.0f,			// The width of the layout box.
 			200.0f,			// The height of the layout box.
@@ -1096,7 +1096,7 @@ void BarGraph::Paint(D2Objects const & d2)
 	{
 		d2.pD2DContext->DrawText(
 			m_labels[i].c_str(),
-			m_labels[i].size(),
+			(UINT32)m_labels[i].size(),
 			d2.pTextFormats[D2Objects::Formats::Segoe12],
 			m_labelRects[i],
 			d2.pBrush

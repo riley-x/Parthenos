@@ -153,7 +153,7 @@ public:
 	// Data pointers to these functions should remain valid until the next Clear() call
 	void Candlestick(std::vector<OHLC> const & ohlc, GraphGroup group = GG_PRI);
 	void Line(std::vector<date_t> const & dates, std::vector<double> const & ydata,
-		LineProps props = {}, GraphGroup group = GG_PRI
+		LineProps props = {}, GraphGroup group = GG_PRI, std::wstring name = L""
 	);
 	void Bar(std::vector<std::pair<double, D2D1_COLOR_F>> const & data,
 		std::vector<std::wstring> const & labels = {},

@@ -1,6 +1,7 @@
 #include "../stdafx.h"
 #include "../Resource.h"
 #include "../Utilities/utilities.h"
+#include "../Utilities/Studies.h"
 #include "Chart.h"
 
 #include <algorithm>
@@ -8,6 +9,7 @@
 float const Chart::m_commandSize = 20.0f;
 float const Chart::m_tickerBoxWidth = 100.0f;
 float const Chart::m_timeframeWidth = 60.0f;
+
 
 Chart::Chart(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent)
 	: AppItem(hwnd, d2, parent), m_axes(hwnd, d2, this), m_tickerBox(hwnd, d2, this),
@@ -60,12 +62,23 @@ Chart::Chart(HWND hwnd, D2Objects const & d2, CTPMessageReceiver *parent)
 		temp->SetName(m_markerNames[i]);
 		m_markerButtons[i] = temp;
 	}
+
+	// Study buttons
+	for (size_t i = 0; i < m_nStudies; i++)
+	{
+		TextButton* temp = new TextButton(m_hwnd, m_d2, nullptr); // don't need messages from button
+		temp->SetName(m_studyNames[i]);
+		temp->SetTextColor(m_studyColors[i]);
+		m_studyButtons[i] = temp;
+	}
 }
 
 Chart::~Chart()
 {
 	for (size_t i = 0; i < MARK_NMARKERS; i++)
 		if (m_markerButtons[i]) delete m_markerButtons[i];
+	for (size_t i = 0; i < m_nStudies; i++)
+		if (m_studyButtons[i]) delete m_studyButtons[i];
 }
 
 void Chart::SetSize(D2D1_RECT_F dipRect)
@@ -177,6 +190,22 @@ void Chart::SetSize(D2D1_RECT_F dipRect)
 		// Divison
 		m_divisions.push_back(DPIScale::SnapToPixelX(left + m_commandHPad) + DPIScale::hpx());
 		left += 3 * m_commandHPad;
+
+		// Study buttons
+		for (size_t i = 0; i < m_nStudies; i++)
+		{
+			m_studyButtons[i]->SetSize(D2D1::RectF(
+				left,
+				top,
+				left + m_studyWidths[i],
+				top + m_commandSize
+			));
+			left += m_studyWidths[i] + 2 * m_commandHPad; // Text boxes need a little extra pad
+		}
+
+		// Divison
+		m_divisions.push_back(DPIScale::SnapToPixelX(left + m_commandHPad) + DPIScale::hpx());
+		left += 3 * m_commandHPad;
 	}
 }
 
@@ -204,11 +233,14 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 			m_d2.pD2DContext->FillRectangle(iconRect, m_d2.pBrush);
 		for (size_t i = 0; i < MARK_NMARKERS; i++)
 			if (m_markerActive[i]) m_d2.pD2DContext->FillRectangle(m_markerButtons[i]->GetDIPRect(), m_d2.pBrush);
+		for (size_t i = 0; i < m_nStudies; i++)
+			if (m_studyActive[i]) m_d2.pD2DContext->FillRectangle(m_studyButtons[i]->GetDIPRect(), m_d2.pBrush);
 
 		// Buttons
 		m_chartTypeButtons.Paint(m_menuRect);
 		m_mouseTypeButtons.Paint(m_menuRect);
 		for (size_t i = 0; i < MARK_NMARKERS; i++) m_markerButtons[i]->Paint(m_menuRect);
+		for (size_t i = 0; i < m_nStudies; i++) m_studyButtons[i]->Paint(m_menuRect);
 
 		// Menu division lines
 		m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
@@ -293,11 +325,24 @@ bool Chart::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 					m_markerActive[i] = !m_markerActive[i];
 					if (m_markerActive[i]) DrawMarker(static_cast<Markers>(i));
 					else m_axes.Remove(Axes::GG_SEC, m_markerNames[i]);
+					::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+					handeled = true;
 					break;
 				}
 			}
-			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
-			handeled = true;
+
+			for (size_t i = 0; i < m_nStudies && !handeled; i++)
+			{
+				if (m_studyButtons[i]->OnLButtonDown(cursor, handeled))
+				{
+					m_studyActive[i] = !m_studyActive[i];
+					if (m_studyActive[i]) DrawStudy(i);
+					else m_axes.Remove(Axes::GG_SEC, m_studyNames[i]);
+					::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+					handeled = true;
+					break;
+				}
+			}
 		}
 	}
 
@@ -489,6 +534,9 @@ void Chart::DrawCurrentState()
 
 	for (size_t i = 0; i < MARK_NMARKERS; i++)
 		if (m_markerActive[i]) DrawMarker(static_cast<Markers>(i));
+
+	for (size_t i = 0; i < m_nStudies; i++)
+		if (m_studyActive[i]) DrawStudy(i);
 }
 
 // Finds the starting date in OHLC data given 'timeframe', returning the iterator in 'it'.
@@ -568,7 +616,6 @@ void Chart::Line(std::vector<OHLC>::iterator start, int n)
 	std::vector<date_t> dates(n);
 	std::vector<double> closes(n);
 	
-	size_t size = m_ohlc.size();
 	for (int i = 0; i < n; i++)
 	{
 		dates[i] = (start + i)->date;
@@ -646,3 +693,33 @@ void Chart::DrawHistory()
 	m_axes.DatePoints(points, Axes::GG_SEC, m_markerNames[MARK_HISTORY]);
 }
 
+
+// This function is not robust to re-ordering the studies. Use string identifier instead.
+void Chart::DrawStudy(size_t i)
+{
+	switch (i)
+	{
+	case 0: // SMA20
+	{
+		size_t iStart = FindDateOHLC(m_ohlc, m_startDate);
+		size_t iEnd = FindDateOHLC(m_ohlc, m_endDate); // Inclusive
+		auto data = ::SMA(m_ohlc, 20, iStart, iEnd + 1);
+
+		LineProps props = { m_studyColors[i], 1.0f, nullptr };
+		m_axes.Line(data.first, data.second, props, Axes::GG_SEC, m_studyNames[i]);
+	}
+	break;
+	case 1: // SMA100
+	{
+		size_t iStart = FindDateOHLC(m_ohlc, m_startDate);
+		size_t iEnd = FindDateOHLC(m_ohlc, m_endDate); // Inclusive
+		auto data = ::SMA(m_ohlc, 100, iStart, iEnd + 1);
+
+		LineProps props = { m_studyColors[i], 1.0f, nullptr };
+		m_axes.Line(data.first, data.second, props, Axes::GG_SEC, m_studyNames[i]);
+	}
+	break;
+	default:
+		return;
+	}
+}
