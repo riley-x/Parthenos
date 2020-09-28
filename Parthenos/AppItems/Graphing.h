@@ -205,11 +205,15 @@ public:
 	inline size_t GetNPoints() const { return m_nPoints; }
 	ID2D1PathGeometry* GetMarker(MarkerStyle m);
 
+	void SetName(std::wstring const& name) { m_name = name; }
+	std::wstring const& GetName() const { return m_name; }
+
 private:
 
+	std::wstring m_name; // identifier
+
 	// Objects
-	// individual graphs to plot. these need to be remade when the size of the window changes.
-	std::vector<Graph*>		m_graphObjects[nGraphGroups]; 
+	std::vector<Graph*>		m_graphObjects[nGraphGroups]; // individual graphs to plot. these need to be remade when the size of the window changes.
 	ComPtr<ID2D1Bitmap1>	m_primaryCache = nullptr; // caches graph groups 0 and 1, grids, labels, etc.
 	ComPtr<ID2D1PathGeometry> m_upMarker = nullptr;
 	ComPtr<ID2D1PathGeometry> m_dnMarker = nullptr;

@@ -12,7 +12,21 @@ std::pair<std::vector<date_t>, std::vector<double>> SMA(
 // --- with range [iStart, iEnd)
 std::pair<std::vector<date_t>, std::vector<double>> SMA(
 	std::vector<OHLC> const& ohlc,
-	size_t filter_size,
 	size_t iStart,
-	size_t iEnd
+	size_t iEnd,
+	size_t filter_size
+);
+
+// Calculates the relative strength index from the given OHLC range and filter size.
+// Returns the dates and RSI of the range.
+std::pair<std::vector<date_t>, std::vector<double>> RSI(
+	std::vector<OHLC> const& ohlc,
+	size_t filter_size = 14
+);
+// --- with range [iStart, iEnd)
+std::pair<std::vector<date_t>, std::vector<double>> RSI(
+	std::vector<OHLC> const& ohlc,
+	size_t iStart,
+	size_t iEnd,
+	size_t filter_size = 14
 );

@@ -48,18 +48,20 @@ private:
 	const std::wstring  m_markerNames[MARK_NMARKERS] = { L"H" };
 	const std::wstring	m_studyNames[m_nStudies] = { L"SMA20", L"SMA100", L"RSI" };
 	const float			m_studyWidths[m_nStudies] = { 50.0f, 60.0f, 35.0f }; // Manually picked since these don't change dynamically
-	const D2D1_COLOR_F	m_studyColors[m_nStudies] = { D2D1::ColorF(0x2777d9), D2D1::ColorF(0xc28030) };
-		// Solid blue, dull orange
+	const D2D1_COLOR_F	m_studyColors[m_nStudies] = { D2D1::ColorF(0x2777d9), D2D1::ColorF(0xc28030), D2D1::ColorF(0x6417c2) };
+		// Solid blue, dull orange, deep purple
+	const float			m_auxAxisHeightFrac = 0.20f;
 
 
 	// State
 	std::wstring		m_ticker;
 	MainChartType		m_currentMChart = MainChartType::none;
 	Timeframe			m_currentTimeframe = Timeframe::none;
-	date_t				m_startDate; // First and last dates plotted. These are set by AXES_SELECTION or DrawMainChart.
-	date_t				m_endDate; // Inclusive
+	date_t				m_startDate = 0; // First and last dates plotted. These are set by AXES_SELECTION or DrawMainChart.
+	date_t				m_endDate = 0; // Inclusive
 	bool				m_markerActive[MARK_NMARKERS] = {};
 	bool				m_studyActive[m_nStudies] = {};
+	std::vector<bool>	m_activeAxes; // Size == m_auxAxes. Always reuse from lowest index.
 
 	// Data
 	std::vector<OHLC>			m_ohlc; // Set exclusively by Load(), and ATM always 1260 days
@@ -67,18 +69,20 @@ private:
 
 	// Child objects
 	Axes				m_axes;
+	std::vector<Axes*>	m_auxAxes; // For volume, etc. These are reused, see m_activeAxes.
 	TextBox				m_tickerBox;
 	DropMenuButton		m_timeframeButton;
 	ButtonGroup			m_chartTypeButtons;
 	ButtonGroup			m_mouseTypeButtons;
-	TextButton*			m_markerButtons[MARK_NMARKERS];
-	TextButton*			m_studyButtons[m_nStudies];
+	TextButton*			m_markerButtons[MARK_NMARKERS] = {};
+	TextButton*			m_studyButtons[m_nStudies] = {};
 
 	// Painting
-	D2D1_RECT_F			m_menuRect;
+	D2D1_RECT_F			m_menuRect = {};
 	std::vector<float>	m_divisions;
 
 	// Helper functions
+	void ResizeAxes();
 	void Load(std::wstring ticker, int range = 1260); // # datapoints in days. default to 5 years 
 	void DrawMainChart(MainChartType type, Timeframe timeframe);
 	void DrawCurrentState();
@@ -89,6 +93,14 @@ private:
 	void DrawMarker(Markers i);
 	void DrawHistory();
 	void DrawStudy(size_t i);
+	void RemoveStudy(size_t i);
+
+	// Utility functions
+	size_t GetAxes(std::wstring const & name); // Finds the matching aux axes, or returns the next unused one, or creates a new one
+	float GetAuxAxisTop(size_t i); // Returns the dip position of the top of aux axis i.
+
+
+
 };
 
 

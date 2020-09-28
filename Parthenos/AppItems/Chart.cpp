@@ -95,12 +95,8 @@ void Chart::SetSize(D2D1_RECT_F dipRect)
 	m_menuRect = m_dipRect;
 	m_menuRect.bottom = DPIScale::SnapToPixelY(m_menuRect.top + m_menuHeight);
 
-	m_axes.SetSize(D2D1::RectF(
-		m_dipRect.left,
-		m_menuRect.bottom,
-		m_dipRect.right,
-		m_dipRect.bottom
-	));
+	// Axes
+	ResizeAxes();
 
 	// Menu items
 	if (!same_left || !same_top)
@@ -209,6 +205,29 @@ void Chart::SetSize(D2D1_RECT_F dipRect)
 	}
 }
 
+void Chart::ResizeAxes()
+{
+	// Main Axes
+	m_axes.SetSize(D2D1::RectF(
+		m_dipRect.left,
+		m_menuRect.bottom,
+		m_dipRect.right,
+		GetAuxAxisTop(0)
+	));
+
+	// Auxillary Axes
+	for (size_t i = 0; i < m_auxAxes.size(); i++)
+	{
+		if (!m_activeAxes[i]) break;
+		m_auxAxes[i]->SetSize(D2D1::RectF(
+			m_dipRect.left,
+			GetAuxAxisTop(i),
+			m_dipRect.right,
+			GetAuxAxisTop(i + 1)
+		));
+	}
+}
+
 void Chart::Paint(D2D1_RECT_F updateRect)
 {
 	if (!overlapRect(m_dipRect, updateRect)) return;
@@ -263,7 +282,11 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 
 	// Axes
 	if (updateRect.bottom > m_menuRect.bottom)
+	{
 		m_axes.Paint(updateRect);
+		for (size_t i = 0; i < m_auxAxes.size(); i++)
+			if (m_activeAxes[i]) m_auxAxes[i]->Paint(updateRect);
+	}
 
 	// Popups -- need to be last
 	m_timeframeButton.GetMenu()->Paint(updateRect);
@@ -274,6 +297,9 @@ bool Chart::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 	handeled = m_timeframeButton.OnMouseMove(cursor, wParam, handeled) || handeled;
 	handeled = m_tickerBox.OnMouseMove(cursor, wParam, handeled) || handeled;
 	handeled = m_axes.OnMouseMove(cursor, wParam, handeled) || handeled;
+	for (size_t i = 0; i < m_auxAxes.size(); i++)
+		if (m_activeAxes[i]) handeled = m_auxAxes[i]->OnMouseMove(cursor, wParam, handeled) || handeled;
+	
 	//ProcessCTPMessages(); // not needed
 	return handeled;
 }
@@ -283,6 +309,8 @@ bool Chart::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 	handeled = m_timeframeButton.OnLButtonDown(cursor, handeled) || handeled;
 	handeled = m_tickerBox.OnLButtonDown(cursor, handeled) || handeled;
 	handeled = m_axes.OnLButtonDown(cursor, handeled) || handeled;
+	for (size_t i = 0; i < m_auxAxes.size(); i++)
+		if (m_activeAxes[i]) handeled = m_auxAxes[i]->OnLButtonDown(cursor, handeled) || handeled;
 
 	if (!handeled && inRect(cursor, m_menuRect))
 	{
@@ -337,7 +365,7 @@ bool Chart::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 				{
 					m_studyActive[i] = !m_studyActive[i];
 					if (m_studyActive[i]) DrawStudy(i);
-					else m_axes.Remove(Axes::GG_SEC, m_studyNames[i]);
+					else RemoveStudy(i);
 					::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 					handeled = true;
 					break;
@@ -360,6 +388,8 @@ void Chart::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 {
 	m_tickerBox.OnLButtonUp(cursor, wParam);
 	m_axes.OnLButtonUp(cursor, wParam);
+	for (size_t i = 0; i < m_auxAxes.size(); i++)
+		if (m_activeAxes[i]) m_auxAxes[i]->OnLButtonUp(cursor, wParam);
 	ProcessCTPMessages();
 }
 
@@ -456,6 +486,8 @@ void Chart::Load(std::wstring ticker, int range)
 	if (ticker == m_ticker && range < static_cast<int>(m_ohlc.size())) return;
 	
 	m_axes.Clear();
+	for (size_t i = 0; i < m_auxAxes.size(); i++)
+		if (m_activeAxes[i]) m_auxAxes[i]->Clear();
 
 	m_tickerBox.SetText(ticker);
 	m_ticker = ticker;
@@ -529,8 +561,6 @@ void Chart::DrawCurrentState()
 {
 	m_axes.Clear();
 	DrawMainChart(m_currentMChart, m_currentTimeframe);
-
-	// DrawTechnicals(m_currentTechnicals), etc...
 
 	for (size_t i = 0; i < MARK_NMARKERS; i++)
 		if (m_markerActive[i]) DrawMarker(static_cast<Markers>(i));
@@ -703,7 +733,7 @@ void Chart::DrawStudy(size_t i)
 	{
 		size_t iStart = FindDateOHLC(m_ohlc, m_startDate);
 		size_t iEnd = FindDateOHLC(m_ohlc, m_endDate); // Inclusive
-		auto data = ::SMA(m_ohlc, 20, iStart, iEnd + 1);
+		auto data = ::SMA(m_ohlc, iStart, iEnd + 1, 20);
 
 		LineProps props = { m_studyColors[i], 1.0f, nullptr };
 		m_axes.Line(data.first, data.second, props, Axes::GG_SEC, m_studyNames[i]);
@@ -713,13 +743,81 @@ void Chart::DrawStudy(size_t i)
 	{
 		size_t iStart = FindDateOHLC(m_ohlc, m_startDate);
 		size_t iEnd = FindDateOHLC(m_ohlc, m_endDate); // Inclusive
-		auto data = ::SMA(m_ohlc, 100, iStart, iEnd + 1);
+		auto data = ::SMA(m_ohlc, iStart, iEnd + 1, 100);
 
 		LineProps props = { m_studyColors[i], 1.0f, nullptr };
 		m_axes.Line(data.first, data.second, props, Axes::GG_SEC, m_studyNames[i]);
+	}
+	break;
+	case 2: // RSI
+	{
+		size_t iStart = FindDateOHLC(m_ohlc, m_startDate);
+		size_t iEnd = FindDateOHLC(m_ohlc, m_endDate); // Inclusive
+		auto data = ::RSI(m_ohlc, iStart, iEnd + 1);
+
+		LineProps props = { m_studyColors[i], 1.0f, nullptr };
+
+		size_t i_axes = GetAxes(L"RSI");
+		if (!m_activeAxes[i_axes])
+		{
+			m_auxAxes[i_axes]->SetName(L"RSI");
+			m_activeAxes[i_axes] = true;
+			ResizeAxes();
+		}
+		else
+		{
+			m_auxAxes[i_axes]->Clear();
+		}
+
+		m_auxAxes[i_axes]->Line(data.first, data.second, props, Axes::GG_PRI);
 	}
 	break;
 	default:
 		return;
 	}
 }
+
+void Chart::RemoveStudy(size_t i)
+{
+	switch (i)
+	{
+	case 0: // SMA20
+	case 1: // SMA100
+		m_axes.Remove(Axes::GG_SEC, m_studyNames[i]);
+		break;
+	case 2: // RSI
+		// TODO
+		break;
+	default:
+		break;
+	}
+}
+
+size_t Chart::GetAxes(std::wstring const & name)
+{
+	size_t i_axes = 0;
+	while (i_axes < m_activeAxes.size() && m_activeAxes[i_axes])
+	{
+		if (m_auxAxes[i_axes]->GetName() == name) return i_axes;
+		else i_axes++;
+	}
+	if (i_axes == m_activeAxes.size())
+	{
+		if (i_axes > 3) throw ws_exception(L"Too many auxillary axes");
+		m_auxAxes.push_back(new Axes(m_hwnd, m_d2, this));
+		m_activeAxes.push_back(false);
+	}
+	return i_axes;
+}
+
+float Chart::GetAuxAxisTop(size_t i)
+{
+	size_t nActive = 0;
+	for (bool active : m_activeAxes) if (active) nActive++;
+	if (i > nActive) i = nActive;
+
+	float full_height = m_dipRect.bottom - m_menuRect.bottom;
+	float height_from_bottom = m_auxAxisHeightFrac * (nActive - i) * full_height;
+	return m_dipRect.bottom - height_from_bottom;
+}
+

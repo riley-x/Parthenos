@@ -347,8 +347,8 @@ void Axes::Line(std::vector<date_t> const & dates, std::vector<double> const & y
 			return OutputMessage(L"Error: Dates don't line up\n");
 
 		// sets x values to [0, n-1]
-		double xmin = 0;
-		double xmax = static_cast<double>(n - 1);
+		double xmin = -0.5; // extra pad
+		double xmax = n - 0.5;
 		double ymin = ydata[0];
 		double ymax = ydata[0];
 		for (size_t i = 0; i < n; i++)
