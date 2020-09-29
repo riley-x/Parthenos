@@ -725,21 +725,21 @@ void Chart::DrawStudy(size_t i)
 {
 	switch (i)
 	{
-	case 0: // SMA20
+	case 0: // SMA50
 	{
 		size_t iStart = FindDateOHLC(m_ohlc, m_startDate);
 		size_t iEnd = FindDateOHLC(m_ohlc, m_endDate); // Inclusive
-		auto data = ::SMA(m_ohlc, iStart, iEnd + 1, 20);
+		auto data = ::SMA(m_ohlc, iStart, iEnd + 1, 50);
 
 		LineProps props = { m_studyColors[i], 1.0f, nullptr };
 		m_axes.Line(data.first, data.second, props, Axes::GG_SEC, m_studyNames[i]);
 	}
 	break;
-	case 1: // SMA100
+	case 1: // SMA200
 	{
 		size_t iStart = FindDateOHLC(m_ohlc, m_startDate);
 		size_t iEnd = FindDateOHLC(m_ohlc, m_endDate); // Inclusive
-		auto data = ::SMA(m_ohlc, iStart, iEnd + 1, 100);
+		auto data = ::SMA(m_ohlc, iStart, iEnd + 1, 200);
 
 		LineProps props = { m_studyColors[i], 1.0f, nullptr };
 		m_axes.Line(data.first, data.second, props, Axes::GG_SEC, m_studyNames[i]);
