@@ -102,7 +102,7 @@ void Axes::SetSize(D2D1_RECT_F dipRect)
 	m_axesRect.left = dipRect.left;
 	m_axesRect.top = dipRect.top + m_titlePad;
 	m_axesRect.right = dipRect.right - m_ylabelWidth - pad;
-	m_axesRect.bottom = (m_drawxLabels) ? dipRect.bottom - m_labelHeight - pad : dipRect.bottom;
+	m_axesRect.bottom = (m_drawXLabels) ? dipRect.bottom - m_labelHeight - pad : dipRect.bottom;
 
 	m_dataRect.left = m_axesRect.left + m_dataPad;
 	m_dataRect.top = m_axesRect.top + m_dataPad;
@@ -112,6 +112,7 @@ void Axes::SetSize(D2D1_RECT_F dipRect)
 	m_rect_xdiff = m_dataRect.right - m_dataRect.left;
 	m_rect_ydiff = m_dataRect.top - m_dataRect.bottom; // flip so origin is bottom-left
 }
+
 
 void Axes::Paint(D2D1_RECT_F updateRect)
 {
@@ -510,7 +511,7 @@ void Axes::Rescale()
 	m_data_ydiff = m_dataRange[static_cast<int>(dataRange::ymax)]
 		- m_dataRange[static_cast<int>(dataRange::ymin)];
 
-	if (m_drawxLabels) CalculateXTicks();
+	if (m_drawXLabels || m_drawXGridLines) CalculateXTicks();
 	CalculateYTicks();
 
 	for (size_t i = 0; i < nGraphGroups; i++) m_imade[i] = 0; // remake everything
@@ -604,8 +605,14 @@ void Axes::CalculateXTicks_User()
 	}
 }
 
-// Gets human-friendly yticks
 void Axes::CalculateYTicks()
+{
+	if (!m_userYGridLines.empty()) CalculateYTicks_User();
+	else CalculateYTicks_Auto();
+}
+
+// Gets human-friendly yticks
+void Axes::CalculateYTicks_Auto()
 {
 	int nmax = static_cast<int>(-m_rect_ydiff / (2.0f * m_labelHeight));
 	if (nmax <= 0) return;
@@ -681,6 +688,24 @@ void Axes::CalculateYTicks()
 	}
 }
 
+void Axes::CalculateYTicks_User()
+{
+	m_yTicks.clear();
+	m_grid_lines[1].clear();
+
+	for (double y : m_userYGridLines)
+	{
+		float ydip = YtoDIP(y);
+		wchar_t buffer[20] = {};
+		swprintf_s(buffer, _countof(buffer), L"%.2lf", y);
+		m_yTicks.push_back({ ydip, y, std::wstring(buffer) });
+		m_grid_lines[1].push_back({ 
+			D2D1::Point2F(m_axesRect.left, ydip),
+			D2D1::Point2F(m_axesRect.right, ydip) 
+		});
+	}
+}
+
 // Creates the cached image containing graph groups 0 and 1, the title, 
 // gridlines, and axes labels.
 // Does not contain graph group 2, the actual axes lines (need to be painted on top), 
@@ -720,9 +745,10 @@ void Axes::CreateCachedImage()
 
 	// Grid lines
 	m_d2.pBrush->SetColor(Colors::DULL_LINE);
-	for (auto line : m_grid_lines[0]) // x lines
+	if (m_drawXGridLines) // x lines
 	{
-		m_d2.pD2DContext->DrawLine(line.start, line.end, m_d2.pBrush, 0.8f, m_d2.pDashedStyle);
+		for (auto line : m_grid_lines[0]) 
+			m_d2.pD2DContext->DrawLine(line.start, line.end, m_d2.pBrush, 0.8f, m_d2.pDashedStyle);
 	}
 	for (auto line : m_grid_lines[1]) // y lines
 	{
@@ -745,7 +771,7 @@ void Axes::CreateCachedImage()
 	}
 
 	// Labels
-	if (m_drawxLabels)
+	if (m_drawXLabels)
 	{
 		for (auto tick : m_xTicks)
 		{

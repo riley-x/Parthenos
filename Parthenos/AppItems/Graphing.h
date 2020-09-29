@@ -191,11 +191,13 @@ public:
 	}
 	inline void SetXAxisPos(double y) { m_xAxisPos = y; }
 	inline void SetYAxisPos(double x) { m_yAxisPos = x; }
-	inline void SetXLabels() { m_drawxLabels = false; } // no labels == no draw
+	inline void DrawXLabels(bool draw) { m_drawXLabels = draw; } // no labels == no draw
 	inline void SetXLabels(std::vector<std::wstring> const & labels, bool draw = true) 
 	{
-		m_userXLabels = labels; m_drawxLabels = draw;
+		m_userXLabels = labels; m_drawXLabels = draw;
 	}
+	// Set empty vector to clear
+	inline void SetYGridLines(std::vector<double> ticks) { m_userYGridLines = ticks; }
 
 	void SetTitle(std::wstring const & title, D2Objects::Formats format = D2Objects::Formats::Segoe18);
 	
@@ -232,7 +234,8 @@ private:
 	bool	m_ismade				= true;  // check to make sure everything is made
 	size_t	m_imade[nGraphGroups]	= {};	 // index into m_graphObjects. Objects < i are already made
 	bool	m_rescaled				= false; // data ranges changed, so need to call Rescale()
-	bool	m_drawxLabels			= true;  // set before SetSize()
+	bool	m_drawXLabels			= true;  // set before SetSize()
+	bool	m_drawXGridLines		= true;  // set before SetSize()
 	bool	m_select				= true; // allow mouse to select region
 	int		m_selectStart			= -1;	 // selection start point in terms of x-position [0, n)
 	int		m_selectEnd;
@@ -261,6 +264,7 @@ private:
 	std::wstring				m_title;
 	D2Objects::Formats			m_titleFormat;
 	std::vector<date_t>			m_dates; // actual date values (plotted as x = [0, n-1)) for making x labels
+	std::vector<double>			m_userYGridLines; // manual placement of grid lines
 	std::vector<std::wstring>	m_userXLabels; // if not dates on x axis, user supplies labels (length n)
 	IDWriteTextLayout			*m_hoverLayout = NULL; // layout for hover tooltip text. Remake each OnMouseMove
 
@@ -295,6 +299,8 @@ private:
 	void CalculateXTicks_Dates();
 	void CalculateXTicks_User();
 	void CalculateYTicks();
+	void CalculateYTicks_Auto();
+	void CalculateYTicks_User();
 	void CreateCachedImage();
 	void CreateTriangleMarker(ComPtr<ID2D1PathGeometry> & geometry, int parity);
 	void CreateXMarker();

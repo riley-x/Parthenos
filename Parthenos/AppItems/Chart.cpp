@@ -95,8 +95,11 @@ void Chart::SetSize(D2D1_RECT_F dipRect)
 	m_menuRect = m_dipRect;
 	m_menuRect.bottom = DPIScale::SnapToPixelY(m_menuRect.top + m_menuHeight);
 
+	m_graphRect = m_dipRect;
+	m_graphRect.top = m_menuRect.bottom;
+
 	// Axes
-	ResizeAxes();
+	UpdateAxes();
 
 	// Menu items
 	if (!same_left || !same_top)
@@ -205,29 +208,6 @@ void Chart::SetSize(D2D1_RECT_F dipRect)
 	}
 }
 
-void Chart::ResizeAxes()
-{
-	// Main Axes
-	m_axes.SetSize(D2D1::RectF(
-		m_dipRect.left,
-		m_menuRect.bottom,
-		m_dipRect.right,
-		GetAuxAxisTop(0)
-	));
-
-	// Auxillary Axes
-	for (size_t i = 0; i < m_auxAxes.size(); i++)
-	{
-		if (!m_activeAxes[i]) break;
-		m_auxAxes[i]->SetSize(D2D1::RectF(
-			m_dipRect.left,
-			GetAuxAxisTop(i),
-			m_dipRect.right,
-			GetAuxAxisTop(i + 1)
-		));
-	}
-}
-
 void Chart::Paint(D2D1_RECT_F updateRect)
 {
 	if (!overlapRect(m_dipRect, updateRect)) return;
@@ -283,6 +263,10 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 	// Axes
 	if (updateRect.bottom > m_menuRect.bottom)
 	{
+		// Blank the background first
+		m_d2.pBrush->SetColor(Colors::AXES_BACKGROUND);
+		m_d2.pD2DContext->FillRectangle(m_graphRect, m_d2.pBrush);
+
 		m_axes.Paint(updateRect);
 		for (size_t i = 0; i < m_auxAxes.size(); i++)
 			if (m_activeAxes[i]) m_auxAxes[i]->Paint(updateRect);
@@ -755,21 +739,21 @@ void Chart::DrawStudy(size_t i)
 		size_t iEnd = FindDateOHLC(m_ohlc, m_endDate); // Inclusive
 		auto data = ::RSI(m_ohlc, iStart, iEnd + 1);
 
-		LineProps props = { m_studyColors[i], 1.0f, nullptr };
-
 		size_t i_axes = GetAxes(L"RSI");
 		if (!m_activeAxes[i_axes])
 		{
 			m_auxAxes[i_axes]->SetName(L"RSI");
 			m_activeAxes[i_axes] = true;
-			ResizeAxes();
+			UpdateAxes();
 		}
 		else
 		{
 			m_auxAxes[i_axes]->Clear();
 		}
 
-		m_auxAxes[i_axes]->Line(data.first, data.second, props, Axes::GG_PRI);
+		LineProps rsi_props = { m_studyColors[i], 1.0f, nullptr };
+		m_auxAxes[i_axes]->Line(data.first, data.second, rsi_props, Axes::GG_PRI);
+		m_auxAxes[i_axes]->SetYGridLines({ 30, 70 });
 	}
 	break;
 	default:
@@ -792,6 +776,44 @@ void Chart::RemoveStudy(size_t i)
 		break;
 	}
 }
+
+
+void Chart::UpdateAxes()
+{
+	// Select last aux axes to draw x labels
+	bool need_draw = true;
+	for (size_t i = m_auxAxes.size(); i-- > 0;)
+	{
+		if (need_draw && m_activeAxes[i])
+		{
+			m_auxAxes[i]->DrawXLabels(true);
+			need_draw = false;
+		}
+		else m_auxAxes[i]->DrawXLabels(false);
+	}
+	m_axes.DrawXLabels(need_draw);
+
+	// Main Axes
+	m_axes.SetSize(D2D1::RectF(
+		m_dipRect.left,
+		m_menuRect.bottom,
+		m_dipRect.right,
+		GetAuxAxisTop(0)
+	));
+
+	// Auxillary Axes
+	for (size_t i = 0; i < m_auxAxes.size(); i++)
+	{
+		if (!m_activeAxes[i]) break;
+		m_auxAxes[i]->SetSize(D2D1::RectF(
+			m_dipRect.left,
+			GetAuxAxisTop(i),
+			m_dipRect.right,
+			GetAuxAxisTop(i + 1)
+		));
+	}
+}
+
 
 size_t Chart::GetAxes(std::wstring const & name)
 {

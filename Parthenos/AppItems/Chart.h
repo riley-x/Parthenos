@@ -79,10 +79,10 @@ private:
 
 	// Painting
 	D2D1_RECT_F			m_menuRect = {};
+	D2D1_RECT_F			m_graphRect = {};
 	std::vector<float>	m_divisions;
 
 	// Helper functions
-	void ResizeAxes();
 	void Load(std::wstring ticker, int range = 1260); // # datapoints in days. default to 5 years 
 	void DrawMainChart(MainChartType type, Timeframe timeframe);
 	void DrawCurrentState();
@@ -96,6 +96,7 @@ private:
 	void RemoveStudy(size_t i);
 
 	// Utility functions
+	void UpdateAxes(); // Updates all axes, i.e. add new aux axes. Resizes and adjusts x labels.
 	size_t GetAxes(std::wstring const & name); // Finds the matching aux axes, or returns the next unused one, or creates a new one
 	float GetAuxAxisTop(size_t i); // Returns the dip position of the top of aux axis i.
 
