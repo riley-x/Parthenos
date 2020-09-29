@@ -183,7 +183,9 @@ public:
 		return data_ymin + ((val - m_dataRect.bottom) / m_rect_ydiff) * m_data_ydiff;
 	}
 
+	inline HoverStyle GetHoverStyle() const { return m_hoverStyle; }
 	inline void SetHoverStyle(HoverStyle sty) { m_hoverStyle = sty; }
+
 	inline void SetLabelSize(float ylabelWidth, float labelHeight) 
 	{
 		m_ylabelWidth = ylabelWidth;

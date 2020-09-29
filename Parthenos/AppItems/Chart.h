@@ -97,7 +97,9 @@ private:
 
 	// Utility functions
 	void UpdateAxes(); // Updates all axes, i.e. add new aux axes. Resizes and adjusts x labels.
-	size_t GetAxes(std::wstring const & name); // Finds the matching aux axes, or returns the next unused one, or creates a new one
+	size_t GetAxes(std::wstring const & name, bool create); // Finds the matching aux axes
+		// Will return the next unused one if no matching.
+		// Will create a new axes if no unused ones, or else returns m_auxAxes.size().
 	float GetAuxAxisTop(size_t i); // Returns the dip position of the top of aux axis i.
 
 

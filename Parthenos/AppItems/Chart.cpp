@@ -320,11 +320,23 @@ bool Chart::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 		else if (m_mouseTypeButtons.OnLButtonDown(cursor, name, handeled))
 		{
 			if (name == L"Arrow")
+			{
 				m_axes.SetHoverStyle(Axes::HoverStyle::none);
+				for (size_t i = 0; i < m_auxAxes.size(); i++)
+					m_auxAxes[i]->SetHoverStyle(Axes::HoverStyle::none); // Do set for inactive ones as well
+			}
 			else if (name == L"Snap")
+			{
 				m_axes.SetHoverStyle(Axes::HoverStyle::snap);
+				for (size_t i = 0; i < m_auxAxes.size(); i++)
+					m_auxAxes[i]->SetHoverStyle(Axes::HoverStyle::snap);
+			}
 			else if (name == L"Cross")
+			{
 				m_axes.SetHoverStyle(Axes::HoverStyle::crosshairs);
+				for (size_t i = 0; i < m_auxAxes.size(); i++)
+					m_auxAxes[i]->SetHoverStyle(Axes::HoverStyle::crosshairs);
+			}
 			::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 			handeled = true;
 		}
@@ -739,19 +751,16 @@ void Chart::DrawStudy(size_t i)
 		size_t iEnd = FindDateOHLC(m_ohlc, m_endDate); // Inclusive
 		auto data = ::RSI(m_ohlc, iStart, iEnd + 1);
 
-		size_t i_axes = GetAxes(L"RSI");
+		size_t i_axes = GetAxes(L"RSI", true);
 		if (!m_activeAxes[i_axes])
 		{
 			m_auxAxes[i_axes]->SetName(L"RSI");
 			m_activeAxes[i_axes] = true;
 			UpdateAxes();
 		}
-		else
-		{
-			m_auxAxes[i_axes]->Clear();
-		}
 
 		LineProps rsi_props = { m_studyColors[i], 1.0f, nullptr };
+		m_auxAxes[i_axes]->Clear();
 		m_auxAxes[i_axes]->Line(data.first, data.second, rsi_props, Axes::GG_PRI);
 		m_auxAxes[i_axes]->SetYGridLines({ 30, 70 });
 	}
@@ -770,8 +779,15 @@ void Chart::RemoveStudy(size_t i)
 		m_axes.Remove(Axes::GG_SEC, m_studyNames[i]);
 		break;
 	case 2: // RSI
-		// TODO
+	{
+		size_t i_axes = GetAxes(L"RSI", false);
+		if (i_axes < m_auxAxes.size() && m_activeAxes[i_axes])
+		{
+			m_activeAxes[i_axes] = false;
+			UpdateAxes();
+		}
 		break;
+	}
 	default:
 		break;
 	}
@@ -815,7 +831,7 @@ void Chart::UpdateAxes()
 }
 
 
-size_t Chart::GetAxes(std::wstring const & name)
+size_t Chart::GetAxes(std::wstring const & name, bool create)
 {
 	size_t i_axes = 0;
 	while (i_axes < m_activeAxes.size() && m_activeAxes[i_axes])
@@ -823,10 +839,11 @@ size_t Chart::GetAxes(std::wstring const & name)
 		if (m_auxAxes[i_axes]->GetName() == name) return i_axes;
 		else i_axes++;
 	}
-	if (i_axes == m_activeAxes.size())
+	if (create && i_axes == m_activeAxes.size())
 	{
 		if (i_axes > 3) throw ws_exception(L"Too many auxillary axes");
 		m_auxAxes.push_back(new Axes(m_hwnd, m_d2, this));
+		m_auxAxes.back()->SetHoverStyle(m_axes.GetHoverStyle());
 		m_activeAxes.push_back(false);
 	}
 	return i_axes;
