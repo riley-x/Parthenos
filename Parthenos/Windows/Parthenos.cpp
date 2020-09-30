@@ -712,7 +712,7 @@ void Parthenos::InitItems()
 		{60.0f, WatchlistColumn::ReturnsT, L"%.2lf"},
 		{60.0f, WatchlistColumn::ReturnsP, L"%.2lf"},
 		{60.0f, WatchlistColumn::Realized, L"%.2lf"},
-		{60.0f, WatchlistColumn::Div, L"%.2lf"},
+		{60.0f, WatchlistColumn::EarningsDate, L""},
 		{60.0f, WatchlistColumn::EffectiveYield, L"%.2lf"},
 		{60.0f, WatchlistColumn::ExDiv, L""},
 	};
