@@ -300,7 +300,7 @@ void Axes::Candlestick(std::vector<OHLC> const & ohlc, GraphGroup group)
 		{
 			if (get_dates) m_dates.push_back(ohlc[i].date);
 			if (ohlc[i].low < low_min) low_min = ohlc[i].low;
-			else if (ohlc[i].high > high_max) high_max = ohlc[i].high;
+			if (ohlc[i].high > high_max) high_max = ohlc[i].high;
 		}
 
 		m_rescaled = setDataRange(xmin, xmax, low_min, high_max) || m_rescaled;
