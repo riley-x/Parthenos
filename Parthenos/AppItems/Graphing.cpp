@@ -34,7 +34,7 @@ void Axes::Clear()
 	m_userXLabels.clear();
 	m_grid_lines[0].clear();
 	m_grid_lines[1].clear();
-	m_hoverOn = -1;
+	m_hoverTextX = -1;
 	SafeRelease(&m_hoverLayout);
 
 	m_ismade = true;
@@ -49,7 +49,7 @@ void Axes::Clear(GraphGroup group)
 	{
 		for (int i = 0; i < 4; i++) m_dataRange[i] = nan("");
 		m_dates.clear();
-		m_hoverOn = -1;
+		m_hoverTextX = -1;
 		m_nPoints = 0;
 	}
 
@@ -145,21 +145,21 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 		graph->Paint(m_d2);
 
 	// Crosshairs
-	if (m_hoverOn >= 0)
+	m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
+	if (m_hoverLoc.x >= 0 && (m_hoverStyle == HoverStyle::crosshairs // draw vertical line
+						   || m_hoverStyle == HoverStyle::snap))
 	{
-		m_d2.pBrush->SetColor(Colors::MEDIUM_LINE);
-		if (m_hoverStyle == HoverStyle::crosshairs) // draw horizontal line
-		{
-			m_d2.pD2DContext->DrawLine(
-				D2D1::Point2F(m_axesRect.left, m_hoverLoc.y),
-				D2D1::Point2F(m_axesRect.right, m_hoverLoc.y),
-				m_d2.pBrush, 1.0f, m_d2.pDashedStyle
-			);
-		}
-		// draw vertical line
 		m_d2.pD2DContext->DrawLine(
 			D2D1::Point2F(m_hoverLoc.x, m_axesRect.top),
 			D2D1::Point2F(m_hoverLoc.x, m_axesRect.bottom),
+			m_d2.pBrush, 1.0f, m_d2.pDashedStyle
+		);
+	}
+	if (m_hoverLoc.y >= 0 && m_hoverStyle == HoverStyle::crosshairs) // draw horizontal line
+	{
+		m_d2.pD2DContext->DrawLine(
+			D2D1::Point2F(m_axesRect.left, m_hoverLoc.y),
+			D2D1::Point2F(m_axesRect.right, m_hoverLoc.y),
 			m_d2.pBrush, 1.0f, m_d2.pDashedStyle
 		);
 	}
@@ -188,7 +188,7 @@ void Axes::Paint(D2D1_RECT_F updateRect)
 	}
 
 	// Hover text
-	if (m_hoverOn >= 0)
+	if (m_hoverTextX >= 0)
 	{
 		m_d2.pBrush->SetColor(Colors::MENU_BACKGROUND);
 		m_d2.pD2DContext->FillRectangle(m_hoverRect, m_d2.pBrush);
@@ -205,7 +205,7 @@ bool Axes::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 {
 	bool invalidate = false;
 
-	// Get x position
+	// Get snapped x position
 	int x = static_cast<int>(round(DIPtoX(cursor.x))); // all x values are [0, n)
 	if (x < 0) x = 0; // occurs from padding so that xmin < 0
 	else if (x > (int)m_nPoints - 1) x = (int)m_nPoints - 1;
@@ -218,15 +218,8 @@ bool Axes::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 	}
 
 	// Hover text
-	if (handeled || m_nPoints == 0 || m_hoverStyle == HoverStyle::none || !inRect(cursor, m_axesRect))
-	{
-		if (m_hoverOn >= 0)
-		{
-			m_hoverOn = -1;
-			invalidate = true;
-		}
-	}
-	else
+	bool process = !handeled && m_nPoints != 0 && m_hoverStyle != HoverStyle::none;
+	if (process && inRect(cursor, m_axesRect))
 	{
 		m_hoverLoc = cursor;
 		m_hoverLoc.x = XtoDIP(x);
@@ -234,7 +227,30 @@ bool Axes::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 		handeled = true;
 		invalidate = true;
 	}
-	
+	else if (process && InMouseWatch(cursor))
+	{
+		if (inRectX(cursor.x, m_axesRect)) // necessarily not in y, or else in(m_axesRect) barring overlapping
+		{
+			m_hoverLoc = { XtoDIP(x), -1 };
+		}
+		// else if (inRectY(cursor.y, m_axesRect))
+
+		if (m_hoverTextX >= 0)
+		{
+			m_hoverTextX = -1;
+			invalidate = true;
+		}
+	}
+	else 
+	{
+		m_hoverLoc = { -1, -1 };
+		if (m_hoverTextX >= 0)
+		{
+			m_hoverTextX = -1;
+			invalidate = true;
+		}
+	}
+
 	if (invalidate) ::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 	return handeled;
 }
@@ -883,10 +899,10 @@ void Axes::CreateXMarker()
 
 void Axes::CreateHoverText(size_t xind, D2D1_POINT_2F cursor)
 {
-	if (m_hoverOn != (int)xind || m_hoverStyle == HoverStyle::crosshairs)
+	if (m_hoverTextX != (int)xind || m_hoverStyle == HoverStyle::crosshairs)
 	{
 		// Calculate new text and layout
-		m_hoverOn = (int)xind;
+		m_hoverTextX = (int)xind;
 		std::wstring xlabel, ylabel;
 
 		// Get x label
@@ -938,6 +954,13 @@ void Axes::CreateHoverText(size_t xind, D2D1_POINT_2F cursor)
 		}
 	}
 
+}
+
+bool Axes::InMouseWatch(D2D1_POINT_2F cursor)
+{
+	for (const Axes* a : m_mouseWatch)
+		if (inRect(cursor, a->GetAxesRect())) return true;
+	return false;
 }
 
 ///////////////////////////////////////////////////////////

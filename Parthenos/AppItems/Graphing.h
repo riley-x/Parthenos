@@ -145,12 +145,16 @@ public:
 	bool OnLButtonDown(D2D1_POINT_2F cursor, bool handeled);
 	void OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam);
 
+	///////////////////////////////////////////////////////////////////////////
 	// Interface
+	///////////////////////////////////////////////////////////////////////////
+	
+	// Clear and remove
 	void Clear();
 	void Clear(GraphGroup group);
 	void Remove(GraphGroup group, std::wstring name);
 
-	// Data pointers to these functions should remain valid until the next Clear() call
+	// Plot functions (add a Graph)
 	void Candlestick(std::vector<OHLC> const & ohlc, GraphGroup group = GG_PRI);
 	void Line(std::vector<date_t> const & dates, std::vector<double> const & ydata,
 		LineProps props = {}, GraphGroup group = GG_PRI, std::wstring name = L""
@@ -160,6 +164,41 @@ public:
 		GraphGroup group = GG_PRI, size_t offset = 0 // offset of first point from x_min of primary graph(s)
 	);
 	void DatePoints(std::vector<PointProps> points, GraphGroup group, std::wstring name = L"");
+
+	///////////////////////////////////////////////////////////////////////////
+	// Behavior and Appearance
+	///////////////////////////////////////////////////////////////////////////
+
+	inline void SetXAxisPos(double y) { m_xAxisPos = y; }
+	inline void SetYAxisPos(double x) { m_yAxisPos = x; }
+	inline void SetYGridLines(std::vector<double> ticks) { m_userYGridLines = ticks; } // set empty vector for auto
+
+	void SetTitle(std::wstring const& title, D2Objects::Formats format = D2Objects::Formats::Segoe18);
+
+	inline void SetLabelSize(float ylabelWidth, float labelHeight)
+	{
+		m_ylabelWidth = ylabelWidth;
+		m_labelHeight = labelHeight;
+	}
+	inline void DrawXLabels(bool draw) { m_drawXLabels = draw; }
+	inline void SetXLabels(std::vector<std::wstring> const& labels, bool draw = true)
+	{
+		m_userXLabels = labels; m_drawXLabels = draw;
+	}
+
+	void SetMouseWatch(std::vector<const Axes*> const& partners) { m_mouseWatch = partners; }
+			// Will watch for mouse activity in partners->getAxesRect(), presumably for same-x axes partners.
+			// Will update drawing for things like hover and selection along the same x positions.
+			// If in(other->rect) && !in(m_dipRect), will not i.e. send messages or return handled=true on handlers.
+			// 'this' can be in partners. Make sure to update partners appropriately if they are deleted.
+	void ResetMouseWatch() { m_mouseWatch.clear(); }
+
+	inline HoverStyle GetHoverStyle() const { return m_hoverStyle; }
+	inline void SetHoverStyle(HoverStyle sty) { m_hoverStyle = sty; }
+
+	///////////////////////////////////////////////////////////////////////////
+	// Utility
+	///////////////////////////////////////////////////////////////////////////
 
 	// Convert between an x/y value and the dip coordinate (relative to window)
 	inline float XtoDIP(double val) const
@@ -183,26 +222,7 @@ public:
 		return data_ymin + ((val - m_dataRect.bottom) / m_rect_ydiff) * m_data_ydiff;
 	}
 
-	inline HoverStyle GetHoverStyle() const { return m_hoverStyle; }
-	inline void SetHoverStyle(HoverStyle sty) { m_hoverStyle = sty; }
-
-	inline void SetLabelSize(float ylabelWidth, float labelHeight) 
-	{
-		m_ylabelWidth = ylabelWidth;
-		m_labelHeight = labelHeight;
-	}
-	inline void SetXAxisPos(double y) { m_xAxisPos = y; }
-	inline void SetYAxisPos(double x) { m_yAxisPos = x; }
-	inline void DrawXLabels(bool draw) { m_drawXLabels = draw; } // no labels == no draw
-	inline void SetXLabels(std::vector<std::wstring> const & labels, bool draw = true) 
-	{
-		m_userXLabels = labels; m_drawXLabels = draw;
-	}
-	// Set empty vector to clear
-	inline void SetYGridLines(std::vector<double> ticks) { m_userYGridLines = ticks; }
-
-	void SetTitle(std::wstring const & title, D2Objects::Formats format = D2Objects::Formats::Segoe18);
-	
+	// Simple getters and setters
 	inline float GetDataRectXDiff() const { return m_rect_xdiff; }
 	inline D2D1_RECT_F GetAxesRect() const { return m_axesRect; }
 	inline float GetDataPad() const { return m_dataPad; }
@@ -217,11 +237,11 @@ private:
 	std::wstring m_name; // identifier
 
 	// Objects
-	std::vector<Graph*>		m_graphObjects[nGraphGroups]; // individual graphs to plot. these need to be remade when the size of the window changes.
-	ComPtr<ID2D1Bitmap1>	m_primaryCache = nullptr; // caches graph groups 0 and 1, grids, labels, etc.
-	ComPtr<ID2D1PathGeometry> m_upMarker = nullptr;
-	ComPtr<ID2D1PathGeometry> m_dnMarker = nullptr;
-	ComPtr<ID2D1PathGeometry> m_xxMarker = nullptr;
+	std::vector<Graph*>			m_graphObjects[nGraphGroups]; // individual graphs to plot. these need to be remade when the size of the window changes.
+	ComPtr<ID2D1Bitmap1>		m_primaryCache = nullptr; // caches graph groups 0 and 1, grids, labels, etc.
+	ComPtr<ID2D1PathGeometry>	m_upMarker = nullptr;
+	ComPtr<ID2D1PathGeometry>	m_dnMarker = nullptr;
+	ComPtr<ID2D1PathGeometry>	m_xxMarker = nullptr;
 
 	// Parameters
 	float m_ylabelWidth = 40.0f; // width of y tick labels in DIPs.
@@ -240,9 +260,10 @@ private:
 	bool	m_drawXGridLines		= true;  // set before SetSize()
 	bool	m_select				= true; // allow mouse to select region
 	int		m_selectStart			= -1;	 // selection start point in terms of x-position [0, n)
-	int		m_selectEnd;
-	int		m_hoverOn				= -1;	 // current mouse position in terms of x-position [0, n), or -1 for no hover
+	int		m_selectEnd				= -1;
+	int		m_hoverTextX			= -1;	 // data point for hover text to display, [0, n), or -1 for no hover text
 	HoverStyle	m_hoverStyle		= HoverStyle::none;
+	std::vector<const Axes*> m_mouseWatch; // See SetMouseWatch(). Axes pointers not owned.
 
 	// Data
 	size_t m_nPoints; // x values are always plotted as [0, n-1]
@@ -307,5 +328,7 @@ private:
 	void CreateTriangleMarker(ComPtr<ID2D1PathGeometry> & geometry, int parity);
 	void CreateXMarker();
 	void CreateHoverText(size_t xind, D2D1_POINT_2F cursor);
+
+	bool InMouseWatch(D2D1_POINT_2F cursor); // If cursor in any of the mouse watch axes rects.
 };
 

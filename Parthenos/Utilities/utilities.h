@@ -143,6 +143,10 @@ inline bool inRect(D2D1_POINT_2F cursor, D2D1_RECT_F rect)
 		cursor.y >= rect.top &&
 		cursor.y <= rect.bottom;
 }
+inline bool inRectX(float x, D2D1_RECT_F rect)
+{
+	return x >= rect.left && x <= rect.right;
+}
 
 // When invalidating, converts to pixels then back to DIPs -> updateRect has smaller values
 // than when invalidated.

@@ -280,12 +280,14 @@ bool Chart::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 {
 	handeled = m_timeframeButton.OnMouseMove(cursor, wParam, handeled) || handeled;
 	handeled = m_tickerBox.OnMouseMove(cursor, wParam, handeled) || handeled;
-	handeled = m_axes.OnMouseMove(cursor, wParam, handeled) || handeled;
+
+	// Need to separate axes handled because all axes need to handle hover display.
+	bool axes_handled = m_axes.OnMouseMove(cursor, wParam, handeled);
 	for (size_t i = 0; i < m_auxAxes.size(); i++)
-		if (m_activeAxes[i]) handeled = m_auxAxes[i]->OnMouseMove(cursor, wParam, handeled) || handeled;
+		if (m_activeAxes[i]) axes_handled = m_auxAxes[i]->OnMouseMove(cursor, wParam, handeled) || axes_handled;
 	
 	//ProcessCTPMessages(); // not needed
-	return handeled;
+	return handeled || axes_handled;
 }
 
 bool Chart::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
@@ -360,7 +362,7 @@ bool Chart::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 				if (m_studyButtons[i]->OnLButtonDown(cursor, handeled))
 				{
 					m_studyActive[i] = !m_studyActive[i];
-					if (m_studyActive[i]) DrawStudy(i);
+					if (m_studyActive[i]) AddStudy(i);
 					else RemoveStudy(i);
 					::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
 					handeled = true;
@@ -562,7 +564,7 @@ void Chart::DrawCurrentState()
 		if (m_markerActive[i]) DrawMarker(static_cast<Markers>(i));
 
 	for (size_t i = 0; i < m_nStudies; i++)
-		if (m_studyActive[i]) DrawStudy(i);
+		if (m_studyActive[i]) AddStudy(i);
 }
 
 // Finds the starting date in OHLC data given 'timeframe', returning the iterator in 'it'.
@@ -721,7 +723,7 @@ void Chart::DrawHistory()
 
 
 // This function is not robust to re-ordering the studies. Use string identifier instead.
-void Chart::DrawStudy(size_t i)
+void Chart::AddStudy(size_t i)
 {
 	switch (i)
 	{
@@ -794,6 +796,7 @@ void Chart::RemoveStudy(size_t i)
 }
 
 
+// Resizes, sets bottom axes to draw x labels, sets mouse watch
 void Chart::UpdateAxes()
 {
 	// Select last aux axes to draw x labels
@@ -809,6 +812,13 @@ void Chart::UpdateAxes()
 	}
 	m_axes.DrawXLabels(need_draw);
 
+	// Set Mouse Watch
+	std::vector<const Axes*> activeAxes;
+	activeAxes.push_back(&m_axes);
+	for (size_t i = 0; i < m_auxAxes.size(); i++) if (m_activeAxes[i]) activeAxes.push_back(m_auxAxes[i]);
+	m_axes.SetMouseWatch(activeAxes);
+	for (size_t i = 0; i < m_auxAxes.size(); i++) if (m_activeAxes[i]) m_auxAxes[i]->SetMouseWatch(activeAxes);
+
 	// Main Axes
 	m_axes.SetSize(D2D1::RectF(
 		m_dipRect.left,
@@ -820,7 +830,7 @@ void Chart::UpdateAxes()
 	// Auxillary Axes
 	for (size_t i = 0; i < m_auxAxes.size(); i++)
 	{
-		if (!m_activeAxes[i]) break;
+		if (!m_activeAxes[i]) continue;
 		m_auxAxes[i]->SetSize(D2D1::RectF(
 			m_dipRect.left,
 			GetAuxAxisTop(i),
@@ -833,20 +843,22 @@ void Chart::UpdateAxes()
 
 size_t Chart::GetAxes(std::wstring const & name, bool create)
 {
-	size_t i_axes = 0;
-	while (i_axes < m_activeAxes.size() && m_activeAxes[i_axes])
+	for (size_t i = 0; i < m_activeAxes.size(); i++)
 	{
-		if (m_auxAxes[i_axes]->GetName() == name) return i_axes;
-		else i_axes++;
+		if (m_activeAxes[i] && m_auxAxes[i]->GetName() == name) return i;
+		else if (!m_activeAxes[i]) return i;
 	}
-	if (create && i_axes == m_activeAxes.size())
+
+	if (create)
 	{
-		if (i_axes > 3) throw ws_exception(L"Too many auxillary axes");
+		if (m_activeAxes.size() >= 4) throw ws_exception(L"Too many auxillary axes");
 		m_auxAxes.push_back(new Axes(m_hwnd, m_d2, this));
 		m_auxAxes.back()->SetHoverStyle(m_axes.GetHoverStyle());
 		m_activeAxes.push_back(false);
+		return m_activeAxes.size() - 1;
 	}
-	return i_axes;
+
+	return m_activeAxes.size();
 }
 
 float Chart::GetAuxAxisTop(size_t i)

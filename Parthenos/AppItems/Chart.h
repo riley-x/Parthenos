@@ -92,7 +92,7 @@ private:
 	void Envelope(std::vector<OHLC>::iterator start, int n);
 	void DrawMarker(Markers i);
 	void DrawHistory();
-	void DrawStudy(size_t i);
+	void AddStudy(size_t i);
 	void RemoveStudy(size_t i);
 
 	// Utility functions
