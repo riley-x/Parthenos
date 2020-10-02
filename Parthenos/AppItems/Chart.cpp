@@ -741,12 +741,12 @@ void Chart::DrawHistory()
 // This function is not robust to re-ordering the studies. Use string identifier instead.
 void Chart::AddStudy(size_t i)
 {
+	size_t iStart = FindDateOHLC(m_ohlc, m_startDate);
+	size_t iEnd = FindDateOHLC(m_ohlc, m_endDate); // Inclusive
 	switch (i)
 	{
 	case 0: // SMA50
 	{
-		size_t iStart = FindDateOHLC(m_ohlc, m_startDate);
-		size_t iEnd = FindDateOHLC(m_ohlc, m_endDate); // Inclusive
 		auto data = ::SMA(m_ohlc, iStart, iEnd + 1, 50);
 
 		LineProps props = { m_studyColors[i], 1.0f, nullptr };
@@ -755,8 +755,6 @@ void Chart::AddStudy(size_t i)
 	break;
 	case 1: // SMA200
 	{
-		size_t iStart = FindDateOHLC(m_ohlc, m_startDate);
-		size_t iEnd = FindDateOHLC(m_ohlc, m_endDate); // Inclusive
 		auto data = ::SMA(m_ohlc, iStart, iEnd + 1, 200);
 
 		LineProps props = { m_studyColors[i], 1.0f, nullptr };
@@ -765,8 +763,6 @@ void Chart::AddStudy(size_t i)
 	break;
 	case 2: // RSI
 	{
-		size_t iStart = FindDateOHLC(m_ohlc, m_startDate);
-		size_t iEnd = FindDateOHLC(m_ohlc, m_endDate); // Inclusive
 		auto data = ::RSI(m_ohlc, iStart, iEnd + 1);
 
 		size_t i_axes = GetAxes(L"RSI", true);
@@ -783,6 +779,16 @@ void Chart::AddStudy(size_t i)
 		m_auxAxes[i_axes]->SetYGridLines({ 30, 70 });
 	}
 	break;
+	case 3: // Bollinger Bands
+	{
+		auto [dates, bbd, bbu] = ::BollingerBands(m_ohlc, iStart, iEnd + 1);
+
+		LineProps props = { m_studyColors[i], 0.5f, m_d2.pDashedStyle };
+		m_axes.Line(dates, bbd, props, Axes::GG_SEC, L"BBD");
+		m_axes.Line(dates, bbu, props, Axes::GG_SEC, L"BBU");
+
+		break;
+	}
 	default:
 		return;
 	}
@@ -806,6 +812,10 @@ void Chart::RemoveStudy(size_t i)
 		}
 		break;
 	}
+	case 3: // Bollinger Bands
+		m_axes.Remove(Axes::GG_SEC, L"BBD");
+		m_axes.Remove(Axes::GG_SEC, L"BBU");
+		break;
 	default:
 		break;
 	}

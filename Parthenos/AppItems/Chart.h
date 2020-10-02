@@ -40,16 +40,20 @@ private:
 	static const float	m_commandSize;
 	static const float	m_tickerBoxWidth;
 	static const float	m_timeframeWidth;
-	static const size_t	m_nStudies = 3;
+	static const size_t	m_nStudies = 4;
 
 	// Parameters
 	float				m_menuHeight	= 26.0f;
 	float				m_commandHPad	= 5.0f;
 	const std::wstring  m_markerNames[MARK_NMARKERS] = { L"H" };
-	const std::wstring	m_studyNames[m_nStudies] = { L"SMA50", L"SMA200", L"RSI" };
-	const float			m_studyWidths[m_nStudies] = { 50.0f, 60.0f, 35.0f }; // Manually picked since these don't change dynamically
-	const D2D1_COLOR_F	m_studyColors[m_nStudies] = { D2D1::ColorF(0x2777d9), D2D1::ColorF(0xc28030), D2D1::ColorF(0x6417c2) };
-		// Solid blue, dull orange, deep purple
+	const std::wstring	m_studyNames[m_nStudies] = { L"SMA50", L"SMA200", L"RSI", L"BB" };
+	const float			m_studyWidths[m_nStudies] = { 50.0f, 60.0f, 35.0f, 30.f }; // Manually picked since these don't change dynamically
+	const D2D1_COLOR_F	m_studyColors[m_nStudies] = { 
+		D2D1::ColorF(0x2777d9),  // Solid blue
+		D2D1::ColorF(0xc28030),  // dull orange
+		D2D1::ColorF(0x6417c2),  // deep purple
+		D2D1::ColorF(0x9574b5)	 // lilac
+	};
 	const float			m_auxAxisHeightFrac = 0.20f;
 
 

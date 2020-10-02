@@ -45,6 +45,7 @@ protected:
 public:
 	Graph(Axes *axes, size_t offset = 0) : m_axes(axes), m_offset(offset) {};
 	std::wstring m_name;
+	// TODO add Rescale() -- keeps data but changes what is visible
 
 	virtual void Make() = 0; // Calculate the D2 DIP objects to paint from given data
 	virtual void Paint(D2Objects const & d2) = 0;

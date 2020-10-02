@@ -90,3 +90,54 @@ std::pair<std::vector<date_t>, std::vector<double>> RSI(
 
 	return { dates, rsi };
 }
+
+std::tuple<std::vector<date_t>, std::vector<double>, std::vector<double>> BollingerBands(
+	std::vector<OHLC> const& ohlc, unsigned period, unsigned dev)
+{
+	return BollingerBands(ohlc, 0, ohlc.size(), period, dev);
+}
+
+inline static double stddev(std::vector<double> const& xs, double mean)
+{
+	if (xs.size() <= 1) return 0;
+	double sum = 0;
+	for (double x : xs) sum += (x - mean) * (x - mean);
+	return sqrt(sum / (xs.size() - 1));
+}
+
+std::tuple<std::vector<date_t>, std::vector<double>, std::vector<double>> BollingerBands(
+	std::vector<OHLC> const& ohlc, size_t iStart, size_t iEnd, unsigned period, unsigned dev)
+{
+	size_t accStart = (iStart > period) ? iStart - period : 0; // where to start accumulating
+
+	std::vector<date_t> dates(iEnd - iStart);
+	std::vector<double> bbd(iEnd - iStart);
+	std::vector<double> bbu(iEnd - iStart);
+	
+	std::vector<double> window;
+	size_t i_next = 0; // index in window to update next
+	double sum = 0; // sum of typical price in window
+
+	for (size_t i = accStart; i < iEnd; i++)
+	{
+		double tp = (ohlc[i].high + ohlc[i].close + ohlc[i].low) / 3;
+		sum += tp;
+		if (window.size() < period)
+			window.push_back(tp);
+		else
+		{
+			sum -= window[i_next];
+			window[i_next] = tp;
+			i_next = (i_next + 1) % period;
+		}
+
+		if (i >= iStart)
+		{
+			double ma = sum / window.size();
+			bbd[i - iStart] = ma - dev * stddev(window, ma);
+			bbu[i - iStart] = ma + dev * stddev(window, ma);
+			dates[i - iStart] = ohlc[i].date;
+		}
+	}
+	return { dates, bbd, bbu };
+}
