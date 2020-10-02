@@ -278,8 +278,11 @@ void Chart::Paint(D2D1_RECT_F updateRect)
 
 bool Chart::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 {
-	handeled = m_timeframeButton.OnMouseMove(cursor, wParam, handeled) || handeled;
-	handeled = m_tickerBox.OnMouseMove(cursor, wParam, handeled) || handeled;
+	if (!m_axesMouseCapture)
+	{
+		handeled = m_timeframeButton.OnMouseMove(cursor, wParam, handeled) || handeled;
+		handeled = m_tickerBox.OnMouseMove(cursor, wParam, handeled) || handeled;
+	}
 
 	// Need to separate axes handled because all axes need to handle hover display.
 	bool axes_handled = m_axes.OnMouseMove(cursor, wParam, handeled);
@@ -292,13 +295,19 @@ bool Chart::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 
 bool Chart::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 {
-	handeled = m_timeframeButton.OnLButtonDown(cursor, handeled) || handeled;
-	handeled = m_tickerBox.OnLButtonDown(cursor, handeled) || handeled;
-	handeled = m_axes.OnLButtonDown(cursor, handeled) || handeled;
-	for (size_t i = 0; i < m_auxAxes.size(); i++)
-		if (m_activeAxes[i]) handeled = m_auxAxes[i]->OnLButtonDown(cursor, handeled) || handeled;
+	if (!m_axesMouseCapture)
+	{
+		handeled = m_timeframeButton.OnLButtonDown(cursor, handeled) || handeled;
+		handeled = m_tickerBox.OnLButtonDown(cursor, handeled) || handeled;
+	}
 
-	if (!handeled && inRect(cursor, m_menuRect))
+	// Need to separate axes handled because all axes need to handle selection.
+	bool axes_handled = m_axes.OnLButtonDown(cursor, handeled) || handeled;
+	for (size_t i = 0; i < m_auxAxes.size(); i++)
+		if (m_activeAxes[i]) axes_handled = m_auxAxes[i]->OnLButtonDown(cursor, handeled) || axes_handled;
+	handeled = handeled || axes_handled;
+
+	if (!handeled && !m_axesMouseCapture && inRect(cursor, m_menuRect))
 	{
 		std::wstring name;
 		if (m_chartTypeButtons.OnLButtonDown(cursor, name, handeled))
@@ -384,10 +393,13 @@ void Chart::OnLButtonDblclk(D2D1_POINT_2F cursor, WPARAM wParam)
 
 void Chart::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 {
-	m_tickerBox.OnLButtonUp(cursor, wParam);
+	if (!m_axesMouseCapture)
+		m_tickerBox.OnLButtonUp(cursor, wParam);
+
 	m_axes.OnLButtonUp(cursor, wParam);
 	for (size_t i = 0; i < m_auxAxes.size(); i++)
 		if (m_activeAxes[i]) m_auxAxes[i]->OnLButtonUp(cursor, wParam);
+
 	ProcessCTPMessages();
 }
 
@@ -440,8 +452,12 @@ void Chart::ProcessCTPMessages()
 			break;
 		}
 		case CTPMessage::MOUSE_CAPTURED: // From children, forward to Parthenos
+		{
+			msg.sender = this;
+			m_axesMouseCapture = (msg.iData >= 0);
 			m_parent->PostClientMessage(msg);
 			break;
+		}
 		case CTPMessage::AXES_SELECTION:
 		{
 			size_t iCurrStart = FindDateOHLC(m_ohlc, m_startDate);

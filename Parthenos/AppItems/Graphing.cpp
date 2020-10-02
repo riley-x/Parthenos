@@ -257,33 +257,52 @@ bool Axes::OnMouseMove(D2D1_POINT_2F cursor, WPARAM wParam, bool handeled)
 
 bool Axes::OnLButtonDown(D2D1_POINT_2F cursor, bool handeled)
 {
-	if (!handeled && m_select && inRect(cursor, m_axesRect))
+	bool track = false;
+	if (!handeled && m_select)
+	{
+		if (inRect(cursor, m_axesRect))
+		{
+			m_selectActive = true;
+			track = true;
+			m_parent->PostClientMessage(this, L"", CTPMessage::MOUSE_CAPTURED, 1); // should forward to parthenos
+		}
+		else if (InMouseWatch(cursor) && inRectX(cursor.x, m_axesRect)) // Mirror selection, but don't send messages ie
+		{
+			track = true;
+			m_selectActive = false;
+		}
+	}
+
+	if (track)
 	{
 		m_selectStart = static_cast<int>(round(DIPtoX(cursor.x))); // all x values are [0, n)
 		if (m_selectStart < 0) m_selectStart = 0; // occurs from padding so that xmin < 0
 		else if (m_selectStart > (int)m_nPoints - 1) m_selectStart = (int)m_nPoints - 1;
 		m_selectEnd = m_selectStart;
-		m_parent->PostClientMessage(this, L"", CTPMessage::MOUSE_CAPTURED, 1); // should forward to parthenos
-		return true;
 	}
-	else if (m_selectStart >= 0)
+	else if (m_select && m_selectStart >= 0)
 	{
-		m_selectStart = -1;
+		ResetSelection();
 	}
-	return false;
+
+	return m_selectActive;
 }
 
 void Axes::OnLButtonUp(D2D1_POINT_2F cursor, WPARAM wParam)
 {
-	if (m_select && m_selectStart >= 0)
+	if (m_select && m_selectActive)
 	{
 		m_parent->SendClientMessage(this, L"", CTPMessage::MOUSE_CAPTURED, -1);
-		if (m_selectStart < m_selectEnd)
+		if (m_selectStart < m_selectEnd) // selectEnd is already set by MouseMove (robust?)
 			m_parent->SendClientMessage(this, L"", CTPMessage::AXES_SELECTION, m_selectStart, m_selectEnd);
 		else if (m_selectStart > m_selectEnd)
 			m_parent->SendClientMessage(this, L"", CTPMessage::AXES_SELECTION, m_selectEnd, m_selectStart);
-		m_selectStart = -1;
 		::InvalidateRect(m_hwnd, &m_pixRect, FALSE);
+	}
+	
+	if (m_select && m_selectStart >= 0) // Inclusive of above case
+	{
+		ResetSelection();
 	}
 }
 

@@ -61,6 +61,7 @@ private:
 	date_t				m_endDate = 0; // Inclusive
 	bool				m_markerActive[MARK_NMARKERS] = {};
 	bool				m_studyActive[m_nStudies] = {};
+	bool				m_axesMouseCapture = false; // If axes have capture mouse (mid selection)
 	std::vector<bool>	m_activeAxes; // Size == m_auxAxes. Always reuse from lowest index.
 
 	// Data

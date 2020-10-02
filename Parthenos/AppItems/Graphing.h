@@ -251,19 +251,23 @@ private:
 	float m_titlePad	= 0.0f;  // offset between dipRect.top and axesRect.top
 	double m_xAxisPos	= -std::numeric_limits<double>::infinity(); // y position. -inf to draw at m_axesRect.bottom
 	double m_yAxisPos	= std::numeric_limits<double>::infinity();  // x position. +inf to draw at m_axesRect.right
+	bool	m_drawXLabels			= true;  // set before SetSize()
+	bool	m_drawXGridLines		= true;  // set before SetSize()
+	HoverStyle	m_hoverStyle = HoverStyle::none;
 
 	// Flags and state variables
 	bool	m_ismade				= true;  // check to make sure everything is made
 	size_t	m_imade[nGraphGroups]	= {};	 // index into m_graphObjects. Objects < i are already made
 	bool	m_rescaled				= false; // data ranges changed, so need to call Rescale()
-	bool	m_drawXLabels			= true;  // set before SetSize()
-	bool	m_drawXGridLines		= true;  // set before SetSize()
-	bool	m_select				= true; // allow mouse to select region
-	int		m_selectStart			= -1;	 // selection start point in terms of x-position [0, n)
+
+	bool	m_select				= true;  // allow mouse to select region
+	bool	m_selectActive			= false; // If currently in the proccess of selecting. Set by LButtonDown, unset by LButton{Down,Up}.
+											 // This can be false but still tracking a selection in m_mouseWatch, indicated by m_selectStart >= 0.
+	int		m_selectStart			= -1;	 // Selection start point in terms of x-position [0, n)
 	int		m_selectEnd				= -1;
-	int		m_hoverTextX			= -1;	 // data point for hover text to display, [0, n), or -1 for no hover text
-	HoverStyle	m_hoverStyle		= HoverStyle::none;
-	std::vector<const Axes*> m_mouseWatch; // See SetMouseWatch(). Axes pointers not owned.
+
+	D2D1_POINT_2F m_hoverLoc;	// position of the crosshairs in DIPs, or -1 for no x/y line
+	int		m_hoverTextX = -1;	// data point for hover text to display, [0, n), or -1 for no hover text
 
 	// Data
 	size_t m_nPoints; // x values are always plotted as [0, n-1]
@@ -281,7 +285,7 @@ private:
 	float				m_rect_xdiff;	// m_dataRect.right - m_dataRect.left
 	float				m_rect_ydiff;	// m_dataRect.top - m_dataRect.bottom, flip so origin is bottom-left
 	D2D1_RECT_F			m_hoverRect;	// background for hover text
-	D2D1_POINT_2F		m_hoverLoc;		// position of the mouse in DIPs (to paint crosshairs)
+	std::vector<const Axes*> m_mouseWatch; // See SetMouseWatch(). Axes pointers not owned.
 
 	// Labels
 	std::wstring				m_title;
@@ -328,6 +332,13 @@ private:
 	void CreateTriangleMarker(ComPtr<ID2D1PathGeometry> & geometry, int parity);
 	void CreateXMarker();
 	void CreateHoverText(size_t xind, D2D1_POINT_2F cursor);
+
+	void ResetSelection()
+	{
+		m_selectActive = false;
+		m_selectStart = -1;
+		m_selectEnd = -1;
+	}
 
 	bool InMouseWatch(D2D1_POINT_2F cursor); // If cursor in any of the mouse watch axes rects.
 };
