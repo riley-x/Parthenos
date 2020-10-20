@@ -220,11 +220,14 @@ void Parthenos::InitData()
 	accountsFile.Init(ROOTDIR + L"accounts.json");
 	accountsFile.Open(GENERIC_READ);
 	JSON json(accountsFile.ReadText());
-	std::vector<JSON> const & names = json.get_arr();
+	accountsFile.Close();
+
+	std::vector<JSON> const & names = json["accounts"].get_arr();
 	for (JSON const & name : names)
 		m_accountNames.push_back(s2w(name.get_str()));
-	accountsFile.Close();
 	m_currAccount = 0;
+
+	TDKEY = ::s2w(json["apiKeys"]["TD"]);
 
 	m_accounts.resize(m_accountNames.size() + 1);
 	for (size_t i = 0; i < m_accountNames.size(); i++)

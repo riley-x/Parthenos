@@ -2,6 +2,7 @@
 #include "../stdafx.h"
 
 
+
 ///////////////////////////////////////////////////////////
 // --- Messaging --- 
 std::wstring OutputError(const std::wstring & msg);
@@ -65,6 +66,25 @@ inline std::wstring s2w(const std::string & s)
 }
 
 
+
+inline std::string w2s(const std::wstring& s)
+{
+	const size_t size = 200;
+	char out[size];
+	int res = WideCharToMultiByte(
+		CP_UTF8,
+		0,
+		s.c_str(),
+		-1,
+		out,
+		size,
+		nullptr,
+		nullptr
+	);
+
+	if (res != 0) OutputError(L"w2s failed");
+	return std::string(out);
+}
 
 ///////////////////////////////////////////////////////////
 // --- Datetime --- 

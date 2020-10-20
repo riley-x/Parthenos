@@ -123,6 +123,7 @@ namespace jsonette
 			Obj *data = reinterpret_cast<Obj*>(m_data);
 			return data->vals;
 		}
+		inline JSON const& operator[] (const char* str) const { return (*this)[std::string(str)]; }
 		inline JSON const & operator[] (std::string const & str) const // throws on error
 		{
 			if (m_type != JType::Object) throw_type_error();
@@ -162,6 +163,8 @@ namespace jsonette
 		template<> inline int		get<int>() const { return static_cast<int>(get_int()); }
 		template<> inline long		get<long>() const { return static_cast<long>(get_int()); }
 		template<> inline long long get<long long>() const { return static_cast<long long>(get_int()); }
+		operator int() const { return get<int>(); }
+		operator int64_t() const { return get_int(); }
 
 		// Double
 		inline double get_dbl() const
@@ -171,6 +174,7 @@ namespace jsonette
 		}
 		template<> inline float  get<float>() const { return static_cast<float>(get_dbl()); }
 		template<> inline double get<double>() const { get_dbl(); }
+		operator double() const { return get_dbl(); }
 
 		// String
 		inline std::string const & get_str() const
@@ -180,6 +184,7 @@ namespace jsonette
 		}
 		template<> inline std::string const & get<std::string const &>() const { return get_str(); }
 		template<> inline std::string		  get<std::string>() const { return get_str(); }
+		operator std::string() const { return get_str(); }
 
 		// Bool
 		inline bool get_bool() const

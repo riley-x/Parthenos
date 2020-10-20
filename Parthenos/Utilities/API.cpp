@@ -2,7 +2,9 @@
 #include "API.h"
 #include "FileIO.h"
 #include "HTTP.h"
+#include "jsonette.h"
 
+using namespace jsonette;
 
 #ifdef TEST_IEX
 const std::wstring IEXHOST(L"sandbox.iexapis.com");
@@ -15,8 +17,14 @@ const std::wstring IEXTOKEN(L"pk_d150988c47f74c71863b8501c0457b94");
 const std::wstring ALPHAHOST(L"www.alphavantage.co");
 const std::wstring ALPHAKEY(L"FJHB2XGE0A43171J");
 
+const std::wstring TDHOST(L"api.tdameritrade.com");
+std::wstring TDKEY;
+
 const std::wstring QUOTEFILTERS(L"open,close,latestPrice,latestSource,latestUpdate,latestVolume,avgTotalVolume,"
 	L"previousClose,change,changePercent,closeTime");
+// From IEX quote endpoint: All response attributes related to 15 minute delayed market-wide price data are only available to paid subscribers
+// So this includes open, close, high, low.
+
 const std::wstring STATSFILTERS(L"beta,week52high,week52low,ttmDividendRate,dividendYield,year1ChangePercent,"
 	L"exDividendDate,nextEarningsDate");
 
@@ -25,7 +33,8 @@ const std::wstring STATSFILTERS(L"beta,week52high,week52low,ttmDividendRate,divi
 ///////////////////////////////////////////////////////////
 // --- Forward declarations ---
 
-Quote parseFilteredQuote(std::string const& json, std::wstring const& ticker);
+Quote parseIEXQuote(std::string const& json, std::wstring const& ticker);
+Quote parseTDQuote(std::string const& json, std::wstring const& ticker);
 Stats parseFilteredStats(std::string const& json);
 std::pair<Quote, Stats> parseQuoteStats(std::string const& json, std::wstring const& ticker);
 std::vector<OHLC> GetOHLC_IEX(std::wstring ticker, size_t last_n, date_t& lastCloseDate);
@@ -61,18 +70,33 @@ double GetPrice(std::wstring ticker)
 //		latestVolume, avgTotalVolume, previousClose, change, changePercent, closeTime
 //		(timestamps truncated to seconds)
 // Throws std::invalid_argument if failed
-Quote GetQuote(std::wstring ticker)
+Quote GetQuote(std::wstring ticker, apiSource source)
 {
-	std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::tolower);
-	std::string json = SendHTTPSRequest_GET(IEXHOST, L"v1/stock/" + ticker + L"/quote",
-		L"filter=" + QUOTEFILTERS + L"&token=" + IEXTOKEN);
-	if (json.empty())
-	{
-		OutputMessage(L"GetQuote HTTP request empty\n");
-		return {};
-	}
 
-	return parseFilteredQuote(json, ticker);
+	switch (source)
+	{
+	case apiSource::iex:
+	{
+		std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::tolower);
+		std::string json = SendHTTPSRequest_GET(IEXHOST, L"v1/stock/" + ticker + L"/quote",
+			L"filter=" + QUOTEFILTERS + L"&token=" + IEXTOKEN);
+		if (json.empty())
+		{
+			OutputMessage(L"GetQuote HTTP request empty\n");
+			return Quote();
+		}
+		return parseIEXQuote(json, ticker);
+	}
+	case apiSource::td:
+	{
+		std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::toupper);
+		std::string json = SendHTTPSRequest_GET(TDHOST, L"v1/marketdata/quotes",
+			L"apikey=" + TDKEY + L"&symbol=" + ticker);
+		return parseTDQuote(json, ticker);
+	}
+	default:
+		return Quote();
+	}
 }
 
 // Queries IEX for key stats.
@@ -178,7 +202,7 @@ std::vector<OHLC> GetOHLC(std::wstring ticker, apiSource source, size_t last_n, 
 // --- Stock Information Helper Functions ---
 
 
-Quote parseFilteredQuote(std::string const& json, std::wstring const& ticker)
+Quote parseIEXQuote(std::string const& json, std::wstring const& ticker)
 {
 	Quote quote;
 	static const int nFields = 11;
@@ -241,6 +265,36 @@ Quote parseFilteredQuote(std::string const& json, std::wstring const& ticker)
 	return quote;
 }
 
+
+Quote parseTDQuote(std::string const& json, std::wstring const& ticker)
+{
+	if (json.empty())
+	{
+		OutputMessage(L"GetQuote HTTP request empty\n");
+		return Quote();
+	}
+	JSON quotes(json);
+	JSON const& j = quotes[w2s(ticker)];
+
+	Quote q;
+	q.latestVolume = j["totalVolume"]; // ?
+	q.avgTotalVolume = j["totalVolume"]; // ?
+	q.open = j["openPrice"];
+	q.high = j["highPrice"];
+	q.low = j["lowPrice"];
+	q.close = j["closePrice"];
+	q.latestPrice = j["lastPrice"];
+	q.previousClose = 0; // N/A
+	q.change = j["markChangeInDouble"];
+	q.changePercent = j["markPercentChangeInDouble"];
+	q.latestUpdate = j["quoteTimeInLong"].get<time_t>() / 1000; // Remove milliseconds
+	q.closeTime = 0; // N/A
+	q.ticker = ticker;
+	q.latestSource = iexLSource::null;
+
+	return q;
+}
+
 Stats parseFilteredStats(std::string const& json)
 {
 	Stats stats;
@@ -298,14 +352,14 @@ std::pair<Quote, Stats> parseQuoteStats(std::string const& json, std::wstring co
 	size_t start = json.find("{", 1); // skip first opening {
 	size_t end = json.find("}", start) + 1; // include closing }
 	if (quote_first)
-		quote = parseFilteredQuote(json.substr(start, end - start), ticker);
+		quote = parseIEXQuote(json.substr(start, end - start), ticker);
 	else
 		stats = parseFilteredStats(json.substr(start, end - start));
 
 	start = json.find("{", end);
 	end = json.find("}", start) + 1;
 	if (!quote_first)
-		quote = parseFilteredQuote(json.substr(start, end - start), ticker);
+		quote = parseIEXQuote(json.substr(start, end - start), ticker);
 	else
 		stats = parseFilteredStats(json.substr(start, end - start));
 

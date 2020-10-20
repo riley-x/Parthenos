@@ -508,6 +508,10 @@ void Chart::Load(std::wstring ticker, int range)
 
 	try {
 		m_ohlc = GetOHLC(ticker, apiSource::alpha, range);
+		Quote quote = GetQuote(ticker, apiSource::td);
+		date_t quoteDate = GetDate(quote.latestUpdate);
+		if (quoteDate > m_ohlc.back().date)
+			m_ohlc.push_back({ quote.open, quote.high, quote.low, quote.latestPrice, quoteDate, static_cast<uint32_t>(quote.latestVolume) });
 	}
 	catch (const std::exception & e) {
 		m_ohlc.clear();

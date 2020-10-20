@@ -6,8 +6,10 @@
 #include "utilities.h"
 
 const std::wstring ROOTDIR(L"C:/Users/riley/Documents/Finances/Parthenos/"); // C:/Users/riley/Documents/Finances/Parthenos/
+extern std::wstring TDKEY;
 
-enum class apiSource { iex, alpha };
+
+enum class apiSource { iex, alpha, td };
 
 enum class iexLSource { real, delayed, close, prevclose, null };
 
@@ -31,10 +33,12 @@ struct OHLC
 
 struct Quote
 {
+	iexLSource latestSource;
 	int latestVolume;
 	int avgTotalVolume;
-	iexLSource latestSource;
 	double open;
+	double high;
+	double low;
 	double close;
 	double latestPrice;
 	double previousClose;
@@ -64,7 +68,7 @@ struct Stats
 typedef std::vector<std::pair<Quote, Stats>> QStats;
 
 double GetPrice(std::wstring ticker);
-Quote GetQuote(std::wstring ticker);
+Quote GetQuote(std::wstring ticker, apiSource source = apiSource::iex);
 Stats GetStats(std::wstring ticker);
 std::pair<Quote, Stats> GetQuoteStats(std::wstring ticker);
 QStats GetBatchQuoteStats(std::vector<std::wstring> tickers);
