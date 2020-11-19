@@ -295,49 +295,19 @@ Quote parseTDQuote(std::string const& json, std::wstring const& ticker)
 	return q;
 }
 
-Stats parseFilteredStats(std::string const& json)
+Stats parseFilteredStats(std::string const& str)
 {
-	Stats stats;
-	char buffer[8][50] = { 0 };
-
-	enum vars {
-		beta, week52high, week52low, ttmDividendRate, dividendYield, year1ChangePercent, exDividendDate, nextEarningsDate
-	};
-
-	const char format[] = R"({"beta":%49[^,],"week52high":%49[^,],"week52low":%49[^,],"ttmDividendRate":%49[^,],)"
-		R"("dividendYield":%49[^,],"year1ChangePercent":%49[^,],"exDividendDate":%49[^,],"nextEarningsDate":%49[^,]})";
-
-	int n = sscanf_s(json.c_str(), format,
-		buffer[0], static_cast<unsigned>(_countof(buffer[0])),
-		buffer[1], static_cast<unsigned>(_countof(buffer[1])),
-		buffer[2], static_cast<unsigned>(_countof(buffer[2])),
-		buffer[3], static_cast<unsigned>(_countof(buffer[3])),
-		buffer[4], static_cast<unsigned>(_countof(buffer[4])),
-		buffer[5], static_cast<unsigned>(_countof(buffer[5])),
-		buffer[6], static_cast<unsigned>(_countof(buffer[6])),
-		buffer[7], static_cast<unsigned>(_countof(buffer[7]))
-	);
-	if (n != 8)
-	{
-		OutputDebugStringA(json.c_str());
-		throw ws_exception(FormatMsg(L"parseFilteredStats sscanf_s 1 failed! Only read %d/%d\n", n, 8));
-	}
-
-	int year, month, date; // temps for dates
-	if (!sscanf_s(buffer[beta], "%lf", &stats.beta)) stats.beta = 0;
-	if (!sscanf_s(buffer[week52high], "%lf", &stats.week52high)) stats.week52high = 0;
-	if (!sscanf_s(buffer[week52low], "%lf", &stats.week52low)) stats.week52low = 0;
-	if (!sscanf_s(buffer[ttmDividendRate], "%lf", &stats.dividendRate)) stats.dividendRate = 0;
-	if (!sscanf_s(buffer[dividendYield], "%lf", &stats.dividendYield)) stats.dividendYield = 0;
-	if (!sscanf_s(buffer[year1ChangePercent], "%lf", &stats.year1ChangePercent)) stats.year1ChangePercent = 0;
-	if (sscanf_s(buffer[exDividendDate], R"("%d-%d-%d")", &year, &month, &date) != 3)
-		stats.exDividendDate = 0;
-	else
-		stats.exDividendDate = MkDate(year, month, date);
-	if (sscanf_s(buffer[nextEarningsDate], R"("%d-%d-%d")", &year, &month, &date) != 3)
-		stats.nextEarningsDate = 0;
-	else
-		stats.nextEarningsDate = MkDate(year, month, date);
+	Stats stats = {};
+	JSON json(str);
+	
+	if (JSON const* j = json.find2("beta")) stats.beta = *j;
+	if (JSON const* j = json.find2("week52high")) stats.week52high = *j;
+	if (JSON const* j = json.find2("week52low")) stats.week52low = *j;
+	if (JSON const* j = json.find2("ttmDividendRate")) stats.dividendRate = *j;
+	if (JSON const* j = json.find2("dividendYield")) stats.dividendYield = *j;
+	if (JSON const* j = json.find2("year1ChangePercent")) stats.year1ChangePercent = *j;
+	if (JSON const* j = json.find2("exDividendDate")) stats.exDividendDate = parseDate(*j, "%d-%d-%d");
+	if (JSON const* j = json.find2("nextEarningsDate")) stats.nextEarningsDate = parseDate(*j, "%d-%d-%d");
 
 	return stats;
 }

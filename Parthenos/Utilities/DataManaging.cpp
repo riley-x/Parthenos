@@ -324,6 +324,8 @@ NestedHoldings FullTransactionsToHoldings(std::vector<Transaction> const & trans
 }
 
 
+// Handles custom transactions, such as spin-offs, mergers, and stock splits
+// TODO add transaction type for above
 void AddCustomTransactionToHoldings(NestedHoldings & holdings, Transaction const & t)
 {
 	if (std::wstring(t.ticker) == L"RTN-UTX") // RTN-UTX merger
@@ -459,7 +461,7 @@ void ReduceSalesLots(std::vector<Holdings>& h, size_t i_header, date_t end)
 				continue;
 			}
 
-			time_t time_held = DateToTime(sell->date) - DateToTime(buy->date);
+			time_t time_held = min(86400, DateToTime(sell->date) - DateToTime(buy->date));
 			double realized = 0;
 			int n;
 			if (buy->n >= -sell->n)

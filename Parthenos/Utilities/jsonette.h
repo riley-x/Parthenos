@@ -123,15 +123,29 @@ namespace jsonette
 			Obj *data = reinterpret_cast<Obj*>(m_data);
 			return data->vals;
 		}
-		inline JSON const& operator[] (const char* str) const { return (*this)[std::string(str)]; }
-		inline JSON const & operator[] (std::string const & str) const // throws on error
+		inline JSON const * find(std::string const& str) const // returns null if not found
 		{
 			if (m_type != JType::Object) throw_type_error();
-			Obj *data = reinterpret_cast<Obj*>(m_data);
+			Obj* data = reinterpret_cast<Obj*>(m_data);
 			auto it = std::find(data->keys.begin(), data->keys.end(), str);
-			if (it == data->keys.end()) throw_indx_error(str);
-			return data->vals[std::distance(data->keys.begin(), it)];
+			if (it == data->keys.end()) return nullptr;
+			return &(data->vals[std::distance(data->keys.begin(), it)]);
 		}
+		inline JSON const* find2(std::string const& str) const // returns null if value is null, or not found
+		{
+			JSON const* j = find(str);
+			if (!j || j->is_null()) return nullptr;
+			return j;
+		}
+		inline JSON const& operator[] (std::string const& str) const // throws if not found
+		{ 
+			JSON const * j = find(str);
+			if (!j) throw_indx_error(str);
+			return *j;
+		}
+		inline JSON const& operator[] (const char* str) const { return (*this)[std::string(str)]; }
+
+
 
 		// Array -- vector of JSON values
 		inline std::vector<JSON> const & get_arr() const
@@ -144,7 +158,7 @@ namespace jsonette
 			if (m_type != JType::Array) throw_type_error();
 			return reinterpret_cast<std::vector<JSON>*>(m_data)->size();
 		}
-		inline JSON const & operator[] (size_t i) const // segfaults if out of bounds
+		inline JSON const & operator[] (size_t i) const // undefined if out of bounds
 		{
 			if (m_type != JType::Array) throw_type_error();
 			std::vector<JSON>* data = reinterpret_cast<std::vector<JSON>*>(m_data);
@@ -169,8 +183,9 @@ namespace jsonette
 		// Double
 		inline double get_dbl() const
 		{
-			if (m_type != JType::Double) throw_type_error();
-			return *reinterpret_cast<double*>(m_data);
+			if (m_type == JType::Double) return *reinterpret_cast<double*>(m_data);
+			else if (m_type == JType::Integer) return get_int();
+			else throw_type_error();
 		}
 		template<> inline float  get<float>() const { return static_cast<float>(get_dbl()); }
 		template<> inline double get<double>() const { get_dbl(); }

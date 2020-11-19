@@ -215,6 +215,13 @@ int MonthDiff(date_t a, date_t b)
 	return (GetYear(a) - GetYear(b)) * 12 + GetMonth(a) - GetMonth(b);
 }
 
+date_t parseDate(std::string const& s, std::string const& format)
+{
+	int year = 0, month = 0, date = 0;
+	sscanf_s(s.data(), format.c_str(), &year, &month, &date);
+	return MkDate(year, month, date);
+}
+
 std::wstring DateToWString(date_t date)
 {
 	return std::to_wstring((date / 100) % 100) + L"/"

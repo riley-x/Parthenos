@@ -29,7 +29,7 @@ Parthenos::Parthenos(PCWSTR szClassName) :
 	//transFile.Init(ROOTDIR + L"hist.trans");
 	//transFile.Open();
 	//std::vector<Transaction> trans = transFile.Read<Transaction>();
-	//trans[trans.size() - 11].value = 61.33;
+	//trans.resize(trans.size() - 1);
 	//transFile.Write(trans.data(), sizeof(Transaction)*trans.size());
 	//transFile.Close();
 
@@ -482,29 +482,31 @@ void Parthenos::AddTransaction(Transaction t)
 	holdingsFile.Write(out.data(), sizeof(Holdings) * out.size());
 	holdingsFile.Close();
 
-	// Update data
-	m_tickers = GetTickers(holdings);
-	m_tickerColors = Colors::Randomizer(m_tickers);
-	m_stats = GetBatchQuoteStats(m_tickers);
-	m_accounts[t.account].positions = HoldingsToPositions(holdings, t.account, GetCurrentDate(), GetMarketPrices(m_stats));
-	m_accounts.back().positions = HoldingsToPositions(holdings, -1, GetCurrentDate(), GetMarketPrices(m_stats)); // all accounts
-
-	// Read equity history
-	FileIO histFile;
-	histFile.Init(ROOTDIR + m_accountNames[t.account] + L".hist");
-	histFile.Open();
-	std::vector<TimeSeries> portHist;
-	portHist = histFile.Read<TimeSeries>();
-
-	// Update equity history
-	auto it = std::lower_bound(portHist.begin(), portHist.end(), t.date,
-		[](TimeSeries const & ts, date_t date) {return ts.date < date; }
-	);
-	portHist.erase(it, portHist.end());
-
 	try { // non-critical fail here - just show not up-to-date history
+
+		// Update data
+		m_tickers = GetTickers(holdings);
+		m_tickerColors = Colors::Randomizer(m_tickers);
+		m_stats = GetBatchQuoteStats(m_tickers);
+		m_accounts[t.account].positions = HoldingsToPositions(holdings, t.account, GetCurrentDate(), GetMarketPrices(m_stats));
+		m_accounts.back().positions = HoldingsToPositions(holdings, -1, GetCurrentDate(), GetMarketPrices(m_stats)); // all accounts
+
+		// Read equity history
+		FileIO histFile;
+		histFile.Init(ROOTDIR + m_accountNames[t.account] + L".hist");
+		histFile.Open();
+		std::vector<TimeSeries> portHist;
+		portHist = histFile.Read<TimeSeries>();
+
+		// Update equity history
+		auto it = std::lower_bound(portHist.begin(), portHist.end(), t.date,
+			[](TimeSeries const & ts, date_t date) {return ts.date < date; }
+		);
+		portHist.erase(it, portHist.end());
+
 		UpdateEquityHistory(portHist, m_accounts[t.account].positions, m_stats);
 		histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
+		histFile.Close();
 
 		// Update hist data (TODO update all history too?)
 		m_accounts[t.account].histDate.clear();
@@ -515,16 +517,16 @@ void Parthenos::AddTransaction(Transaction t)
 			m_accounts[t.account].histDate.push_back(x.date);
 			m_accounts[t.account].histEquity.push_back(x.prices + cash_in);
 		}
+
+		// Update plots
+		if (m_currAccount == t.account || m_currAccount == m_accounts.size() - 1)
+			UpdatePortfolioPlotters(m_currAccount);
 	}
 	catch (const std::exception & e) {
 		if (m_msgBox) m_msgBox->Print(SPrintException(e));
 	}
 
-	histFile.Close();
 
-	// Update plots
-	if (m_currAccount == t.account || m_currAccount == m_accounts.size() - 1)
-		UpdatePortfolioPlotters(m_currAccount);
 }
 
 // Prints dividend summary for the current account collected by year

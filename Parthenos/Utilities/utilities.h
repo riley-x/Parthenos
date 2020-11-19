@@ -66,7 +66,6 @@ inline std::wstring s2w(const std::string & s)
 }
 
 
-
 inline std::string w2s(const std::wstring& s)
 {
 	const size_t size = 200;
@@ -82,24 +81,28 @@ inline std::string w2s(const std::wstring& s)
 		nullptr
 	);
 
-	if (res != 0) OutputError(L"w2s failed");
+	if (res == 0) OutputError(L"w2s failed");
 	return std::string(out);
 }
 
 ///////////////////////////////////////////////////////////
 // --- Datetime --- 
+
 typedef uint32_t date_t; // 10000*yyyy + 100*mm + dd
 date_t const DATE_T_1M = 100;
 date_t const DATE_T_1YR = 10000;
 
+// Windows conversions
 BOOL SystemTimeToEasternTime(SYSTEMTIME const * sysTime, SYSTEMTIME * eastTime);
 
+// time_t conversions
 time_t TruncateToDay(time_t time);
 std::wstring TimeToWString(time_t time);
 time_t DateToTime(date_t date);
 date_t GetDate(time_t time);
 date_t GetCurrentDate();
 
+// date_t functions
 inline date_t MkDate(int year, int month, int day) { return 10000 * year + 100 * month + day; }
 inline int GetYear(date_t date) { return (date / 10000); }
 inline int GetMonth(date_t date) { return (date / 100) % 100; }
@@ -109,7 +112,6 @@ inline void SetMonth(date_t & date, int month)
 	int year = GetYear(date); int day = GetDay(date);
 	date = MkDate(year, month, day);
 }
-
 int ApproxDateDiff(date_t a, date_t b); // returns a-b
 inline bool SameYrMo(date_t a, date_t b) { return (a / DATE_T_1M) == (b / DATE_T_1M); }
 
@@ -119,6 +121,8 @@ std::vector<date_t> MakeMonthRange(date_t begin, date_t end);
 // Returns the difference in months between two dates, a-b
 int MonthDiff(date_t a, date_t b);
 
+// String functions
+date_t parseDate(std::string const& s, std::string const& format);
 std::wstring DateToWString(date_t date);
 inline std::wstring toMonthWString_Short(date_t date)
 {
