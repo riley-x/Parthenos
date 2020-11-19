@@ -857,6 +857,7 @@ std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Tra
 	return out;
 }
 
+// TODO reformulate everything with a list of dates to start with.
 void UpdateEquityHistory(std::vector<TimeSeries>& hist, std::vector<Position> const & positions, QStats const & qstats)
 {
 	if (hist.empty() || positions.empty()) 
@@ -865,7 +866,7 @@ void UpdateEquityHistory(std::vector<TimeSeries>& hist, std::vector<Position> co
 	std::vector<EquityHistoryHelper::TickerHelper> helper;
 	helper.reserve(positions.size() - 1);
 	double cash = 0;
-	date_t currDate = hist.back().date;
+	date_t lastHistDate = hist.back().date;
 	date_t lastCloseDate = 0;
 
 	for (Position const & p : positions)
@@ -880,7 +881,7 @@ void UpdateEquityHistory(std::vector<TimeSeries>& hist, std::vector<Position> co
 		if (it != qstats.end())
 		{
 			if (lastCloseDate == 0 && it->first.closeTime != 0) lastCloseDate = GetDate(it->first.closeTime);
-			if (currDate > it->second.exDividendDate) source = apiSource::iex;
+			if (lastHistDate > it->second.exDividendDate) source = apiSource::iex;
 			// this is a bit too strict since exDivDate could be in the future, but would have to check
 			// ex div history instead
 		}
@@ -889,13 +890,23 @@ void UpdateEquityHistory(std::vector<TimeSeries>& hist, std::vector<Position> co
 		temp.ticker = p.ticker;
 		temp.n = p.n;
 		temp.ohlc = GetOHLC(p.ticker, source, 1000, lastCloseDate); // lastCloseDate is updated by reference
-		temp.iDate = FindDateOHLC(temp.ohlc, currDate) + 1; // start with next new day
 		temp.opts = p.options;
 		helper.push_back(temp);
 
-		if (currDate == lastCloseDate) return; // short circuit so we don't have to loop through all the positions
+		if (lastHistDate == lastCloseDate) return; // short circuit so we don't have to loop through all the positions
 	}
 
+	// Use VOO to find the next date, and set iDate in the helpers.
+	date_t currDate;
+	size_t iCurrDate_0 = FindDateOHLC(helper[0].ohlc, lastHistDate) + 1;
+	if (iCurrDate_0 < helper[0].ohlc.size())
+		currDate = helper[0].ohlc[iCurrDate_0].date;
+	else 
+		return;
+	for (auto& h : helper)
+		h.iDate = FindDateOHLC(h.ohlc, currDate);
+
+	// Loop through days, using VOO as a tracker of market days
 	while (helper[0].iDate < helper[0].ohlc.size())
 	{
 		currDate = helper[0].ohlc[helper[0].iDate].date;
