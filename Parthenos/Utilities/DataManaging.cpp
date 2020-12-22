@@ -19,6 +19,8 @@ inline bool Holdings_Compare(const std::vector<Holdings>& a, std::wstring const 
 inline double GetAPY(double gain, double cost_in, date_t start_date, date_t end_date);
 inline double GetWeightedAPY(double gain, date_t start_date, date_t end_date);
 
+void collateOptions(Position& p);
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //	                              Transactions			            		 //
@@ -391,6 +393,7 @@ NestedHoldings FlattenedHoldingsToTickers(std::vector<Holdings> const & holdings
 	return out;
 }
 
+
 std::wstring TickerHoldingsToWString(std::vector<Holdings> const & h)
 {
 	std::wstring out;
@@ -657,31 +660,38 @@ std::vector<Position> HoldingsToPositions(NestedHoldings const & holdings,
 				iLot < iHeader + header.nLots + header.nOptions + 1; iLot++)
 			{
 				Option const & opt = h.at(iLot).option;
-				temp.options.push_back(opt);
+				OptionPosition op_pos = {}; // Simply copy info for now, then collate at end
+				op_pos.shares = opt.n;
+				op_pos.expiration = opt.expiration;
+				op_pos.strike = opt.strike;
+				op_pos.price = opt.price;
+				//op_pos.realized = opt.realized;
 
 				switch (opt.type)
 				{
 				case TransactionType::PutShort:
 					temp.realized_held += opt.realized;
 					temp.APY += GetWeightedAPY(opt.realized, opt.date, opt.expiration); // approximate hold to expiration
-					temp.cash_collateral += opt.strike * opt.n;
 					sumWeights += opt.strike * opt.n; // approximate weight as collateral of option
+					op_pos.type = OptionType::CSP;
 					break;
 				case TransactionType::PutLong:
 					temp.realized_unheld += -opt.price * opt.n + opt.realized;
 					temp.APY += GetWeightedAPY(-opt.price * opt.n, opt.date, date);
 					sumWeights += opt.price * opt.n;
+					op_pos.type = OptionType::LP;
 					break;
 				case TransactionType::CallShort:
 					temp.realized_held += opt.realized;
 					temp.APY += GetWeightedAPY(opt.realized, opt.date, opt.expiration); // approximate hold to expiration
-					temp.shares_collateral += opt.n;
 					sumWeights += opt.strike * opt.n; // approximate weight as strike of option
+					op_pos.type = OptionType::CC;
 					break;
 				case TransactionType::CallLong:
 					temp.realized_unheld += -opt.price * opt.n + opt.realized;
 					temp.APY += GetWeightedAPY(-opt.price * opt.n, opt.date, date);
 					sumWeights += opt.price * opt.n;
+					op_pos.type = OptionType::LC;
 					break;
 				default:
 					OutputMessage(L"Bad option type in HoldingsToPositions\n");
@@ -689,6 +699,7 @@ std::vector<Position> HoldingsToPositions(NestedHoldings const & holdings,
 				double unrealized = GetIntrinsicValue(opt, temp.marketPrice);
 				temp.unrealized += unrealized;
 				temp.APY += GetWeightedAPY(unrealized, opt.date, date);
+				temp.options.push_back(op_pos);
 			}
 
 			if (account >= 0) break;
@@ -697,6 +708,7 @@ std::vector<Position> HoldingsToPositions(NestedHoldings const & holdings,
 		if (account >= 0 && iAccount == nAccounts) continue; // no info for this ticker for this account
 		if (temp.n > 0) temp.avgCost = temp.avgCost / temp.n;
 		if (sumWeights > 0) temp.APY = temp.APY / sumWeights;
+		collateOptions(temp);
 		out.push_back(temp);
 
 		if (temp.ticker != L"CASH")
@@ -712,6 +724,89 @@ std::vector<Position> HoldingsToPositions(NestedHoldings const & holdings,
 }
 
 
+
+// HoldingsToPositions above simply adds single options. This function searches through 
+// the option chain to combine the naked options into spreads, as well as updating 
+// the position's collaterals. The long position should be before the short position.
+// TODO calendar spreads
+void collateOptions(Position& p)
+{
+	std::vector<OptionPosition> ops; // Create a new list
+
+	// Add options from the end (should be time-ordered). When on a short option,
+	// invalidate corresponding long options by decrementing their shares.
+	for (auto shor = p.options.rbegin(); shor != p.options.rend(); shor++)
+	{
+		if (shor->type == OptionType::CSP)
+		{
+			for (auto lon = shor + 1; lon != p.options.rend(); lon++)
+			{
+				if (lon->type != OptionType::LP || lon->expiration != shor->expiration || lon->shares == 0) continue;
+
+				if (lon->strike > shor->strike) // Put debit spread
+				{
+					// TODO
+				}
+				else // Put credit spread
+				{
+					OptionPosition pos = {};
+					pos.type = OptionType::PCS;
+					pos.shares = min(lon->shares, shor->shares);
+					pos.expiration = shor->expiration;
+					pos.strike = shor->strike;
+					pos.strike2 = lon->strike;
+					pos.price = shor->price - lon->price;
+					pos.cash_collateral = pos.shares * (pos.strike - pos.strike2);
+					ops.push_back(pos);
+
+					shor->shares -= pos.shares;
+					lon->shares -= pos.shares;
+					p.cash_collateral += pos.cash_collateral;
+				}
+				if (shor->shares == 0) break;
+			}
+
+			if (shor->shares > 0) // Cash secured put
+			{
+				shor->cash_collateral = shor->shares * shor->strike;
+				p.cash_collateral += shor->cash_collateral;
+				ops.push_back(*shor);
+			}
+		}
+		else if (shor->type == OptionType::CC)
+		{
+			for (auto lon = shor + 1; lon != p.options.rend(); lon++)
+			{
+				if (lon->type != OptionType::LC || lon->expiration != shor->expiration || lon->shares == 0) continue;
+
+				if (lon->strike < shor->strike) // Call debit spread
+				{
+					// TODO
+				}
+				else // Call credit spread
+				{
+					// TODO
+				}
+				if (shor->shares == 0) break;
+			}
+
+			if (shor->shares > 0) // Covered call
+			{
+				shor->shares_collateral = shor->shares;
+				p.shares_collateral += shor->shares;
+				ops.push_back(*shor);
+			}
+		}
+		else if (shor->shares > 0) // Long options that haven't yet been matched
+		{
+			ops.push_back(*shor);
+		}
+	} // End reverse loop over options 
+
+	p.options = ops;
+}
+
+
 namespace EquityHistoryHelper
 {
 	// For each ticker, cummulate net transaction costs and net shares.
@@ -720,7 +815,7 @@ namespace EquityHistoryHelper
 		int n = 0; // net shares
 		size_t iDate = 0; // index into ohlc for current date
 		std::wstring ticker;
-		std::vector<Option> opts; // use to calculate unrealized p/l
+		std::vector<OptionPosition> opts; // use to calculate unrealized p/l
 		std::vector<OHLC> ohlc;
 	};
 
@@ -777,11 +872,11 @@ namespace EquityHistoryHelper
 		cash += t.value;
 		if (isOption(t.type))
 		{
-			Option temp; // only care about type, n, expiration, and strike
-			temp.type = t.type;
-			temp.n = t.n * 100; // FIXME if not always 100 / contract
+			OptionPosition temp; // only care about type, n, expiration, and strike
+			temp.type = transToOptionType(t.type);
+			temp.shares = t.n * 100; // FIXME if not always 100 / contract
 			temp.expiration = t.expiration;
-			temp.strike = static_cast<float>(t.strike);
+			temp.strike = t.strike;
 			it->opts.push_back(temp);
 		}
 		else

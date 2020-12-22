@@ -287,11 +287,58 @@ void MergeHoldings(std::vector<Holdings> & target, std::vector<Holdings> mergee)
 ///////////////////////////////////////////////////////////
 // --- Positions ---
 
+enum class OptionType { CSP, CC, PCS, LP, LC, undefined };
+
+inline OptionType transToOptionType(TransactionType t)
+{
+	switch (t)
+	{
+	case TransactionType::CallLong: return OptionType::LC;
+	case TransactionType::CallShort: return OptionType::CC;
+	case TransactionType::PutLong: return OptionType::LP;
+	case TransactionType::PutShort: return OptionType::CSP;
+	default: return OptionType::undefined;
+	}
+}
+
+struct OptionPosition
+{
+	OptionType type;
+	unsigned shares; // shares underlying
+	unsigned shares_collateral; // For short positions
+	date_t expiration;
+	double strike; // primary
+	double strike2; // ancillary
+	double price;
+	// double realized; Probably not needed since realized calculated in position below, no need for separate per-option
+	double cash_collateral;
+
+	std::wstring to_wstring() const
+	{
+		switch (type)
+		{
+		case OptionType::CC:
+			return FormatMsg(L"CC%.2f-%u", strike, expiration);
+		case OptionType::CSP:
+			return FormatMsg(L"CSP%.2f-%u", strike, expiration);
+		case OptionType::LC:
+			return FormatMsg(L"C%.2f-%u", strike, expiration);
+		case OptionType::LP:
+			return FormatMsg(L"P%.2f-%u", strike, expiration);
+		case OptionType::PCS:
+			return FormatMsg(L"PCS%.2f-%.2f-%u", strike, strike2, expiration);
+		default:
+			return L"";
+		}
+	}
+};
+
+
 // Current position for a stock at a given day
 struct Position
 {
 	int n;					
-	int shares_collateral;
+	int shares_collateral; // currently unused
 	double cash_collateral;
 	double avgCost;			// of shares
 	double marketPrice;		// for CASH, cash from transfers
@@ -300,7 +347,7 @@ struct Position
 	double unrealized;		// includes intrinsic value gain(long) / loss(short) from options
 	double APY;
 	std::wstring ticker;
-	std::vector<Option> options; // p/l already included in above, but useful to keep around
+	std::vector<OptionPosition> options; // p/l already included in above, but useful to keep around
 
 	inline std::wstring to_wstring() const
 	{
@@ -362,12 +409,31 @@ inline std::pair<double, double> GetCash(std::vector<Position> const & positions
 	return { 0, 0 };
 }
 
-inline std::vector<std::vector<Option>> GetOptions(std::vector<Position> const & positions)
+inline std::vector<std::vector<OptionPosition>> GetOptions(std::vector<Position> const & positions)
 {
-	std::vector<std::vector<Option>> out;
+	std::vector<std::vector<OptionPosition>> out;
 	out.reserve(positions.size() - 1);
 	for (auto const & x : positions) if (x.ticker != L"CASH") out.push_back(x.options);
 	return out;
+}
+
+inline double GetIntrinsicValue(OptionPosition const& opt, double latest)
+{
+	switch (opt.type)
+	{
+	case OptionType::CSP:
+		return (latest < opt.strike) ? opt.shares * (latest - opt.strike) : 0.0;
+	case OptionType::LP:
+		return (latest < opt.strike) ? opt.shares * (opt.strike - latest) : 0.0;
+	case OptionType::CC:
+		return (latest > opt.strike) ? opt.shares * (opt.strike - latest) : 0.0;
+	case OptionType::LC:
+		return (latest > opt.strike) ? opt.shares * (latest - opt.strike) : 0.0;
+	case OptionType::PCS:
+		return (latest < opt.strike) ? opt.shares * (max(latest, opt.strike2) - opt.strike) : 0.0;
+	default:
+		return 0.0;
+	}
 }
 
 

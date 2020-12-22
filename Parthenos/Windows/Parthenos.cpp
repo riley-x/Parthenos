@@ -1232,29 +1232,37 @@ void Parthenos::LoadPieChart()
 		equities.push_back(p.n * p.marketPrice);
 		colors.push_back(KeyMatch(m_tickers, m_tickerColors, p.ticker));
 
-		for (Option const & opt : p.options)
+		for (OptionPosition const& opt : p.options)
 		{
-			if (opt.type == TransactionType::PutShort)
+			switch (opt.type)
+			{
+			case OptionType::PCS:
+			case OptionType::CSP:
 			{
 				temp_collat.name = p.ticker + L"-" + opt.to_wstring();
 				temp_collat.i = -1;
-				temp_collat.value = static_cast<double>(opt.strike) * opt.n;
+				temp_collat.value = opt.cash_collateral;
 				temp_collat.color = KeyMatch(m_tickers, m_tickerColors, p.ticker);
 				collaterals.push_back(temp_collat);
+				break;
 			}
-			else if (opt.type == TransactionType::CallShort)
+			case OptionType::CC:
 			{
 				temp_collat.name = p.ticker + L"-" + opt.to_wstring();
-				temp_collat.i = tickers.size() - 1; // TODO not necc. if long options too
-				temp_collat.value = p.marketPrice * opt.n;
+				temp_collat.i = ::GetIndex(tickers, p.ticker);
+				temp_collat.value = p.marketPrice * opt.shares;
 				temp_collat.color = Colors::RED;
 				collaterals.push_back(temp_collat);
+				break;
 			}
-			else
+			case OptionType::LC:
+			case OptionType::LP:
 			{
 				tickers.push_back(p.ticker + L"-" + opt.to_wstring());
-				equities.push_back(static_cast<double>(opt.price) * opt.n + GetIntrinsicValue(opt, p.marketPrice));
+				equities.push_back(static_cast<double>(opt.price) * opt.shares + GetIntrinsicValue(opt, p.marketPrice));
 				colors.push_back(Colors::Randomizer(tickers.back()));
+				break;
+			}
 			}
 		}
 	}
