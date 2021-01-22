@@ -232,50 +232,57 @@ void AddTransactionToTickerHoldings(std::vector<Holdings> & h, Transaction const
 	// Close position
 	else
 	{
-		if (isOption(t.type)) // TODO reimplement this using reduceSalesLots, will break with multiple options in one stock
+		if (isOption(t.type)) // NB: Can only close one lot at a time
 		{
-			if (t.tax_lot > header->nOptions)
-				return OutputMessage(L"Bad lot:\n%s", t.to_wstring().c_str());
+			// Get holding
+			short nlots = t.tax_lot;
+			size_t i_open = i_header + header->nLots + 1;
+			for (i_open; i_open < i_header + header->nLots + header->nOptions + 1; i_open++)
+			{
+				Option & opt = h[i_open].option;
+				if (opt.type != t.type || opt.expiration != t.expiration || opt.strike != t.strike) continue;
+				if (nlots == 0) break;
+				nlots--;
+			}
+			if (i_open == i_header + header->nLots + header->nOptions + 1)
+				return OutputMessage(L"Couldn't find holding for closing transaction:\n%s", t.to_wstring().c_str());
 
-			auto it = h.begin() + i_header + header->nLots + t.tax_lot + 1;
-			Option *opt = &(it->option);
-			if (opt->type != t.type || opt->expiration != t.expiration || opt->strike != t.strike)
-				return OutputMessage(L"Bad lot:\n%s", t.to_wstring().c_str());
-
-			time_t time_held = DateToTime(t.date) - DateToTime(opt->date);
+			// Resolve the transaction
+			Option& opt = h[i_open].option;
+			time_t time_held = DateToTime(t.date) - DateToTime(opt.date);
 			double realized;
-			if (opt->n <= -t.n * 100) // delete this lot
+			if (opt.n <= -t.n * 100) // delete this lot
 			{
 				if (isShort(t.type))
 				{
-					realized = opt->realized + t.value;
-					header->sumWeights += opt->n * opt->strike; // use collateral as effective cost
+					realized = opt.realized + t.value;
+					header->sumWeights += opt.n * (double)opt.strike; // use collateral as effective cost
 				}
 				else
 				{
-					realized = opt->realized - (opt->n * opt->price) + t.value;
-					header->sumWeights += opt->n * opt->price;
+					realized = (double)opt.realized - (opt.n * opt.price) + t.value;
+					header->sumWeights += opt.n * (double)opt.price;
 				}
 				header->sumReal += realized;
 				header->sumReal1Y += realized * 365.0 * 86400.0 / time_held;
 				header->nOptions--;
-				h.erase(it); // must call after any pointer dereference
+				h.erase(h.begin() + i_open); // must call after any pointer dereference
 			}
 			else // partial close
 			{
 				if (isShort(t.type))
 				{
 					// t.n < 0 and t.value < 0
-					opt->realized += t.n * 100 * opt->price; // swap realized from opt to header
-					realized = -t.n * 100 * opt->price + t.value;
-					header->sumWeights += -t.n * 100 * opt->strike; // use collateral as effective cost
+					opt.realized += t.n * 100 * opt.price; // swap realized from opt to header
+					realized = -t.n * 100 * (double)opt.price + t.value;
+					header->sumWeights += -t.n * 100 * (double)opt.strike; // use collateral as effective cost
 				}
 				else
 				{
-					realized = t.n * 100 * opt->price + t.value; // t.n < 0 and t.value > 0
-					header->sumWeights += -t.n * 100 * opt->price;
+					realized = t.n * 100 * (double)opt.price + t.value; // t.n < 0 and t.value > 0
+					header->sumWeights += -t.n * 100 * (double)opt.price;
 				}
-				opt->n += t.n;
+				opt.n += t.n;
 				header->sumReal += realized;
 				header->sumReal1Y += realized * 365.0 * 86400.0 / time_held;
 			}

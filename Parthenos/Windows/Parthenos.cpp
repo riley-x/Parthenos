@@ -29,7 +29,7 @@ Parthenos::Parthenos(PCWSTR szClassName) :
 	//transFile.Init(ROOTDIR + L"hist.trans");
 	//transFile.Open();
 	//std::vector<Transaction> trans = transFile.Read<Transaction>();
-	//trans.resize(trans.size() - 1);
+	//trans.resize(trans.size() - 2);
 	//transFile.Write(trans.data(), sizeof(Transaction)*trans.size());
 	//transFile.Close();
 
