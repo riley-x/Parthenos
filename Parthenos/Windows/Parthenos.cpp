@@ -334,7 +334,7 @@ void Parthenos::CalculateReturns()
 			Position const & p = acc.positions[i];
 			if (p.ticker == L"CASH") continue;
 			double returns = p.realized_held + p.realized_unheld + p.unrealized; 
-			double cost_basis = p.avgCost * p.n + p.cash_collateral;
+			double cost_basis = p.avgCost * p.n;
 			double perc = (cost_basis == 0) ? 0.0 : (p.realized_held + p.unrealized) / cost_basis * 100.0; 
 			D2D1_COLOR_F color = KeyMatch(m_tickers, m_tickerColors, p.ticker);
 

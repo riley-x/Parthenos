@@ -342,8 +342,8 @@ struct Position
 	double cash_collateral;
 	double avgCost;			// of shares
 	double marketPrice;		// for CASH, cash from transfers
-	double realized_held;	// == sum(lot.realized) for shares + credit from open short options. For CASH, cash from interest
-	double realized_unheld; // == head.sumReal + proceeds of open long options. For CASH, net cash from transactions
+	double realized_held;	// == sum(lot.realized) for shares. For CASH, cash from interest
+	double realized_unheld; // == head.sumReal + proceeds of open options. For CASH, net cash from transactions
 	double unrealized;		// includes intrinsic value gain(long) / loss(short) from options
 	double APY;
 	std::wstring ticker;

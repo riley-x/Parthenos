@@ -677,7 +677,7 @@ std::vector<Position> HoldingsToPositions(NestedHoldings const & holdings,
 				switch (opt.type)
 				{
 				case TransactionType::PutShort:
-					temp.realized_held += opt.realized;
+					temp.realized_unheld += opt.realized;
 					temp.APY += GetWeightedAPY(opt.realized, opt.date, opt.expiration); // approximate hold to expiration
 					sumWeights += opt.strike * opt.n; // approximate weight as collateral of option
 					op_pos.type = OptionType::CSP;
@@ -689,7 +689,7 @@ std::vector<Position> HoldingsToPositions(NestedHoldings const & holdings,
 					op_pos.type = OptionType::LP;
 					break;
 				case TransactionType::CallShort:
-					temp.realized_held += opt.realized;
+					temp.realized_unheld += opt.realized;
 					temp.APY += GetWeightedAPY(opt.realized, opt.date, opt.expiration); // approximate hold to expiration
 					sumWeights += opt.strike * opt.n; // approximate weight as strike of option
 					op_pos.type = OptionType::CC;
