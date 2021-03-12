@@ -148,7 +148,7 @@ namespace jsonette
 
 
 		// Array -- vector of JSON values
-		inline std::vector<JSON> const & get_arr() const
+		inline std::vector<JSON> & get_arr() const
 		{
 			if (m_type != JType::Array) throw_type_error();
 			return *reinterpret_cast<std::vector<JSON>*>(m_data);
@@ -165,6 +165,7 @@ namespace jsonette
 			return (*data)[i];
 		}
 		template<> inline std::vector<JSON> const & get<std::vector<JSON> const &>() const { return get_arr(); }
+		//operator std::vector<JSON> & () const { return get_arr(); }
 
 		// Integer
 		inline int64_t get_int() const
