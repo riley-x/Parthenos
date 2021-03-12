@@ -13,9 +13,7 @@ double GetAssignment(Play& p, std::vector<Transaction> const& trans, size_t iClo
 
 void AddCustomTransactionToHoldings(std::vector<Holdings>& holdings, Transaction const& t);
 void AddTransactionToTickerHoldings(Holdings& h, Transaction const& t);
-void ReduceSalesLots(std::vector<Holdings> & h, size_t i_header, date_t end);
-size_t GetPurchaseLot(std::vector<Holdings> const & h, size_t i_header, size_t n);
-inline bool Holdings_Compare(const std::vector<Holdings>& a, std::wstring const & ticker);
+void MergeHoldings(Holdings& target, Holdings const& mergee);
 
 inline double GetAPY(double gain, double cost_in, date_t start_date, date_t end_date);
 inline double GetWeightedAPY(double gain, date_t start_date, date_t end_date);
@@ -219,21 +217,19 @@ void AddTransactionToTickerHoldings(Holdings& h, Transaction const& t)
 }
 
 
-
 // Handles custom transactions, such as spin-offs, mergers, and stock splits
 // TODO add transaction type for above
-void AddCustomTransactionToHoldings(std::vector<Holdings>& holdings, Transaction const& t);
+void AddCustomTransactionToHoldings(std::vector<Holdings>& holdings, Transaction const& t)
 {
 	if (std::wstring(t.ticker) == L"RTN-UTX") // RTN-UTX merger
 	{
 		// Find position of RTN and RTX
-		NestedHoldings::iterator rtn = holdings.end();
-		NestedHoldings::iterator rtx = holdings.end();
+		auto rtn = holdings.end();
+		auto rtx = holdings.end();
 		for (auto it = holdings.begin(); it != holdings.end(); it++)
 		{
-			std::wstring ticker(it->front().tickerInfo.ticker);
-			if (ticker == L"RTN") rtn = it;
-			else if (ticker == L"RTX") rtx = it;
+			if (it->ticker == L"RTN") rtn = it;
+			else if (it->ticker == L"RTX") rtx = it;
 		}
 
 		MergeHoldings(*rtx, *rtn);
@@ -246,148 +242,60 @@ void AddCustomTransactionToHoldings(std::vector<Holdings>& holdings, Transaction
 }
 
 
+// In the case of a stock merger, add all return information from 'mergee' into 'target'.
+// The merger is indicated in the transactions via a sale of mergee stock and purchase of target stock.
+void MergeHoldings(Holdings& target, Holdings const & mergee)
+{
+	if (target.accts.size() < mergee.accts.size())
+		target.accts.resize(mergee.accts.size());
+
+	for (size_t acc = 0; acc < mergee.accts.size(); acc++)
+	{
+		target.accts[acc].sumReal += mergee.accts[acc].sumReal;
+		target.accts[acc].sumReal1Y += mergee.accts[acc].sumReal1Y;
+		target.accts[acc].sumWeights += mergee.accts[acc].sumWeights;
+	}
+}
+
+
+
 ///////////////////////////////////////////////////////////////////////////////
 //	                                Holdings                                 //
 ///////////////////////////////////////////////////////////////////////////////
 
-
-
-// Reduces sales against purchases for stock lots with date prior to end.
-void ReduceSalesLots(std::vector<Holdings>& h, size_t i_header, date_t end)
+std::vector<Holdings> readHoldings(std::wstring const& filepath)
 {
-	HoldingHeader *header = &(h.at(i_header).head);
-	size_t istart = i_header + 1;
-	size_t iend = i_header + 1; // exclusive
+	FileIO file;
+	file.Init(filepath);
+	file.Open(GENERIC_READ);
+	JSON j(file.ReadText());
+	file.Close();
 
-	while (iend <= i_header + header->nLots)
-	{
-		if (h.at(iend).lot.date >= end) break;
-		iend++;
-	}
+	std::vector<Holdings> holds;
+	holds.reserve(j.get_arr_size());
+	for (JSON const& j : j.get_arr())
+		holds.push_back(j);
 
-	// Loop over sales
-	for (size_t i = istart; i < iend; i++)
-	{
-		TaxLot *sell = &(h.at(i).lot);
-		if (sell->active != -1) continue;
-
-		size_t ibuy = istart;
-		if (sell->tax_lot > 0)
-			ibuy = GetPurchaseLot(h, i_header, sell->tax_lot);
-
-		bool done = false; // finished with this sale entry
-
-		// Loop over buys
-		while (!done && ibuy != i)
-		{
-			TaxLot *buy = &(h.at(ibuy).lot);
-			if (buy->active != 1)
-			{
-				ibuy++;
-				continue;
-			}
-
-			time_t time_held = min(86400, DateToTime(sell->date) - DateToTime(buy->date));
-			double realized = 0;
-			int n;
-			if (buy->n >= -sell->n)
-			{
-				n = -sell->n;
-
-				realized = buy->realized * n / static_cast<double>(buy->n);
-				buy->realized -= realized;
-				realized += sell->realized - buy->price * n;
-
-				sell->active = 0;
-				header->nLots--; // need to subtract here before deletion invalidates the header pointer
-				if (n == buy->n)
-				{
-					buy->active = 0;
-					header->nLots--;
-				}
-				buy->n -= n;
-				done = true;
-			}
-			else
-			{
-				if (sell->tax_lot > 0) throw std::invalid_argument("Specified tax lot for sale doesn't match");
-
-				n = buy->n;
-
-				realized = buy->realized;
-				realized += (sell->price - buy->price) * n;
-				sell->n += n;
-				sell->realized -= sell->price * n;
-
-				buy->active = 0;
-				header->nLots--;
-
-				done = false;
-				ibuy++;
-			}
-			header->sumWeights += buy->price * n;
-			header->sumReal += realized;
-			header->sumReal1Y += realized * 365.0 * 86400.0 / time_held;
-		}
-		if (!done) OutputMessage(L"ReduceSalesLots entries didn't line up\n");
-	}
-
-
+	return holds;
 }
 
-
-// Returns an index into h to the 'n'th active stock purchase lot
-size_t GetPurchaseLot(std::vector<Holdings> const & h, size_t i_header, size_t n)
+void writeHoldings(std::wstring const& filepath, std::vector<Holdings> const& holds)
 {
-	HoldingHeader const *header = &(h.at(i_header).head);
-	size_t istart = i_header + 1;
-	size_t iend = i_header + header->nLots + 1; // exclusive
-
-	size_t i;
-	for (i = istart; i < iend; i++)
+	std::string json("[");
+	for (Holdings const& h : holds)
 	{
-		if (h.at(i).lot.active == 1)
-		{
-			if (n == 0) return i;
-			n--;
-		}
+		json.append(::w2s(h.to_json()));
+		json.append(",");
 	}
-	return 0;
-}
+	json.append("]");
 
+	std::string towrite(JSON(json).to_string());
 
-// returns a.front().ticker < ticker
-inline bool Holdings_Compare(const std::vector<Holdings>& a, std::wstring const & ticker)
-{
-	if (a.empty()) throw std::invalid_argument("Holdings_Compare empty vector");
-	return std::wstring(a.front().tickerInfo.ticker) < ticker;
-}
-
-
-// In the case of a stock merger, add all return information from 'mergee' into 'target'.
-// The merger is indicated in the transactions via a sale of mergee stock and purchase of target stock.
-void MergeHoldings(std::vector<Holdings> & target, std::vector<Holdings> mergee)
-{
-	int nAccounts = mergee.front().tickerInfo.nAccounts;
-	size_t i_header = 1;
-	for (int acc = 0; acc < nAccounts; acc++)
-	{
-		// First reduce all sales in mergee
-		ReduceSalesLots(mergee, i_header, MkDate(9999, 0, 0));
-		HoldingHeader & mergee_head = mergee[i_header].head;
-
-		// Add results to target
-		size_t i_target_header = GetHeaderIndex(target, mergee_head.account);
-		if (i_target_header == (size_t)-1) throw ws_exception(L"MergeHoldings() didn't find account");
-
-		HoldingHeader & target_head = target[i_target_header].head;
-		target_head.sumReal += mergee_head.sumReal;
-		target_head.sumReal1Y += mergee_head.sumReal1Y;
-		target_head.sumWeights += mergee_head.sumWeights;
-
-		// Move to next account in mergee
-		i_header += mergee[i_header].head.nLots + mergee[i_header].head.nOptions + 1;
-	}
+	FileIO file;
+	file.Init(filepath);
+	file.Open();
+	file.Write(towrite.data(), towrite.size() * sizeof(char));
+	file.Close();
 }
 
 
@@ -1038,4 +946,79 @@ std::wstring Play::to_wstring() const
 		+ L", collateral: " + std::to_wstring(collateral)
 		+ L", assignment_cost: " + std::to_wstring(assignment_cost)
 		+ L"\n";
+}
+
+Lot::Lot(jsonette::JSON const& json)
+{
+	type = TransactionStringToEnum(json["type"]);
+	n = json["n"];
+	date = json["date"];
+	expiration = json["expiration"];
+	price = json["price"];
+	strike = json["strike"];
+	dividends = json["dividends"];
+	fees = json["fees"];
+}
+
+std::wstring Lot::to_json() const
+{
+	std::wstringstream ss;
+	ss << L"{\"type\":" << L"\"" << ::to_wstring(type) << L"\""
+		<< L",\"n\":" << n
+		<< L",\"date\":" << date
+		<< L",\"expiration\":" << expiration
+		<< L",\"price\":" << price
+		<< L",\"strike\":" << strike
+		<< L",\"dividends\":" << dividends
+		<< L",\"fees\":" << fees
+		<< L"}";
+	return ss.str();
+}
+
+AccountHoldings::AccountHoldings(jsonette::JSON const& json)
+{
+	sumWeights = json["sumWeights"];
+	sumReal1Y = json["sumReal1Y"];
+	sumReal = json["sumReal"];
+	lots.reserve(json["lots"].get_arr_size());
+	for (JSON const& j : json["lots"].get_arr())
+		lots.push_back(j);
+}
+
+std::wstring AccountHoldings::to_json() const
+{
+	std::wstringstream ss;
+	ss << L"{\"sumWeights\":" << sumWeights
+		<< L",\"sumReal1Y\":" << sumReal1Y
+		<< L",\"sumReal\":" << sumReal
+		<< L",\"lots\":[";
+	for (size_t i = 0; i < lots.size(); i++)
+	{
+		if (i != 0) ss << ",";
+		ss << lots[i].to_json();
+	}
+	ss << L"]}";
+	return ss.str();
+}
+
+Holdings::Holdings(jsonette::JSON const& json)
+{
+	ticker = ::s2w(json["ticker"]);
+	accts.reserve(json["accts"].get_arr_size());
+	for (JSON const& j : json["accts"].get_arr())
+		accts.push_back(j);
+}
+
+std::wstring Holdings::to_json() const
+{
+	std::wstringstream ss;
+	ss << L"{\"ticker\":" << L"\"" << ticker << L"\""
+		<< L",\"accts\":[";
+	for (size_t i = 0; i < accts.size(); i++)
+	{
+		if (i != 0) ss << ",";
+		ss << accts[i].to_json();
+	}
+	ss << L"]}";
+	return ss.str();
 }

@@ -134,6 +134,7 @@ struct Transaction
 std::vector<Transaction> readTransactions(std::wstring const & filepath);
 void writeTransactions(std::wstring const& filepath, std::vector<Transaction> const& trans);
 
+
 ///////////////////////////////////////////////////////////////////////////////
 //                                 Holdings                                  //
 ///////////////////////////////////////////////////////////////////////////////
@@ -141,6 +142,9 @@ void writeTransactions(std::wstring const& filepath, std::vector<Transaction> co
 
 struct Lot
 {
+	Lot() = default;
+	Lot(jsonette::JSON const& json);
+
 	TransactionType type = TransactionType::Custom;
 	int n = 0;				// shares or contracts
 	date_t date = 0;
@@ -155,23 +159,35 @@ struct Lot
 
 struct AccountHoldings
 {
+	AccountHoldings() = default;
+	AccountHoldings(jsonette::JSON const& json);
+
 	double sumWeights = 0; // sum_transactions (cost) ; divide sumReal1Y by this to get weighted APY. Also total transfers for CASH
 	double sumReal1Y = 0; // realized * 365 / days_held    ==    cost * (realized/cost) / (days_held/365)
 	double sumReal = 0; // realized
 	std::vector<Lot> lots; 
+
+	std::wstring to_json() const;
 };
 
 struct Holdings
 {
+	Holdings() = default;
+	Holdings(jsonette::JSON const& json);
+
 	std::wstring ticker; // all uppercase
 	std::vector<AccountHoldings> accts;
+
+	std::wstring to_json() const;
 };
 
+std::vector<Holdings> readHoldings(std::wstring const& filepath);
+void writeHoldings(std::wstring const& filepath, std::vector<Holdings> const& holds);
 
 
-
-
+///////////////////////////////////////
 // Transaction --> Holdings
+
 void AddTransactionToHoldings(std::vector<Holdings> & holdings, Transaction const & transaction);
 std::vector<Holdings> FullTransactionsToHoldings(std::vector<Transaction> const & transactions);
 
@@ -208,13 +224,9 @@ inline double GetIntrinsicValue(Lot const & opt, double latest)
 	}
 }
 
-// In the case of a stock merger, add all return information from 'mergee' into 'target'.
-// The merger is indicated in the transactions via a sale of mergee stock and purchase of target stock.
-void MergeHoldings(Holdings & target, Holdings const & mergee);
-
-
-///////////////////////////////////////////////////////////
-// --- Positions ---
+///////////////////////////////////////////////////////////////////////////////
+//                                 Positions                                 //
+///////////////////////////////////////////////////////////////////////////////
 
 enum class OptionType { CSP, CC, PCS, LP, LC, undefined };
 
