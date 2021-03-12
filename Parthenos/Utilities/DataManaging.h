@@ -5,6 +5,7 @@
 #include "../stdafx.h"
 #include "utilities.h"
 #include "API.h"
+#include "jsonette.h"
 
 
 ///////////////////////////////////////////////////////////
@@ -20,6 +21,7 @@ enum class TransactionType : char { Transfer, Stock, Dividend, Interest, Fee, Pu
 
 std::vector<std::wstring> const TRANSACTIONTYPE_STRINGS = { L"Transfer", L"Stock", L"Dividend", L"Interest", L"Fee",
 	L"Short Put", L"Long Put", L"Short Call", L"Long Call", L"Custom" };
+
 
 inline std::wstring to_wstring(TransactionType t)
 {
@@ -76,42 +78,28 @@ inline std::wstring OptToLetter(TransactionType type)
 
 struct Transaction
 {
-	char account;				// 1
-	TransactionType type;		// 2
-	short tax_lot;				// 4	for sales - index into lots - 0 if FIFO (for stock) - Options must be fully qualified index
-	wchar_t ticker[12] = {};	// 28	must be all uppercase
-	int n;						// 32	positive for open, negative for close. Number of contracts for options
-	date_t date;				// 36
-	date_t expiration;			// 40	for stock dividends, this is the ex date
-	double value;				// 48	include fees here
-	double price;				// 56	don't include fees here
-	double strike;				// 64
+	Transaction() = default;
+	Transaction(jsonette::JSON const& json);
+
+	TransactionType type;
+	int account;				// index into accounts.json
+	int tax_lot;				// for sales - index into lots - 0 if FIFO (for stock) - Options must be fully qualified index
+	int n;						// positive for open, negative for close. Number of contracts for options
+	date_t date;				// 
+	date_t expiration;			// for stock dividends, this is the ex date
+	double value;				// include fees here
+	double price;				// don't include fees here
+	double strike;				// 
+	std::wstring ticker;		// must be all uppercase
 
 	std::wstring to_wstring() const;
 	std::wstring to_wstring(std::vector<std::wstring> const & accounts) const;
+	std::wstring to_json() const;
 
 	// For type==Custom, ticker is a tag that defines the custom operation,
 	// which is hard-coded in the add transaction functions.
 };
 
-inline bool operator==(const Transaction &t1, const Transaction &t2)
-{
-	return t1.account == t2.account
-		&& t1.type == t2.type
-		&& t1.tax_lot == t2.tax_lot
-		&& std::wstring(t1.ticker) == std::wstring(t2.ticker)
-		&& t1.n == t2.n
-		&& t1.date == t2.date
-		&& t1.expiration == t2.expiration
-		&& t1.value == t2.value
-		&& t1.price == t2.price
-		&& t1.strike == t2.strike;
-}
-
-inline bool operator!=(const Transaction &t1, const Transaction &t2)
-{
-	return !(t1 == t2);
-}
 
 std::vector<Transaction> CSVtoTransactions(std::wstring filepath);
 

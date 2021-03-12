@@ -29,9 +29,25 @@ Parthenos::Parthenos(PCWSTR szClassName) :
 	//transFile.Init(ROOTDIR + L"hist.trans");
 	//transFile.Open();
 	//std::vector<Transaction> trans = transFile.Read<Transaction>();
-	//trans.resize(trans.size() - 2);
-	//transFile.Write(trans.data(), sizeof(Transaction)*trans.size());
 	//transFile.Close();
+
+	Transaction trans;
+	trans.account = 1;
+	trans.type = TransactionType::Dividend;
+	trans.n = 0;
+	trans.date = 20210312;
+	trans.expiration = 0;
+	trans.price = 34.43;
+	trans.strike = 0;
+	trans.tax_lot = 0;
+	trans.value = -235.3;
+	trans.ticker = L"NVDA";
+
+	jsonette::JSON j(::w2s(trans.to_json()));
+	OutputDebugStringA(j.to_string().c_str());
+
+	Transaction t(j.to_string());
+	OutputDebugString(t.to_wstring().c_str());
 
 	//FileIO ohlcFile;
 	//ohlcFile.Init(ROOTDIR + L"spy.iex.ohlc");

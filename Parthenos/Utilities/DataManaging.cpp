@@ -79,7 +79,8 @@ Transaction parseTransactionItem(std::string str)
 	out.type = static_cast<TransactionType>(type);
 
 	size_t convertedChars = 0;
-	mbstowcs_s(&convertedChars, out.ticker, PortfolioObjects::maxTickerLen + 1, buffer, _TRUNCATE);
+	out.ticker.resize(PortfolioObjects::maxTickerLen);
+	mbstowcs_s(&convertedChars, out.ticker.data(), PortfolioObjects::maxTickerLen + 1, buffer, _TRUNCATE);
 
 	return out;
 }
@@ -103,7 +104,7 @@ void AddTransactionToHoldings(NestedHoldings & holdings, Transaction const & t)
 	{
 		// insert (rare, so using vectors is better than a list)
 		Holdings h_ticker;
-		wcscpy_s(h_ticker.tickerInfo.ticker, PortfolioObjects::maxTickerLen + 1, t.ticker);
+		wcscpy_s(h_ticker.tickerInfo.ticker, PortfolioObjects::maxTickerLen + 1, t.ticker.data());
 		h_ticker.tickerInfo.nAccounts = 0;
 
 		std::vector<Holdings> temp = { h_ticker };
@@ -1162,12 +1163,26 @@ double GetAssignment(Play& p, std::vector<Transaction> const& trans, size_t iClo
 //	                            Print Functions                              //
 ///////////////////////////////////////////////////////////////////////////////
 
+Transaction::Transaction(jsonette::JSON const& json)
+{
+	type = TransactionStringToEnum(json["type"]);
+	account = json["account"];
+	tax_lot = json["lot"];
+	n = json["n"];
+	date = json["date"];
+	expiration = json["expiration"];
+	value = json["value"];
+	price = json["price"];
+	strike = json["strike"];
+	ticker = json["ticker"];
+}
+
 std::wstring Transaction::to_wstring() const
 {
 	wchar_t buffer[300];
 	swprintf_s(buffer, _countof(buffer),
 		L"%s: %s (Account: %d) %s, n: %d, Value: %.2lf, Price: %.4lf, Expiration: %s, Strike: %.2lf",
-		DateToWString(date).c_str(), ticker, static_cast<int>(account), ::to_wstring(type).c_str(),
+		DateToWString(date).c_str(), ticker.c_str(), static_cast<int>(account), ::to_wstring(type).c_str(),
 		n, value, price, DateToWString(expiration).c_str(), strike
 	);
 	return std::wstring(buffer);
@@ -1178,10 +1193,27 @@ std::wstring Transaction::to_wstring(std::vector<std::wstring> const& accounts) 
 	wchar_t buffer[300];
 	swprintf_s(buffer, _countof(buffer),
 		L"%s: %s (%s) %s, n: %d, Value: %.2lf, Price: %.4lf, Expiration: %s, Strike: %.2lf",
-		DateToWString(date).c_str(), ticker, accounts[account].c_str(), ::to_wstring(type).c_str(),
+		DateToWString(date).c_str(), ticker.c_str(), accounts[account].c_str(), ::to_wstring(type).c_str(),
 		n, value, price, DateToWString(expiration).c_str(), strike
 	);
 	return std::wstring(buffer);
+}
+
+std::wstring Transaction::to_json() const
+{
+	std::wstringstream ss;
+	ss << L"{\"type\": " << L"\"" << ::to_wstring(type) << L"\""
+		<< L",\"account\": " << account
+		<< L",\"lot\": " << tax_lot
+		<< L",\"n\": " << n
+		<< L",\"date\": " << date
+		<< L",\"expiration\": " << expiration
+		<< L",\"value\": " << value
+		<< L",\"price\": " << price
+		<< L",\"strike\": " << strike
+		<< L",\"ticker\": " << L"\"" << ticker << L"\""
+		<< L"}";
+	return ss.str();
 }
 
 std::wstring Play::to_wstring() const

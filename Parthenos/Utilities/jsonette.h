@@ -178,6 +178,7 @@ namespace jsonette
 		template<> inline long		get<long>() const { return static_cast<long>(get_int()); }
 		template<> inline long long get<long long>() const { return static_cast<long long>(get_int()); }
 		operator int() const { return get<int>(); }
+		operator uint32_t() const { return get<int>(); }
 		operator int64_t() const { return get_int(); }
 
 		// Double
@@ -200,6 +201,7 @@ namespace jsonette
 		template<> inline std::string const & get<std::string const &>() const { return get_str(); }
 		template<> inline std::string		  get<std::string>() const { return get_str(); }
 		operator std::string() const { return get_str(); }
+		operator std::wstring() const { return ::s2w(get_str()); }
 
 		// Bool
 		inline bool get_bool() const

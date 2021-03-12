@@ -182,7 +182,7 @@ Transaction TransactionEditor::GetTransaction() const
 
 		std::wstring ticker = m_tickerBox->String();
 		std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::toupper);
-		wcscpy_s(t.ticker, PortfolioObjects::maxTickerLen + 1, ticker.c_str());
+		wcscpy_s(t.ticker.data(), PortfolioObjects::maxTickerLen + 1, ticker.c_str());
 
 		t.n = stoi(m_nsharesBox->String());
 		t.date = stoi(m_dateBox->String());

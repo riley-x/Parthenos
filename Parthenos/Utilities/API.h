@@ -5,7 +5,7 @@
 #include "../stdafx.h"
 #include "utilities.h"
 
-const std::wstring ROOTDIR(L"C:/Users/riley/Documents/Finances/Parthenos/"); // C:/Users/riley/Documents/Finances/Parthenos/
+const std::wstring ROOTDIR(L"C:/Users/riley/Documents/Finances/Parthenos_dev/"); // C:/Users/riley/Documents/Finances/Parthenos_dev/
 extern std::wstring TDKEY;
 
 
