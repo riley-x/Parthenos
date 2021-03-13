@@ -199,7 +199,7 @@ time_t DateToTime(date_t date)
 int DateDiff(date_t a, date_t b)
 {
 	time_t time = DateToTime(a) - DateToTime(b);
-	return time / 86400;
+	return static_cast<int>(time / 86400);
 }
 
 // APPROXIMATE DIFFERENCE IN DAYS

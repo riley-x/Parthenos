@@ -233,7 +233,7 @@ void closePosition(AccountHoldings& h, Transaction const& trans)
 		t.value -= n * t.price * (isOption(t.type) ? 100 : 1) * (isShort(t.type) ? -1 : 1);
 		realized += n * lot.dividends;
 
-		int days_held = min(1, (DateToTime(t.date) - DateToTime(lot.date) / 86400));
+		int days_held = min(1, ::DateDiff(t.date, lot.date));
 		double cost = (isShort(t.type) ? t.price : lot.price) * n * (isOption(t.type) ? 100 : 1);
 		h.sumWeights += cost * days_held;
 		h.realized += realized;
@@ -472,7 +472,7 @@ std::vector<Position> HoldingsToPositions(std::vector<Holdings> const & holdings
 
 		// Loop over accounts and add positions together
 		unsigned start = (account == -1) ? 0 : account;
-		unsigned end = (account == -1) ? h.accts.size() : start + 1;
+		unsigned end = (account == -1) ? static_cast<unsigned>(h.accts.size()) : start + 1;
 		for (unsigned iAccount = start; iAccount < end; iAccount++)
 		{
 			AccountHoldings const& header = h.accts[iAccount];
