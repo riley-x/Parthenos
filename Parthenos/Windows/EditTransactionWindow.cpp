@@ -17,11 +17,7 @@ void EditTransactionWindow::PreShow()
 	D2D1_RECT_F dipRect = DPIScale::PixelsToDips(rc);
 
 	// Load transactions
-	FileIO transFile;
-	transFile.Init(m_filepath);
-	transFile.Open(GENERIC_READ);
-	std::vector<Transaction> trans = transFile.Read<Transaction>();
-	transFile.Close();
+	std::vector<Transaction> trans(::readTransactions(m_filepath));
 
 	// Create title bar
 	float titleBarBottom = DPIScale::SnapToPixelY(m_titleBarHeight);
@@ -110,22 +106,8 @@ void EditTransactionWindow::ProcessCTPMessages()
 						trans.push_back(tedit->GetTransaction());
 					}
 
-					//OutputMessage(L"hi\n");
-					//if (trans.size() != m_transactions.size()) OutputMessage(L"uhoh\n");
-					//for (size_t i = 0; i < trans.size(); i++)
-					//{
-					//	if (trans[i] != m_transactions[i])
-					//	{
-					//		OutputMessage(L"%d\n\t%s\n\t%s\n", i, trans[i].to_wstring(), m_transactions[i].to_wstring());
-					//	}
-					//}
-
 					// Save transactions
-					FileIO transFile;
-					transFile.Init(m_filepath);
-					transFile.Open();
-					transFile.Write(trans.data(), sizeof(Transaction)*trans.size());
-					transFile.Close();
+					::writeTransactions(m_filepath, trans);
 				}
 			}
 			break;

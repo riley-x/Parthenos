@@ -175,11 +175,16 @@ struct Holdings
 	Holdings() = default;
 	Holdings(jsonette::JSON const& json);
 
+
 	std::wstring ticker; // all uppercase
 	std::vector<AccountHoldings> accts;
 
 	std::wstring to_json() const;
 };
+
+std::wostream& operator<<(std::wostream& os, const Lot& l);
+std::wostream& operator<<(std::wostream& os, const AccountHoldings& h);
+std::wostream& operator<<(std::wostream& os, const Holdings& h);
 
 std::vector<Holdings> readHoldings(std::wstring const& filepath);
 void writeHoldings(std::wstring const& filepath, std::vector<Holdings> const& holds);
@@ -212,13 +217,13 @@ inline double GetIntrinsicValue(Lot const & opt, double latest)
 	switch (opt.type)
 	{
 	case TransactionType::PutShort:
-		return (latest < opt.strike) ? opt.n * (latest - opt.strike) : 0.0;
+		return (latest < opt.strike) ? 100l * opt.n * (latest - opt.strike) : 0.0;
 	case TransactionType::PutLong:
-		return (latest < opt.strike) ? opt.n * (opt.strike - latest) : 0.0;
+		return (latest < opt.strike) ? 100l * opt.n * (opt.strike - latest) : 0.0;
 	case TransactionType::CallShort:
-		return (latest > opt.strike) ? opt.n * (opt.strike - latest) : 0.0;
+		return (latest > opt.strike) ? 100l * opt.n * (opt.strike - latest) : 0.0;
 	case TransactionType::CallLong:
-		return (latest > opt.strike) ? opt.n * (latest - opt.strike) : 0.0;
+		return (latest > opt.strike) ? 100l * opt.n * (latest - opt.strike) : 0.0;
 	default:
 		return 0.0;
 	}
