@@ -76,36 +76,7 @@ inline std::wstring OptToLetter(TransactionType type)
 	}
 }
 
-struct Transaction_OLD
-{
-	char account;                           // 1
-	TransactionType type;           // 2
-	short tax_lot;                          // 4    for sales - index into lots - 0 if FIFO (for stock) - Options must be fully qualified index
-	wchar_t ticker[12] = {};        // 28   must be all uppercase
-	int n;                                          // 32   positive for open, negative for close. Number of contracts for options
-	date_t date;                            // 36
-	date_t expiration;                      // 40   for stock dividends, this is the ex date
-	double value;                           // 48   include fees here
-	double price;                           // 56   don't include fees here
-	double strike;                          // 64
 
-	std::wstring to_json() const
-	{
-		std::wstringstream ss;
-		ss << L"{\"type\": " << L"\"" << ::to_wstring(type) << L"\""
-			<< L",\"account\": " << (int)account
-			<< L",\"lot\": " << tax_lot
-			<< L",\"n\": " << n
-			<< L",\"date\": " << date
-			<< L",\"expiration\": " << expiration
-			<< L",\"value\": " << value
-			<< L",\"price\": " << price
-			<< L",\"strike\": " << strike
-			<< L",\"ticker\": " << L"\"" << ticker << L"\""
-			<< L"}";
-		return ss.str();
-	}
-};
 
 struct Transaction
 {
@@ -155,6 +126,7 @@ struct Lot
 	double fees = 0;		// value + price * n, includes fees and rounding errors
 
 	std::wstring to_json() const;
+	std::wstring to_wstring() const;
 };
 
 struct AccountHoldings
@@ -168,6 +140,7 @@ struct AccountHoldings
 	std::vector<Lot> lots; 
 
 	std::wstring to_json() const;
+	std::wstring to_wstring() const;
 };
 
 struct Holdings
@@ -175,11 +148,11 @@ struct Holdings
 	Holdings() = default;
 	Holdings(jsonette::JSON const& json);
 
-
 	std::wstring ticker; // all uppercase
 	std::vector<AccountHoldings> accts;
 
 	std::wstring to_json() const;
+	std::wstring to_wstring() const;
 };
 
 std::wostream& operator<<(std::wostream& os, const Lot& l);

@@ -830,9 +830,7 @@ void Parthenos::ProcessMenuMessage(bool & pop_front)
 	{
 		if (msg.msg == L"Print Transaction History")
 		{
-			// Read transaction history
 			std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"trans.json"));
-
 			std::wstring out;
 			for (Transaction const & t : trans)
 				out.append(t.to_wstring(m_accountNames) + L"\n");
@@ -842,7 +840,7 @@ void Parthenos::ProcessMenuMessage(bool & pop_front)
 		{
 			std::vector<Holdings> holdings(::readHoldings(ROOTDIR + L"holdings.json"));
 			for (Holdings const & h : holdings)
-				m_msgBox->Overwrite(h.to_json());
+				m_msgBox->Print(h.to_wstring());
 		}
 		else if (msg.msg == L"Print Equity History")
 		{

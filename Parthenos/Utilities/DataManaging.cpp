@@ -27,7 +27,81 @@ void collateOptions(Position& p);
 //	                              Transactions			            		 //
 ///////////////////////////////////////////////////////////////////////////////
 
-std::vector<Transaction> readTransactions(std::wstring const & filepath)
+// For writing to file
+struct Transaction_FILE
+{
+	Transaction_FILE() = default;
+	Transaction_FILE(Transaction const & t) :
+		account(t.account),
+		type(t.type),
+		tax_lot(t.tax_lot),
+		n(t.n),
+		date(t.date),
+		expiration(t.expiration),
+		value(t.value),
+		price(t.price),
+		strike(t.strike)
+	{
+		if (t.ticker.size() > PortfolioObjects::maxTickerLen)
+			throw ws_exception(L"Ticker " + t.ticker + L" too long!");
+		wcscpy_s(ticker, PortfolioObjects::maxTickerLen + 1, t.ticker.data());
+	}
+
+	operator Transaction() const
+	{
+		Transaction t;
+		t.type = type;
+		t.account = account;
+		t.tax_lot = tax_lot;
+		t.n = n;
+		t.date = date;
+		t.expiration = expiration;
+		t.value = value;
+		t.price = price;
+		t.strike = strike;
+		t.ticker = ticker;
+		return t;
+	}
+
+	char account;                           // 1
+	TransactionType type;					// 2
+	short tax_lot;                          // 4    for sales - index into lots - 0 if FIFO (for stock) - Options must be fully qualified index
+	wchar_t ticker[12] = {};				// 28   must be all uppercase
+	int n;                                  // 32   positive for open, negative for close. Number of contracts for options
+	date_t date;                            // 36
+	date_t expiration;                      // 40   for stock dividends, this is the ex date
+	double value;                           // 48   include fees here
+	double price;                           // 56   don't include fees here
+	double strike;                          // 64
+};
+
+std::vector<Transaction> readTransactions(std::wstring const& filepath)
+{
+	auto t_0 = std::chrono::steady_clock::now();
+
+	FileIO transFile;
+	transFile.Init(ROOTDIR + L"hist.trans");
+	transFile.Open(GENERIC_READ);
+	std::vector<Transaction_FILE> trans = transFile.Read<Transaction_FILE>();
+	transFile.Close();
+
+	auto t_1 = std::chrono::steady_clock::now(); 
+
+	std::vector<Transaction> ts;
+	ts.reserve(trans.size());
+	for (Transaction_FILE const& t : trans)
+		ts.emplace_back(t);
+
+	auto t_2 = std::chrono::steady_clock::now();
+	OutputDebugString(std::to_wstring(std::chrono::duration_cast<std::chrono::microseconds>(t_1 - t_0).count()).c_str());
+	OutputDebugString(L"\n"); // 200 
+	OutputDebugString(std::to_wstring(std::chrono::duration_cast<std::chrono::microseconds>(t_2 - t_1).count()).c_str());
+	OutputDebugString(L"\n"); // 800 
+
+	return ts;
+}
+
+std::vector<Transaction> readTransactions_JSON(std::wstring const & filepath)
 {
 	auto t_0 = std::chrono::steady_clock::now();
 
@@ -44,11 +118,26 @@ std::vector<Transaction> readTransactions(std::wstring const & filepath)
 
 	auto t_1 = std::chrono::steady_clock::now();
 	OutputDebugString(std::to_wstring(std::chrono::duration_cast<std::chrono::microseconds>(t_1 - t_0).count()).c_str());
+	OutputDebugString(L"\n"); // 200000
 
 	return trans;
 }
 
-void writeTransactions(std::wstring const & filepath, std::vector<Transaction> const& trans)
+void writeTransactions(std::wstring const& filepath, std::vector<Transaction> const& trans)
+{
+	std::vector<Transaction_FILE> tf;
+	tf.reserve(trans.size());
+	for (Transaction const& t : trans)
+		tf.emplace_back(t);
+
+	FileIO transFile;
+	transFile.Init(ROOTDIR + L"hist.trans");
+	transFile.Open();
+	transFile.Write(tf.data(), sizeof(Transaction_FILE) * tf.size());
+	transFile.Close();
+}
+
+void writeTransactions_JSON(std::wstring const & filepath, std::vector<Transaction> const& trans)
 {
 	std::string json("[");
 	for (Transaction const & t : trans)
@@ -111,7 +200,7 @@ void AddTransactionToHoldings(std::vector<Holdings>& holdings, Transaction const
 void addLot(Holdings& h, Transaction const& t)
 {
 	if (static_cast<size_t>(t.account) >= h.accts.size())
-		h.accts.resize(1l + t.account);
+		h.accts.resize(1ll + t.account);
 
 	Lot lot;
 	lot.type = t.type;
@@ -199,7 +288,7 @@ void AddTransactionToTickerHoldings(Holdings& h, Transaction const& t)
 	if (t.ticker == L"CASH")
 	{
 		if (static_cast<size_t>(t.account) >= h.accts.size())
-			h.accts.resize(1l + t.account);
+			h.accts.resize(1ll + t.account);
 		if (t.type == TransactionType::Transfer)
 			h.accts[t.account].sumWeights += t.value;
 		else if (t.type == TransactionType::Interest)
@@ -277,6 +366,8 @@ void MergeHoldings(Holdings& target, Holdings const & mergee)
 
 std::vector<Holdings> readHoldings(std::wstring const& filepath)
 {
+	auto t_0 = std::chrono::steady_clock::now();
+
 	FileIO file;
 	file.Init(filepath);
 	file.Open(GENERIC_READ);
@@ -287,6 +378,10 @@ std::vector<Holdings> readHoldings(std::wstring const& filepath)
 	holds.reserve(j.get_arr_size());
 	for (JSON const& j : j.get_arr())
 		holds.push_back(j);
+
+	auto t_1 = std::chrono::steady_clock::now();
+	OutputDebugString(std::to_wstring(std::chrono::duration_cast<std::chrono::microseconds>(t_1 - t_0).count()).c_str());
+	OutputDebugString(L"\n"); // 9000
 
 	return holds;
 }
@@ -346,8 +441,9 @@ std::vector<Position> HoldingsToPositions(std::vector<Holdings> const & holdings
 		int iAccount;
 		for (iAccount = 0; iAccount < nAccounts; iAccount++)
 		{
-			if (account > 0 && iAccount != account) continue;
+			if (account >= 0 && iAccount != account) continue;
 			AccountHoldings const& header = h.accts[iAccount];
+			if (header.lots.empty() && header.sumReal == 0) continue; // empty
 
 			if (temp.ticker == L"CASH")
 			{
@@ -982,6 +1078,20 @@ std::wostream& operator<<(std::wostream& os, const Lot& l)
 	return os;
 }
 
+std::wstring Lot::to_wstring() const
+{
+	std::wstring out = ::to_wstring(type);
+	if (isOption(type))
+		out += FormatMsg(L"-%.2f-%u", strike, expiration);
+	out += L" (" + DateToWString(date) + L")"
+		+ L": " + std::to_wstring(n)
+		+ L" @ $" + std::to_wstring(price)
+		+ L", div: " + std::to_wstring(dividends)
+		+ L", fee: " + std::to_wstring(fees);
+
+	return out;
+}
+
 AccountHoldings::AccountHoldings(jsonette::JSON const& json)
 {
 	sumWeights = json["sumWeights"];
@@ -1014,6 +1124,21 @@ std::wstring AccountHoldings::to_json() const
 	return ss.str();
 }
 
+std::wstring AccountHoldings::to_wstring() const
+{
+	std::wstring out = L"\tsumWeights: " + std::to_wstring(sumWeights)
+		+ L", sumReal1Y: " + std::to_wstring(sumReal1Y)
+		+ L", sumReal: " + std::to_wstring(sumReal)
+		+ L"\n";
+	for (Lot const& lot : lots)
+	{
+		out.append(L"\t\t");
+		out.append(lot.to_wstring());
+		out.append(L"\n");
+	}
+	return out;
+}
+
 Holdings::Holdings(jsonette::JSON const& json)
 {
 	ticker = ::s2w(json["ticker"]);
@@ -1041,4 +1166,17 @@ std::wstring Holdings::to_json() const
 	std::wstringstream ss;
 	ss << *this;
 	return ss.str();
+}
+
+std::wstring Holdings::to_wstring() const
+{
+	std::wstring out;
+	out.append(L"-------------------------------------------\n");
+	out.append(ticker + L", Accounts: " + std::to_wstring(accts.size()) + L"\n");
+
+	for (AccountHoldings const & acc : accts)
+	{
+		out.append(acc.to_wstring());
+	}
+	return out;
 }
