@@ -7,6 +7,13 @@
 ///////////////////////////////////////////////////////////
 // --- Forward declarations ---
 
+
+void AddCustomTransactionToHoldings(std::vector<Holdings>& holdings, Transaction const& t);
+
+std::vector<Holdings>::iterator addLot(std::vector<Holdings>& holdings, std::vector<Holdings>::iterator acctHeader, Transaction const& t);
+
+
+
 Transaction parseTransactionItem(std::string str);
 double GetCollateral(std::vector<Transaction> const& trans, size_t iOpen);
 double GetAssignment(Play& p, std::vector<Transaction> const& trans, size_t iClose);
@@ -90,7 +97,7 @@ Transaction parseTransactionItem(std::string str)
 ///////////////////////////////////////////////////////////////////////////////
 
 
-void AddTransactionToHoldings(NestedHoldings & holdings, Transaction const & t)
+void AddTransactionToHoldings(std::vector<Holdings>& holdings, Transaction const& t)
 {
 	if (t.type == TransactionType::Custom) 
 		return AddCustomTransactionToHoldings(holdings, t);
@@ -98,106 +105,92 @@ void AddTransactionToHoldings(NestedHoldings & holdings, Transaction const & t)
 	// See if ticker is present already
 	std::wstring ticker(t.ticker);
 	auto it = std::lower_bound(holdings.begin(), holdings.end(), ticker, Holdings_Compare);
-	if (it == holdings.end() ||
-		std::wstring(it->front().tickerInfo.ticker) != ticker)
+	if (it == holdings.end() || std::wstring(it->tickerInfo.ticker) != ticker)
 	{
 		// insert (rare, so using vectors is better than a list)
 		Holdings h_ticker;
 		wcscpy_s(h_ticker.tickerInfo.ticker, PortfolioObjects::maxTickerLen + 1, t.ticker);
 		h_ticker.tickerInfo.nAccounts = 0;
-
-		std::vector<Holdings> temp = { h_ticker };
-		it = holdings.insert(it, temp);
+		it = holdings.insert(it, h_ticker);
 	}
 
-	AddTransactionToTickerHoldings(*it, t);
+	AddTransactionToTickerHoldings(holdings, it, t);
 }
 
 
-
 // Updates the holdings for a single ticker with the transaction.
-// Assumes h has the ticker struct
-void AddTransactionToTickerHoldings(std::vector<Holdings> & h, Transaction const & t)
+void AddTransactionToTickerHoldings(std::vector<Holdings> & holdings, std::vector<Holdings>::iterator tickerHeader, Transaction const & t)
 {
-	if (h.size() < 1) throw std::invalid_argument("AddTransactionToHoldings no ticker!");
-	if (std::wstring(t.ticker) != std::wstring(h.front().tickerInfo.ticker))
-		throw std::invalid_argument("AddTransactionToHoldings wrong ticker");
+	std::wstring ticker(t.ticker);
+	if (ticker != tickerHeader->tickerInfo.ticker)
+		throw ws_exception(L"AddTransactionToTickerHoldings wrong tickers:" + t.to_wstring());
 
-	////////////////////////////////////////////////
-	// Get the header for the proper account. 
-
-	HoldingHeader *header = nullptr; // Pointer so can initialize below
-	size_t i_header = 1; // 0 is the ticker 
-	while (i_header < h.size())
+	// Get/create the account header
+	auto itAccHeader = holdings.end();
+	if (t.account >= tickerHeader->tickerInfo.nAccounts)
 	{
-		header = &(h[i_header].head);
-		if (header->account == t.account) break;
-		i_header += header->nLots + header->nOptions + 1;
+		if (ticker == L"CASH" || t.n > 0) itAccHeader = addAccount(holdings, tickerHeader, t.account);
+		else throw ws_exception(L"AddTransactionToTickerHoldings Bad account:" + t.to_wstring());
+	}
+	else
+	{
+		itAccHeader = getAccountHeader(holdings, tickerHeader, t.account);
 	}
 
-	if (i_header == h.size()) // new account == new header
-	{
-		h[0].tickerInfo.nAccounts++;
-
-		Holdings h_header = {}; // zero except for account; re-use code below
-		h_header.head.account = t.account;
-
-		h.push_back(h_header);
-		header = &(h.back().head);
-	}
-	else if (i_header > h.size()) throw std::invalid_argument("AddTransactionToHoldings nLots wrong?");
-	if (!header) return OutputMessage(L"header is null for some reason\n");
-
-	////////////////////////////////////////////////
 	// Don't add lots for cash
-	if (std::wstring(t.ticker) == L"CASH")
+	if (ticker == L"CASH")
 	{
 		if (t.type == TransactionType::Transfer)
-			header->sumWeights += t.value;
+			itAccHeader->head.sumWeights += t.value;
 		else if (t.type == TransactionType::Interest)
-			header->sumReal += t.value;
+			itAccHeader->head.sumReal += t.value;
 		else
-			OutputMessage(L"Unrecognized transaction:\n%s", t.to_wstring().c_str());
+			throw ws_exception(L"Unrecognized transaction:" + t.to_wstring());
 		return;
 	}
 
-	////////////////////////////////////////////////
-	// Open position -> push back new lot
-	if (t.n > 0)
+	// Case on open/close position
+	if (t.n > 0) addLot(holdings, itAccHeader, t);
+	else if (t.n < 0) closePosition(itAccHeader, t);
+	else // misc transactions
 	{
-		if (isOption(t.type))
+		switch (t.type)
 		{
-			header->nOptions++;
-
-			Option opt = {};
-			opt.type = t.type;
-			opt.n = t.n * 100; // FIXME if not always 100 / contract
-			opt.date = t.date;
-			opt.expiration = t.expiration;
-			opt.price = static_cast<float>(t.price);
-			opt.strike = static_cast<float>(t.strike);
-			if (isShort(t.type)) opt.realized = static_cast<float>(t.value);
-			else opt.realized = static_cast<float>(t.value) + opt.n * opt.price; // Catch rounding error / fees here
-
-			Holdings temp;
-			temp.option = opt;
-			h.insert(h.begin() + i_header + header->nLots + header->nOptions, temp);
-		}
-		else
-		{
-			header->nLots++;
-
-			Holdings temp;
-			temp.lot.active = 1;
-			temp.lot.n = t.n;
-			temp.lot.date = t.date;
-			temp.lot.tax_lot = 0;
-			temp.lot.price = t.price;
-			temp.lot.realized = t.value + t.n * t.price; // Catch rounding error here :(
-
-			h.insert(h.begin() + i_header + header->nLots, temp);
+		case TransactionType::Dividend:
+			addDividend(itAccHeader, t);
+			break;
+		case TransactionType::Fee: // Incorporated into t.value on a sale already
+			break;
+		default:
+			throw ws_exception(L"Unrecognized transaction:" + t.to_wstring());
+			break;
 		}
 	}
+}
+
+
+// Adds t to holdings, assuming t is an open position in this stock.
+std::vector<Holdings>::iterator addLot(std::vector<Holdings>& holdings, std::vector<Holdings>::iterator acctHeader, Transaction const& t)
+{
+	acctHeader->head.nLots++;
+	auto it = acctHeader + acctHeader->head.nLots;
+
+	Lot lot;
+	lot.type = t.type;
+	lot.date = t.date;
+	lot.n = t.n;
+	lot.price = t.price;
+	lot.strike = t.strike;
+	lot.expiration = t.expiration;
+	lot.fees = t.value + t.n * t.price * (isShort(t.type) ? -1 : 1) * (isOption(t.type) ? 100 : 1);
+
+	Holdings h; 
+	h.lot = lot;
+	return holdings.insert(it, h);
+}
+
+void dump()
+{
 	////////////////////////////////////////////////
 	// Fee / dividend
 	else if (t.n == 0)
@@ -320,7 +313,7 @@ void AddTransactionToTickerHoldings(std::vector<Holdings> & h, Transaction const
 //
 // Note that the stock lots contain sell information, denoted by lot.active == -1, to account for sales between
 // the ex-dividend and payout dates. Call ReduceSalesLots to collapse these.
-NestedHoldings FullTransactionsToHoldings(std::vector<Transaction> const & transactions)
+std::vector<Holdings> FullTransactionsToHoldings(std::vector<Transaction> const& transactions)
 {
 	std::vector<std::vector<Holdings>> holdings; // Holdings for each ticker, sorted by ticker
 
@@ -335,7 +328,7 @@ NestedHoldings FullTransactionsToHoldings(std::vector<Transaction> const & trans
 
 // Handles custom transactions, such as spin-offs, mergers, and stock splits
 // TODO add transaction type for above
-void AddCustomTransactionToHoldings(NestedHoldings & holdings, Transaction const & t)
+void AddCustomTransactionToHoldings(std::vector<Holdings> & holdings, Transaction const & t)
 {
 	if (std::wstring(t.ticker) == L"RTN-UTX") // RTN-UTX merger
 	{
@@ -363,19 +356,65 @@ void AddCustomTransactionToHoldings(NestedHoldings & holdings, Transaction const
 //	                                Holdings                                 //
 ///////////////////////////////////////////////////////////////////////////////
 
-
-// Get the index of the header of a specific account, for a ticker's holdings
-size_t GetHeaderIndex(std::vector<Holdings> const & h, char acc)
+double GetIntrinsicValue(Lot const& opt, double latest)
 {
-	int nAccounts = h.front().tickerInfo.nAccounts;
-	size_t i_header = 1;
-	for (int iacc = 0; iacc < nAccounts; iacc++)
+	switch (opt.type)
 	{
-		if (h[i_header].head.account == acc) return i_header;
-		i_header += h[i_header].head.nLots + h[i_header].head.nOptions + 1;
+	case TransactionType::PutShort:
+		return (latest < opt.strike) ? 100l * opt.n * (latest - opt.strike) : 0.0;
+	case TransactionType::PutLong:
+		return (latest < opt.strike) ? 100l * opt.n * (opt.strike - latest) : 0.0;
+	case TransactionType::CallShort:
+		return (latest > opt.strike) ? 100l * opt.n * (opt.strike - latest) : 0.0;
+	case TransactionType::CallLong:
+		return (latest > opt.strike) ? 100l * opt.n * (latest - opt.strike) : 0.0;
+	default:
+		return 0.0;
 	}
-	return -1;
 }
+
+// Assumes account header exists
+std::vector<Holdings>::iterator getAccountHeader(std::vector<Holdings>& holdings, std::vector<Holdings>::iterator tickerHeader, char acc)
+{
+	auto accHeader = tickerHeader + 1;
+	while (accHeader != holdings.end())
+	{
+		if (accHeader->head.account == acc) return accHeader;
+		accHeader += accHeader->head.nLots + 1;
+	}
+}
+
+
+std::vector<std::wstring> GetTickers(std::vector<Holdings> const& holdings, bool cash = false)
+{
+	std::vector<size_t> headers = GetTickerHeaders(holdings);
+	std::vector<std::wstring> out;
+	out.reserve(headers.size());
+	for (size_t x : headers)
+	{
+		std::wstring ticker(holdings[x].tickerInfo.ticker);
+		if (!cash && ticker == L"CASH") continue;
+		out.push_back(ticker);
+	}
+	return out;
+}
+
+std::vector<Holdings>::iterator addAccount(std::vector<Holdings>& holdings, std::vector<Holdings>::iterator tickerHeader, char acc)
+{
+	auto accHeader = tickerHeader + 1;
+	for (int i = 0; i < tickerHeader->tickerInfo.nAccounts; i++)
+		accHeader += accHeader->head.nLots + 1;
+
+	AccountHeader h;
+	h.account = acc;
+
+	Holdings hold;
+	hold.head = h;
+
+	tickerHeader->tickerInfo.nAccounts++;
+	return holdings.insert(accHeader, hold);
+}
+
 
 
 NestedHoldings FlattenedHoldingsToTickers(std::vector<Holdings> const & holdings)
@@ -389,7 +428,7 @@ NestedHoldings FlattenedHoldingsToTickers(std::vector<Holdings> const & holdings
 		size_t i_header = i + 1;
 		for (int j = 0; j < nAccounts; j++)
 		{
-			HoldingHeader const *header = &(holdings[i_header].head);
+			AccountHeader const *header = &(holdings[i_header].head);
 			i_header += 1 + header->nLots + header->nOptions;
 		}
 		std::vector<Holdings> temp(holdings.begin() + i, holdings.begin() + i_header);
@@ -413,13 +452,13 @@ std::wstring TickerHoldingsToWString(std::vector<Holdings> const & h)
 	while (i_header < h.size())
 	{
 		headers.push_back(i_header);
-		HoldingHeader const *header = &(h[i_header].head);
+		AccountHeader const *header = &(h[i_header].head);
 		i_header += header->nLots + header->nOptions + 1;
 	}
 
 	for (size_t i_header : headers)
 	{
-		HoldingHeader const *header = &(h[i_header].head);
+		AccountHeader const *header = &(h[i_header].head);
 		out.append(header->to_wstring());
 		out.append(L"\tLots:\n");
 		for (int i = 1; i <= header->nLots; i++)
@@ -439,7 +478,7 @@ std::wstring TickerHoldingsToWString(std::vector<Holdings> const & h)
 // Reduces sales against purchases for stock lots with date prior to end.
 void ReduceSalesLots(std::vector<Holdings>& h, size_t i_header, date_t end)
 {
-	HoldingHeader *header = &(h.at(i_header).head);
+	AccountHeader *header = &(h.at(i_header).head);
 	size_t istart = i_header + 1;
 	size_t iend = i_header + 1; // exclusive
 
@@ -530,7 +569,7 @@ void ReduceSalesLots(std::vector<Holdings>& h, size_t i_header, date_t end)
 // Returns an index into h to the 'n'th active stock purchase lot
 size_t GetPurchaseLot(std::vector<Holdings> const & h, size_t i_header, size_t n)
 {
-	HoldingHeader const *header = &(h.at(i_header).head);
+	AccountHeader const *header = &(h.at(i_header).head);
 	size_t istart = i_header + 1;
 	size_t iend = i_header + header->nLots + 1; // exclusive
 
@@ -565,13 +604,13 @@ void MergeHoldings(std::vector<Holdings> & target, std::vector<Holdings> mergee)
 	{
 		// First reduce all sales in mergee
 		ReduceSalesLots(mergee, i_header, MkDate(9999, 0, 0));
-		HoldingHeader & mergee_head = mergee[i_header].head;
+		AccountHeader & mergee_head = mergee[i_header].head;
 
 		// Add results to target
 		size_t i_target_header = GetHeaderIndex(target, mergee_head.account);
 		if (i_target_header == (size_t)-1) throw ws_exception(L"MergeHoldings() didn't find account");
 
-		HoldingHeader & target_head = target[i_target_header].head;
+		AccountHeader & target_head = target[i_target_header].head;
 		target_head.sumReal += mergee_head.sumReal;
 		target_head.sumReal1Y += mergee_head.sumReal1Y;
 		target_head.sumWeights += mergee_head.sumWeights;
@@ -629,7 +668,7 @@ std::vector<Position> HoldingsToPositions(NestedHoldings const & holdings,
 			}
 
 			ReduceSalesLots(h, iHeader, MkDate(9999, 0, 0)); // h is a copy, so ok the reduce everything
-			HoldingHeader const & header = h[iHeader].head;
+			AccountHeader const & header = h[iHeader].head;
 
 			if (temp.ticker == L"CASH")
 			{

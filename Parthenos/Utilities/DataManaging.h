@@ -121,70 +121,55 @@ std::vector<Transaction> CSVtoTransactions(std::wstring filepath);
 ///////////////////////////////////////////////////////////////////////////////
 // Store holdings using a 32 byte union. This allows all holdings to be      //
 // stored as a single vector. The holding header struct identifies the type  //
-// of subsequent structs.                                                    //
+// of subsequent structs.													 //
+//																			 //
+// A std::vector<Holdings> has the following elements:						 //
+//		[0]: A TickerInfo struct with the ticker and the number of accounts  //
+// For each account:														 //
+//		[1]: A AccountHeader struct with the number of lots					 //
+//		[2]: The account's lots												 //
+// The header for the next account is then after the last lot, etc.			 //
 ///////////////////////////////////////////////////////////////////////////////
 
 
-// Store sell lots in addition to buy lots to properly wait for dividends
-struct TaxLot
+struct Lot
 {
-	int active; // 1 = buy, -1 = sale
-	int n;
-	int tax_lot; // for sales, index of active lot to sell (MUST PROCESS SALES IN ORDER)
-	date_t date;
-	double price; 
-	double realized; // i.e. dividends, sales, fees
-	// 32 bytes
-
-	inline std::wstring to_wstring() const
-	{
-		return L"n: "			+ std::to_wstring(n)
-			+ L", active: "		+ std::to_wstring(active)
-			+ L", tax_lot: "	+ std::to_wstring(tax_lot)
-			+ L", date: "		+ DateToWString(date)
-			+ L", price: "		+ std::to_wstring(price)
-			+ L", realized: "	+ std::to_wstring(realized)
-			+ L"\n";
-	}
-};
-
-struct Option
-{
-	TransactionType type;
-	char PAD[3];
-	int n; // shares underlying, not contracts
-	date_t date;
-	date_t expiration;
-	float price;
-	float strike;
-	float realized; // from sell-to-open or partial sell-to-close, also fees and rounding error
-	float RESERVED;
-	// 32 bytes
+	TransactionType type = TransactionType::Custom;
+	char PAD[3] = {};
+	int n = 0;				// shares or contracts
+	date_t date = 0;
+	date_t expiration = 0;
+	float price = 0;
+	float strike = 0;
+	float dividends = 0;	// this is PER SHARE, i.e. should not change with n
+	float fees = 0;			// value + price * n, includes fees and rounding errors
 
 	inline std::wstring to_wstring(bool dump = false) const
 	{
-		if (!dump) return OptToLetter(type) + FormatMsg(L"%.2f-%u", strike, expiration);
+		if (!dump && isOption(type)) 
+			return OptToLetter(type) + FormatMsg(L"%.2f-%u", strike, expiration);
+
 		return L"type: "		+ std::to_wstring(static_cast<int>(type))
 			+ L", n: "			+ std::to_wstring(n)
 			+ L", date: "		+ DateToWString(date)
 			+ L", expiration: " + DateToWString(expiration)
 			+ L", price: "		+ std::to_wstring(price)
 			+ L", strike: "		+ std::to_wstring(strike)
-			+ L", realized: "	+ std::to_wstring(realized)
+			+ L", dividends: "  + std::to_wstring(dividends)
+			+ L", feeds: "		+ std::to_wstring(fees)
 			+ L"\n";
 	}
 };
 
-struct HoldingHeader
+struct AccountHeader
 {
-	char account;
-	char PAD[3];
-	short nLots;
-	short nOptions;
+	char account = 0;
+	char PAD[3] = {};
+	int nLots = 0;
 	// Running sums from sold lots to calculate APY. DOESN'T include stored lots
-	double sumWeights; // sum_transactions (cost) ; divide sumReal1Y by this to get weighted APY
-	double sumReal1Y; // realized * 365 / days_held    ==    cost * (realized/cost) / (days_held/365)
-	double sumReal; // realized
+	double sumWeights = 0; // sum_transactions (cost) ; divide sumReal1Y by this to get weighted APY
+	double sumReal1Y = 0; // realized * 365 / days_held    ==    cost * (realized/cost) / (days_held/365)
+	double sumReal = 0; // realized
 	// 32 bytes
 	
 	// For cash, sumWeights = cash from transfers, sumReal is interest, else 0
@@ -193,7 +178,6 @@ struct HoldingHeader
 	{
 		return L"Account: "		+ std::to_wstring(static_cast<int>(account))
 			+ L", nLots: "		+ std::to_wstring(nLots)
-			+ L", nOptions: "	+ std::to_wstring(nOptions)
 			+ L", sumWeights: " + std::to_wstring(sumWeights)
 			+ L", sumReal1Y: "	+ std::to_wstring(sumReal1Y)
 			+ L", sumReal: "	+ std::to_wstring(sumReal)
@@ -203,89 +187,55 @@ struct HoldingHeader
 
 struct TickerInfo
 {
-	int nAccounts;
-	wchar_t ticker[14];
+	int nAccounts = 0;
+	wchar_t ticker[14] = {};
+	// 32 bytes
 };
 
 union Holdings
 {
+	Holdings() : tickerInfo() {}
+
 	TickerInfo tickerInfo;
-	TaxLot lot;
-	HoldingHeader head;
-	Option option;
+	AccountHeader head;
+	Lot lot;
 };
 
-// A vector sorted by tickers. Each ticker has a std::vector<Holdings> with the following elements:
-//		[0]: A TickerInfo struct with the ticker and the number of accounts
-// For each account:
-//		[1]: A HoldingsHeader struct with the number of stock lots and option lots
-//		[2]: The stock lots
-//		[3]: The option lots
-typedef std::vector<std::vector<Holdings>> NestedHoldings;
+///////////////////////////////////////////////////////////
+// Main Functions
+
+void AddTransactionToHoldings(std::vector<Holdings>& holdings, Transaction const& transaction);
+std::vector<Holdings> FullTransactionsToHoldings(std::vector<Transaction> const& transactions);
+
+std::wstring HoldingsToWString(std::vector<Holdings> const& h);
+
+///////////////////////////////////////////////////////////
+// Utilities
+
+double GetIntrinsicValue(Lot const& opt, double latest);
+
+std::vector<size_t> GetTickerHeaders(std::vector<Holdings> const& h);
+size_t GetTickerIndex(std::vector<Holdings> const& h, std::wstring const& ticker);
+std::vector<std::wstring> GetTickers(std::vector<Holdings> const& holdings, bool cash = false);
+
+std::vector<Holdings>::iterator getAccountHeader(std::vector<Holdings>& holdings, 
+	std::vector<Holdings>::iterator tickerHeader, char acc);
+//size_t GetAccountIndex(std::vector<Holdings> const& h, std::wstring const& ticker, char acc);
+std::vector<size_t> GetAccountHeaders(std::vector<Holdings> const& h, std::wstring const& ticker, char acc);
+std::vector<size_t> GetAccountHeaders(std::vector<Holdings> const& h, size_t tickerHeader, char acc);
 
 
-// Unroll
-NestedHoldings FlattenedHoldingsToTickers(std::vector<Holdings> const & holdings);
+std::vector<Holdings>::iterator addAccount(std::vector<Holdings>& holdings, std::vector<Holdings>::iterator tickerHeader, char acc);
 
-// Transaction --> Holdings
-void AddTransactionToHoldings(NestedHoldings & holdings, Transaction const & transaction);
-void AddCustomTransactionToHoldings(NestedHoldings & holdings, Transaction const & t);
-NestedHoldings FullTransactionsToHoldings(std::vector<Transaction> const & transactions);
-
-// To string
-std::wstring TickerHoldingsToWString(std::vector<Holdings> const & h);
-inline std::wstring NestedHoldingsToWString(NestedHoldings const & holdings)
-{
-	std::wstring out;
-	for (std::vector<Holdings> const & x : holdings)
-	{
-		out.append(TickerHoldingsToWString(x));
-	}
-	return out;
-}
-
-// Misc utilities
-
-// Get the index of the header of a specific account, for a ticker's holdings
-size_t GetHeaderIndex(std::vector<Holdings> const & h, char acc);
-
-inline std::vector<std::wstring> GetTickers(NestedHoldings const & holdings, bool cash = false)
-{
-	std::vector<std::wstring> out;
-	out.reserve(holdings.size());
-	for (auto const & x : holdings)
-	{
-		std::wstring ticker(x[0].tickerInfo.ticker);
-		if (!cash && ticker == L"CASH") continue;
-		out.push_back(ticker);
-	}
-	return out;
-}
-
-inline double GetIntrinsicValue(Option const & opt, double latest)
-{
-	switch (opt.type)
-	{
-	case TransactionType::PutShort:
-		return (latest < opt.strike) ? opt.n * (latest - opt.strike) : 0.0;
-	case TransactionType::PutLong:
-		return (latest < opt.strike) ? opt.n * (opt.strike - latest) : 0.0;
-	case TransactionType::CallShort:
-		return (latest > opt.strike) ? opt.n * (opt.strike - latest) : 0.0;
-	case TransactionType::CallLong:
-		return (latest > opt.strike) ? opt.n * (latest - opt.strike) : 0.0;
-	default:
-		return 0.0;
-	}
-}
 
 // In the case of a stock merger, add all return information from 'mergee' into 'target'.
 // The merger is indicated in the transactions via a sale of mergee stock and purchase of target stock.
 void MergeHoldings(std::vector<Holdings> & target, std::vector<Holdings> mergee);
 
 
-///////////////////////////////////////////////////////////
-// --- Positions ---
+///////////////////////////////////////////////////////////////////////////////
+//                                 Positions                                 //
+///////////////////////////////////////////////////////////////////////////////
 
 enum class OptionType { CSP, CC, PCS, LP, LC, undefined };
 
@@ -365,7 +315,7 @@ struct Position
 	}
 };
 
-std::vector<Position> HoldingsToPositions(NestedHoldings const & holdings,
+std::vector<Position> HoldingsToPositions(std::vector<Holdings> const & holdings,
 	char account, date_t date, std::vector<double> prices);
 
 // returns a.front().ticker < ticker

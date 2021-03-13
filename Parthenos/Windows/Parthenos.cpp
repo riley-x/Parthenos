@@ -11,6 +11,8 @@
 #include "../Utilities/utilities.h"
 #include "../Utilities/jsonette.h"
 
+#include <chrono>
+
 using namespace jsonette;
 
 ///////////////////////////////////////////////////////////
@@ -883,12 +885,18 @@ void Parthenos::ProcessMenuMessage(bool & pop_front)
 	{
 		if (msg.msg == L"Print Transaction History")
 		{
+			auto t_0 = std::chrono::steady_clock::now();
+
 			// Read transaction history
 			FileIO transFile;
 			transFile.Init(ROOTDIR + L"hist.trans");
 			transFile.Open(GENERIC_READ);
 			std::vector<Transaction> trans = transFile.Read<Transaction>();;
 			transFile.Close();
+
+			auto t_1 = std::chrono::steady_clock::now();
+			OutputDebugString(std::to_wstring(std::chrono::duration_cast<std::chrono::microseconds>(t_1 - t_0).count()).c_str());
+			OutputDebugString(L"\n");
 
 			std::wstring out;
 			for (Transaction const & t : trans)
