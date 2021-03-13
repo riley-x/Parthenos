@@ -134,9 +134,8 @@ struct AccountHoldings
 	AccountHoldings() = default;
 	AccountHoldings(jsonette::JSON const& json);
 
-	double sumWeights = 0; // sum_transactions (cost) ; divide sumReal1Y by this to get weighted APY. Also total transfers for CASH
-	double sumReal1Y = 0; // realized * 365 / days_held    ==    cost * (realized/cost) / (days_held/365)
-	double sumReal = 0; // realized
+	double sumWeights = 0; // sum of (cost * days) in closed lots; divide gains by this to get weighted APY. Also total transfers for CASH
+	double realized = 0; // realized gains in closed lots, also rounding errors from dividends
 	std::vector<Lot> lots; 
 
 	std::wstring to_json() const;
@@ -229,15 +228,14 @@ inline OptionType transToOptionType(TransactionType t)
 
 struct OptionPosition
 {
-	OptionType type;
-	unsigned shares; // shares underlying
-	unsigned shares_collateral; // For short positions
-	date_t expiration;
-	double strike; // primary
-	double strike2; // ancillary
-	double price;
-	// double realized; Probably not needed since realized calculated in position below, no need for separate per-option
-	double cash_collateral;
+	OptionType type = OptionType::undefined;
+	unsigned shares = 0; // shares underlying
+	unsigned shares_collateral = 0; // For short positions
+	date_t expiration = 0;
+	double strike = 0; // primary
+	double strike2 = 0; // ancillary
+	double price = 0;
+	double cash_collateral = 0;
 
 	std::wstring to_wstring() const
 	{
@@ -263,13 +261,14 @@ struct OptionPosition
 // Current position for a stock at a given day
 struct Position
 {
-	int n;					
-	double avgCost;			// of shares
-	double marketPrice;		// for CASH, cash from transfers
-	double realized_held;	// == sum(lot.realized) for shares. For CASH, cash from interest
-	double realized_unheld; // == head.sumReal + proceeds of open options. For CASH, net cash from transactions
-	double unrealized;		// includes intrinsic value gain(long) / loss(short) from options, and theta decay
-	double APY;
+	int n = 0;					// Shares only		
+	double avgCost = 0;			// Of shares. For CASH, cash from transfers 
+	double marketPrice = 0;		// 
+	double realized = 0;		// == header.realized. For CASH, cash from interest
+	double dividends = 0;		// Sum of dividends and fees from open lots
+	double unrealized = 0;		// includes intrinsic value, STO proceeds, and theta decay from options
+	double cashEffect = 0;		// realized + dividends - purchase cost. For CASH, stores sum from other holdings
+	double APY = 0;
 	std::wstring ticker;
 	std::vector<OptionPosition> options; // p/l already included in above, but useful to keep around
 
@@ -279,8 +278,8 @@ struct Position
 			+ L", n: "			+ std::to_wstring(n)
 			+ L", avgCost: "	+ std::to_wstring(avgCost)
 			+ L", price: "		+ std::to_wstring(marketPrice)
-			+ L", realized (held): "	+ std::to_wstring(realized_held)
-			+ L", realized (unheld): "	+ std::to_wstring(realized_unheld)
+			+ L", realized: "	+ std::to_wstring(realized)
+			+ L", dividends: "	+ std::to_wstring(dividends)
 			+ L", unrealized: "	+ std::to_wstring(unrealized)
 			+ L", APY: "		+ std::to_wstring(APY)
 			+ L"\n";
@@ -288,7 +287,7 @@ struct Position
 };
 
 std::vector<Position> HoldingsToPositions(std::vector<Holdings> const & holdings,
-	char account, date_t date, std::vector<double> prices);
+	char account, date_t date, std::map<std::wstring, double> const& prices);
 
 // returns a.front().ticker < ticker
 inline bool Positions_Compare(const Position a, std::wstring const & ticker)
@@ -314,7 +313,7 @@ inline std::vector<double> GetMarketValues(std::vector<Position> const & positio
 	out.reserve(positions.size());
 	for (auto const & x : positions)
 	{
-		if (cash && x.ticker == L"CASH") out.push_back(x.marketPrice + x.realized_held);
+		if (cash && x.ticker == L"CASH") out.push_back(x.avgCost + x.realized);
 		else out.push_back(x.n * x.marketPrice);
 	}
 	return out;
@@ -326,7 +325,7 @@ inline std::pair<double, double> GetCash(std::vector<Position> const & positions
 	for (auto const & x : positions)
 	{
 		if (x.ticker == L"CASH")
-			return { x.marketPrice + x.realized_held + x.realized_unheld, x.marketPrice };
+			return { x.avgCost + x.realized + x.cashEffect, x.avgCost };
 	}
 	return { 0, 0 };
 }

@@ -264,7 +264,7 @@ int Parthenos::AccountToIndex(std::wstring account)
 // Calculates holdings from full transaction history
 std::vector<Holdings> Parthenos::CalculateHoldings() const
 {
-	std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"trans.json"));
+	std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"hist.trans"));
 	std::vector<Holdings> holdings(FullTransactionsToHoldings(trans));
 	::writeHoldings(ROOTDIR + L"holdings.json", holdings);
 	return holdings;
@@ -305,9 +305,9 @@ void Parthenos::CalculateReturns()
 		{
 			Position const & p = acc.positions[i];
 			if (p.ticker == L"CASH") continue;
-			double returns = p.realized_held + p.realized_unheld + p.unrealized; 
+			double returns = p.realized + p.dividends + p.unrealized; 
 			double cost_basis = p.avgCost * p.n;
-			double perc = (cost_basis == 0) ? 0.0 : (p.realized_held + p.unrealized) / cost_basis * 100.0; 
+			double perc = (cost_basis == 0) ? 0.0 : (p.dividends + p.unrealized) / cost_basis * 100.0; 
 			D2D1_COLOR_F color = KeyMatch(m_tickers, m_tickerColors, p.ticker);
 
 			acc.returnsBarData.push_back({ returns, color });
@@ -436,9 +436,9 @@ std::vector<TimeSeries> Parthenos::GetHist(size_t i)
 void Parthenos::AddTransaction(Transaction t)
 {
 	// Update transaction history
-	std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"trans.json"));
+	std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"hist.trans"));
 	trans.push_back(t);
-	::writeTransactions(ROOTDIR + L"trans.json", trans);
+	::writeTransactions(ROOTDIR + L"hist.trans", trans);
 
 	// Update holdings
 	std::vector<Holdings> holdings(::readHoldings(ROOTDIR + L"holdings.json"));
@@ -620,7 +620,7 @@ void Parthenos::PrintOptionSummary() const
 
 std::vector<Transaction> Parthenos::GetTrans() const
 {
-	std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"trans.json"));
+	std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"hist.trans"));
 	if (trans.empty()) throw ws_exception(L"Empty transactions");
 	return trans;
 }
@@ -650,7 +650,7 @@ void Parthenos::InitItems()
 	m_menuBar->Refresh();
 
 	// Load transaction history into chart
-	std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"trans.json"));
+	std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"hist.trans"));
 	m_chart->LoadHistory(trans);
 
 	// Watchlists
@@ -830,7 +830,7 @@ void Parthenos::ProcessMenuMessage(bool & pop_front)
 	{
 		if (msg.msg == L"Print Transaction History")
 		{
-			std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"trans.json"));
+			std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"hist.trans"));
 			std::wstring out;
 			for (Transaction const & t : trans)
 				out.append(t.to_wstring(m_accountNames) + L"\n");
@@ -838,6 +838,7 @@ void Parthenos::ProcessMenuMessage(bool & pop_front)
 		}
 		else if (msg.msg == L"Print Holdings")
 		{
+			m_msgBox->Clear();
 			std::vector<Holdings> holdings(::readHoldings(ROOTDIR + L"holdings.json"));
 			for (Holdings const & h : holdings)
 				m_msgBox->Print(h.to_wstring());
@@ -907,7 +908,7 @@ void Parthenos::ProcessMenuMessage(bool & pop_front)
 				m_childWindows.insert(editTWin);
 				editTWin->SetParent(this, m_hwnd);
 				editTWin->SetAccounts(m_accountNames);
-				editTWin->SetFilepath(ROOTDIR + L"trans.json");
+				editTWin->SetFilepath(ROOTDIR + L"hist.trans");
 				editTWin->PreShow();
 				ShowWindow(editTWin->Window(), SW_SHOW);
 			}
@@ -1159,7 +1160,7 @@ void Parthenos::LoadPieChart()
 	{
 		if (p.ticker == L"CASH")
 		{
-			cash = p.marketPrice + p.realized_held + p.realized_unheld;
+			cash = p.avgCost + p.realized + p.cashEffect;
 			continue;
 		}
 

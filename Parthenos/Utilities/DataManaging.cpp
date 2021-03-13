@@ -3,25 +3,19 @@
 #include "FileIO.h"
 #include "HTTP.h"
 
-#include <chrono>
-
 using namespace jsonette;
 
 ///////////////////////////////////////////////////////////
 // --- Forward declarations ---
 
-double GetCollateral(std::vector<Transaction> const& trans, size_t iOpen);
-double GetAssignment(Play& p, std::vector<Transaction> const& trans, size_t iClose);
-
 void AddCustomTransactionToHoldings(std::vector<Holdings>& holdings, Transaction const& t);
 void AddTransactionToTickerHoldings(Holdings& h, Transaction const& t);
 void MergeHoldings(Holdings& target, Holdings const& mergee);
 
-inline double GetAPY(double gain, double cost_in, date_t start_date, date_t end_date);
-inline double GetWeightedAPY(double gain, date_t start_date, date_t end_date);
-
 void collateOptions(Position& p);
 
+inline double GetAPY(double gain, double cost_in, date_t start_date, date_t end_date);
+inline double GetWeightedAPY(double gain, date_t start_date, date_t end_date);
 
 ///////////////////////////////////////////////////////////////////////////////
 //	                              Transactions			            		 //
@@ -77,34 +71,22 @@ struct Transaction_FILE
 
 std::vector<Transaction> readTransactions(std::wstring const& filepath)
 {
-	auto t_0 = std::chrono::steady_clock::now();
-
 	FileIO transFile;
-	transFile.Init(ROOTDIR + L"hist.trans");
+	transFile.Init(filepath);
 	transFile.Open(GENERIC_READ);
 	std::vector<Transaction_FILE> trans = transFile.Read<Transaction_FILE>();
 	transFile.Close();
-
-	auto t_1 = std::chrono::steady_clock::now(); 
 
 	std::vector<Transaction> ts;
 	ts.reserve(trans.size());
 	for (Transaction_FILE const& t : trans)
 		ts.emplace_back(t);
 
-	auto t_2 = std::chrono::steady_clock::now();
-	OutputDebugString(std::to_wstring(std::chrono::duration_cast<std::chrono::microseconds>(t_1 - t_0).count()).c_str());
-	OutputDebugString(L"\n"); // 200 
-	OutputDebugString(std::to_wstring(std::chrono::duration_cast<std::chrono::microseconds>(t_2 - t_1).count()).c_str());
-	OutputDebugString(L"\n"); // 800 
-
 	return ts;
 }
 
 std::vector<Transaction> readTransactions_JSON(std::wstring const & filepath)
 {
-	auto t_0 = std::chrono::steady_clock::now();
-
 	FileIO transFile;
 	transFile.Init(filepath);
 	transFile.Open(GENERIC_READ);
@@ -115,10 +97,6 @@ std::vector<Transaction> readTransactions_JSON(std::wstring const & filepath)
 	trans.reserve(j.get_arr_size());
 	for (JSON const& j : j.get_arr())
 		trans.push_back(j);
-
-	auto t_1 = std::chrono::steady_clock::now();
-	OutputDebugString(std::to_wstring(std::chrono::duration_cast<std::chrono::microseconds>(t_1 - t_0).count()).c_str());
-	OutputDebugString(L"\n"); // 200000
 
 	return trans;
 }
@@ -131,7 +109,7 @@ void writeTransactions(std::wstring const& filepath, std::vector<Transaction> co
 		tf.emplace_back(t);
 
 	FileIO transFile;
-	transFile.Init(ROOTDIR + L"hist.trans");
+	transFile.Init(filepath);
 	transFile.Open();
 	transFile.Write(tf.data(), sizeof(Transaction_FILE) * tf.size());
 	transFile.Close();
@@ -233,7 +211,7 @@ void addDividend(AccountHoldings& h, Transaction const& t)
 	if (nshares < 0)
 		throw ws_exception(L"AddTransactionToTickerHoldings() dividend negative nshares: " + std::to_wstring(nshares));
 
-	h.sumReal += leftover; // give extra to header (includes partial cents)
+	h.realized += leftover; // give extra to header (includes partial cents)
 }
 
 // Assumes t is a close position in this account
@@ -255,21 +233,21 @@ void closePosition(AccountHoldings& h, Transaction const& trans)
 		t.value -= n * t.price * (isOption(t.type) ? 100 : 1) * (isShort(t.type) ? -1 : 1);
 		realized += n * lot.dividends;
 
-		time_t time_held = min(86400, DateToTime(t.date) - DateToTime(lot.date));
-		h.sumWeights += lot.price * n * (isOption(t.type) ? 100 : 1);
-		h.sumReal += realized;
-		h.sumReal1Y += realized * 365.0 * 86400.0 / time_held;
+		int days_held = min(1, (DateToTime(t.date) - DateToTime(lot.date) / 86400));
+		double cost = (isShort(t.type) ? t.price : lot.price) * n * (isOption(t.type) ? 100 : 1);
+		h.sumWeights += cost * days_held;
+		h.realized += realized;
 
 		if (t.n == 0) break;
 	}
-	h.sumReal += t.value;
+	h.realized += t.value; // leftovers: rounding errors and fees
 
 	// Delete closed lots
 	for (size_t i = h.lots.size(); i-- != 0; )
 	{
 		if (h.lots[i].n == 0)
 		{
-			h.sumReal += h.lots[i].fees;
+			h.realized += h.lots[i].fees;
 			h.lots.erase(h.lots.begin() + i);
 		}
 	}
@@ -292,7 +270,7 @@ void AddTransactionToTickerHoldings(Holdings& h, Transaction const& t)
 		if (t.type == TransactionType::Transfer)
 			h.accts[t.account].sumWeights += t.value;
 		else if (t.type == TransactionType::Interest)
-			h.accts[t.account].sumReal += t.value;
+			h.accts[t.account].realized += t.value;
 		else
 			throw ws_exception(L"Unrecognized transaction:" + t.to_wstring());
 		return;
@@ -352,8 +330,7 @@ void MergeHoldings(Holdings& target, Holdings const & mergee)
 
 	for (size_t acc = 0; acc < mergee.accts.size(); acc++)
 	{
-		target.accts[acc].sumReal += mergee.accts[acc].sumReal;
-		target.accts[acc].sumReal1Y += mergee.accts[acc].sumReal1Y;
+		target.accts[acc].realized += mergee.accts[acc].realized;
 		target.accts[acc].sumWeights += mergee.accts[acc].sumWeights;
 	}
 }
@@ -366,8 +343,6 @@ void MergeHoldings(Holdings& target, Holdings const & mergee)
 
 std::vector<Holdings> readHoldings(std::wstring const& filepath)
 {
-	auto t_0 = std::chrono::steady_clock::now();
-
 	FileIO file;
 	file.Init(filepath);
 	file.Open(GENERIC_READ);
@@ -378,10 +353,6 @@ std::vector<Holdings> readHoldings(std::wstring const& filepath)
 	holds.reserve(j.get_arr_size());
 	for (JSON const& j : j.get_arr())
 		holds.push_back(j);
-
-	auto t_1 = std::chrono::steady_clock::now();
-	OutputDebugString(std::to_wstring(std::chrono::duration_cast<std::chrono::microseconds>(t_1 - t_0).count()).c_str());
-	OutputDebugString(L"\n"); // 9000
 
 	return holds;
 }
@@ -412,133 +383,117 @@ void writeHoldings(std::wstring const& filepath, std::vector<Holdings> const& ho
 ///////////////////////////////////////////////////////////////////////////////
 
 
+// This helper function returns values without averaging out
+//		* avgCost contains the total cost
+//		* APY contains sumWeights
+// Some other members are not filled
+//		* ticker
+//		* price
+Position holdingsToRawPosition(AccountHoldings const& header, date_t date, double price, bool cash)
+{
+	// Variables to fill
+	Position p;
+
+	// Get realized from closed lots
+	p.realized += header.realized;
+	if (cash) p.avgCost += header.sumWeights;
+	else p.APY += header.sumWeights;
+
+	// Loop over stock lots
+	for (size_t iLot = 0; iLot < header.lots.size(); iLot++)
+	{
+		Lot const& lot = header.lots[iLot];
+		if (lot.type != TransactionType::Stock) continue;
+
+		p.n += lot.n;
+		p.avgCost += lot.n * lot.price; // divide by p.n at end
+		p.dividends += lot.dividends * lot.n + lot.fees;
+		p.unrealized += (price - lot.price) * lot.n;
+		p.APY += lot.n * lot.price * min(1, ::DateDiff(date, lot.date));
+		p.cashEffect += getCashEffect(lot);
+	}
+
+	// Loop over options lots;
+	for (size_t iLot = 0; iLot < header.lots.size(); iLot++)
+	{
+		Lot const& opt = header.lots[iLot];
+		if (!isOption(opt.type)) continue;
+
+		OptionPosition op_pos; // Simply copy info for now, then collate at end
+		op_pos.type = transToOptionType(opt.type);
+		op_pos.shares = opt.n * 100;
+		op_pos.expiration = opt.expiration;
+		op_pos.strike = opt.strike;
+		op_pos.price = opt.price;
+
+		// TODO add unrealized for theta effect, STO, include options in APY?
+		p.unrealized += GetIntrinsicValue(opt, p.marketPrice);
+		p.cashEffect += getCashEffect(opt);
+		p.options.push_back(op_pos);
+	}
+
+	return p;
+}
+
+
+
 // Calculates returns and APY using 'date' as end date. Set 'account' = -1 to use all accounts.
 // 'prices' should contain the latest market price in the same order as the tickers in holdings, except CASH.
 // Note this function does not truncate transactions to 'date'!
 std::vector<Position> HoldingsToPositions(std::vector<Holdings> const & holdings,
-	char account, date_t date, std::vector<double> prices)
+	char account, date_t date, std::map<std::wstring, double> const & prices)
 {
-	std::vector<Position> out;
+	std::vector<Position> positions;
 	double net_transactions = 0;
 
-	// Loop over tickers
-	size_t i = 0; // index into prices, discounting cash
 	for (Holdings h : holdings)
 	{
-		Position temp = {};
-		temp.ticker = h.ticker;
-		if (temp.ticker != L"CASH")
+		// Check this account has info on this ticker
+		if (account != -1)
 		{
-			temp.marketPrice = prices[i];
-			i++;
+			if (static_cast<size_t>(account) >= h.accts.size()) continue;
+			if (h.accts[account].lots.empty() && h.accts[account].realized == 0) continue;
 		}
 
-		// store running weighted numerator in temp.APY -- divide by sumWeights at end
-		double sumWeights = 0;
+		// Object to fill
+		Position p;
+		p.ticker = h.ticker;
+		if (p.ticker != L"CASH") p.marketPrice = prices.at(p.ticker);
 
-		// Loop over accounts
-		int nAccounts = h.accts.size();
-		int iAccount;
-		for (iAccount = 0; iAccount < nAccounts; iAccount++)
+		// Loop over accounts and add positions together
+		unsigned start = (account == -1) ? 0 : account;
+		unsigned end = (account == -1) ? h.accts.size() : start + 1;
+		for (unsigned iAccount = start; iAccount < end; iAccount++)
 		{
-			if (account >= 0 && iAccount != account) continue;
 			AccountHoldings const& header = h.accts[iAccount];
-			if (header.lots.empty() && header.sumReal == 0) continue; // empty
+			if (header.lots.empty() && header.realized == 0) continue; // empty
 
-			if (temp.ticker == L"CASH")
-			{
-				temp.marketPrice += header.sumWeights;
-				temp.realized_held += header.sumReal;
-				if (account >= 0) break;
-				continue;
-			}
+			Position p_acc = holdingsToRawPosition(header, date, p.marketPrice, p.ticker == L"CASH");
+			p.n += p_acc.n;
+			p.avgCost += p_acc.avgCost;
+			p.realized += p_acc.realized;
+			p.dividends += p_acc.dividends;
+			p.unrealized += p_acc.unrealized;
+			p.cashEffect += p_acc.cashEffect;
+			p.APY += p_acc.APY;
+			p.options.insert(p.options.end(), p_acc.options.begin(), p_acc.options.end());
+		} 
 
-			sumWeights += header.sumWeights;
-			temp.realized_unheld += header.sumReal;
-			temp.APY += header.sumReal1Y;
+		// Correct the "raw" position
+		if (p.n > 0) p.avgCost = p.avgCost / p.n;
+		if (p.APY > 0) p.APY = (p.realized + p.dividends + p.unrealized) / p.APY;
+		net_transactions += p.cashEffect;
+		collateOptions(p);
 
-			// Loop over stock lots
-			for (size_t iLot = 0; iLot < header.lots.size(); iLot++)
-			{
-				Lot const & lot = header.lots[iLot];
-				if (lot.type != TransactionType::Stock) continue;
-
-				temp.n += lot.n;
-				temp.avgCost += lot.n * lot.price; // divide by temp.n at end
-				double realized = lot.dividends * lot.n + lot.fees;
-				double unrealized = (temp.marketPrice - lot.price) * lot.n;
-				temp.realized_held += realized;
-				temp.unrealized += unrealized;
-				temp.APY += GetWeightedAPY(unrealized + realized, lot.date, date);
-				net_transactions += -lot.n * lot.price;
-			}
-			sumWeights += temp.avgCost; // this is total cost right now
-
-			// Loop over options lots;
-			for (size_t iLot = 0; iLot < header.lots.size(); iLot++)
-			{
-				Lot const & opt = header.lots[iLot];
-				if (!isOption(opt.type)) continue;
-
-				OptionPosition op_pos = {}; // Simply copy info for now, then collate at end
-				op_pos.shares = opt.n * 100;
-				op_pos.expiration = opt.expiration;
-				op_pos.strike = opt.strike;
-				op_pos.price = opt.price;
-
-				temp.realized_unheld += getCashEffect(opt);
-
-				switch (opt.type)
-				{
-				case TransactionType::PutShort:
-					temp.APY += GetWeightedAPY(getCashEffect(opt), opt.date, opt.expiration); // approximate hold to expiration
-					sumWeights += opt.strike * opt.n * 100; // approximate weight as collateral of option
-					op_pos.type = OptionType::CSP;
-					break;
-				case TransactionType::PutLong:
-					temp.APY += GetWeightedAPY(-opt.price * opt.n, opt.date, date);
-					sumWeights += opt.price * opt.n * 100;
-					op_pos.type = OptionType::LP;
-					break;
-				case TransactionType::CallShort:
-					temp.APY += GetWeightedAPY(getCashEffect(opt), opt.date, opt.expiration); // approximate hold to expiration
-					sumWeights += opt.strike * opt.n * 100; // approximate weight as strike of option
-					op_pos.type = OptionType::CC;
-					break;
-				case TransactionType::CallLong:
-					temp.APY += GetWeightedAPY(-opt.price * opt.n, opt.date, date);
-					sumWeights += opt.price * opt.n * 100;
-					op_pos.type = OptionType::LC;
-					break;
-				default:
-					OutputMessage(L"Bad option type in HoldingsToPositions\n");
-				}
-				// TODO add unrealized for theta effect
-				double unrealized = GetIntrinsicValue(opt, temp.marketPrice);
-				temp.unrealized += unrealized;
-				temp.APY += GetWeightedAPY(unrealized, opt.date, date);
-				temp.options.push_back(op_pos);
-			}
-
-			if (account >= 0) break;
-		} // end loop over accounts
-		if (account >= 0 && iAccount == nAccounts) continue; // no info for this ticker for this account
-		
-		if (temp.n > 0) temp.avgCost = temp.avgCost / temp.n;
-		if (sumWeights > 0) temp.APY = temp.APY / sumWeights;
-		collateOptions(temp);
-		out.push_back(temp);
-
-		if (temp.ticker != L"CASH")
-		{
-			net_transactions += temp.realized_held;
-			net_transactions += temp.realized_unheld;
-		}
-	} // end loop over tickers
+		// Add ticker
+		positions.push_back(p);
+	} 
 
 	// update cash with transaction total
-	for (auto & x : out) if (x.ticker == L"CASH") x.realized_unheld = net_transactions;
-	return out;
+	for (auto& x : positions) 
+		if (x.ticker == L"CASH") x.cashEffect = net_transactions;
+
+	return positions;
 }
 
 
@@ -788,7 +743,7 @@ void UpdateEquityHistory(std::vector<TimeSeries>& hist, std::vector<Position> co
 	{
 		if (p.ticker == L"CASH")
 		{
-			cash = p.realized_held + p.realized_unheld;
+			cash = p.avgCost + p.realized + p.cashEffect;
 			continue;
 		}
 		apiSource source = apiSource::alpha;
@@ -850,7 +805,7 @@ inline double GetAPY(double gain, double cost_in, date_t start_date, date_t end_
 
 
 ///////////////////////////////////////////////////////////////////////////////
-//	                                 Plays                                   //
+//	                          Plays (Deprecate)                              //
 ///////////////////////////////////////////////////////////////////////////////
 
 
@@ -858,40 +813,40 @@ inline double GetAPY(double gain, double cost_in, date_t start_date, date_t end_
 std::vector<Play> GetOptionPerformance(std::vector<Transaction> const & trans)
 {
 	std::vector<Play> plays;
-	for (size_t i = 0; i < trans.size(); i++)
-	{
-		Transaction const& t = trans[i];
-		if (!isOption(t.type)) continue;
+	//for (size_t i = 0; i < trans.size(); i++)
+	//{
+	//	Transaction const& t = trans[i];
+	//	if (!isOption(t.type)) continue;
 
-		if (t.n > 0) // Open
-		{
-			Play p = {};
-			p.type = t.type;
-			p.n = t.n;
-			p.start = t.date;
-			p.expiration = t.expiration;
-			p.price_enter = t.price;
-			p.strike = t.strike;
-			p.collateral = GetCollateral(trans, i);
-			p.ticker = t.ticker;
+	//	if (t.n > 0) // Open
+	//	{
+	//		Play p = {};
+	//		p.type = t.type;
+	//		p.n = t.n;
+	//		p.start = t.date;
+	//		p.expiration = t.expiration;
+	//		p.price_enter = t.price;
+	//		p.strike = t.strike;
+	//		p.collateral = GetCollateral(trans, i);
+	//		p.ticker = t.ticker;
 
-			plays.push_back(p);
-		}
-		else // Close
-		{
-			for (Play & p : plays)
-			{
-				if (p.end == 0 && p.ticker == t.ticker && p.type == t.type 
-					&& p.expiration == t.expiration && p.strike == t.strike)
-				{
-					p.end = t.date;
-					p.price_exit = t.price;
-					p.assignment_cost = GetAssignment(p, trans, i);
-					break;
-				}
-			}
-		}
-	}
+	//		plays.push_back(p);
+	//	}
+	//	else // Close
+	//	{
+	//		for (Play & p : plays)
+	//		{
+	//			if (p.end == 0 && p.ticker == t.ticker && p.type == t.type 
+	//				&& p.expiration == t.expiration && p.strike == t.strike)
+	//			{
+	//				p.end = t.date;
+	//				p.price_exit = t.price;
+	//				p.assignment_cost = GetAssignment(p, trans, i);
+	//				break;
+	//			}
+	//		}
+	//	}
+	//}
 
 	return plays;
 }
@@ -1095,8 +1050,7 @@ std::wstring Lot::to_wstring() const
 AccountHoldings::AccountHoldings(jsonette::JSON const& json)
 {
 	sumWeights = json["sumWeights"];
-	sumReal1Y = json["sumReal1Y"];
-	sumReal = json["sumReal"];
+	realized = json["realized"];
 	lots.reserve(json["lots"].get_arr_size());
 	for (JSON const& j : json["lots"].get_arr())
 		lots.push_back(j);
@@ -1105,8 +1059,7 @@ AccountHoldings::AccountHoldings(jsonette::JSON const& json)
 std::wostream& operator<<(std::wostream& os, const AccountHoldings& h)
 {
 	os << L"{\"sumWeights\":" << h.sumWeights
-		<< L",\"sumReal1Y\":" << 0//sumReal1Y
-		<< L",\"sumReal\":" << h.sumReal
+		<< L",\"realized\":" << h.realized
 		<< L",\"lots\":[";
 	for (size_t i = 0; i < h.lots.size(); i++)
 	{
@@ -1126,9 +1079,8 @@ std::wstring AccountHoldings::to_json() const
 
 std::wstring AccountHoldings::to_wstring() const
 {
-	std::wstring out = L"\tsumWeights: " + std::to_wstring(sumWeights)
-		+ L", sumReal1Y: " + std::to_wstring(sumReal1Y)
-		+ L", sumReal: " + std::to_wstring(sumReal)
+	std::wstring out = L"\trealized: " + std::to_wstring(realized)
+		+ L", sumWeights: " + std::to_wstring(sumWeights)
 		+ L"\n";
 	for (Lot const& lot : lots)
 	{

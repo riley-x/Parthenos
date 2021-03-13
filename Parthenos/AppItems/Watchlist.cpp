@@ -321,18 +321,18 @@ void WatchlistItem::Load(std::wstring const & ticker, std::vector<WatchlistColum
 				if (position) data = quote.latestPrice * position->n;
 				break;
 			case WatchlistColumn::Realized:
-				if (position) data = position->realized_held + position->realized_unheld;
+				if (position) data = position->dividends + position->realized;
 				break;
 			case WatchlistColumn::Unrealized:
 				if (position) data = position->unrealized;
 				break;
 			case WatchlistColumn::ReturnsT:
 				if (position)
-					data = position->realized_held + position->realized_unheld + position->unrealized;
+					data = position->dividends + position->realized + position->unrealized;
 				break;
 			case WatchlistColumn::ReturnsP:
 				if (position && position->n > 0)
-					data = (position->realized_held + position->unrealized) / (position->avgCost * position->n) * 100.0f;
+					data = (position->dividends + position->unrealized) / (position->avgCost * position->n) * 100.0f;
 				break;
 			case WatchlistColumn::APY:
 				if (position) data = position->APY * 100.0f;
