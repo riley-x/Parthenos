@@ -264,10 +264,10 @@ struct Position
 	int n = 0;					// Shares only		
 	double avgCost = 0;			// Of shares. For CASH, cash from transfers 
 	double marketPrice = 0;		// 
-	double realized = 0;		// == header.realized. For CASH, cash from interest
+	double realized = 0;		// == header.realized, proceeds from closed lots. For CASH, cash from interest
 	double dividends = 0;		// Sum of dividends and fees from open lots
 	double unrealized = 0;		// includes intrinsic value, STO proceeds, and theta decay from options
-	double cashEffect = 0;		// realized + dividends - purchase cost. For CASH, stores sum from other holdings
+	double cashEffect = 0;		// dividends - purchase cost of open lots. For CASH, stores sum + realized from other holdings
 	double APY = 0;
 	std::wstring ticker;
 	std::vector<OptionPosition> options; // p/l already included in above, but useful to keep around
@@ -281,6 +281,7 @@ struct Position
 			+ L", realized: "	+ std::to_wstring(realized)
 			+ L", dividends: "	+ std::to_wstring(dividends)
 			+ L", unrealized: "	+ std::to_wstring(unrealized)
+			+ L", cashEffect: " + std::to_wstring(cashEffect)
 			+ L", APY: "		+ std::to_wstring(APY)
 			+ L"\n";
 	}

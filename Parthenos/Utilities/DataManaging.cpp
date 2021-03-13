@@ -482,7 +482,7 @@ std::vector<Position> HoldingsToPositions(std::vector<Holdings> const & holdings
 		// Correct the "raw" position
 		if (p.n > 0) p.avgCost = p.avgCost / p.n;
 		if (p.APY > 0) p.APY = (p.realized + p.dividends + p.unrealized) / p.APY;
-		net_transactions += p.cashEffect;
+		if (p.ticker != L"CASH") net_transactions += p.cashEffect + p.realized;
 		collateOptions(p);
 
 		// Add ticker

@@ -284,6 +284,12 @@ void Parthenos::CalculatePositions(std::vector<Holdings> const & holdings)
 	std::vector<Position> positions = HoldingsToPositions(
 		holdings, -1, date, GetMarketPrices(m_stats)); // all accounts
 	m_accounts.back().positions = positions;
+
+	for (Position& p : m_accounts[2].positions)
+	{
+		OutputDebugString(p.to_wstring().c_str());
+		OutputDebugString(L"\n");
+	}
 }
 
 
