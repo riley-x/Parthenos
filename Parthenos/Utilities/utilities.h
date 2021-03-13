@@ -68,7 +68,7 @@ inline std::wstring s2w(const std::string & s)
 
 inline std::string w2s(const std::wstring& s)
 {
-	const size_t size = 200;
+	const size_t size = 2000;
 	char out[size];
 	int res = WideCharToMultiByte(
 		CP_UTF8,

@@ -224,6 +224,13 @@ inline double GetIntrinsicValue(Lot const & opt, double latest)
 	}
 }
 
+inline double getCashEffect(Lot const& lot)
+{
+	if (isOption(lot.type))
+		return lot.price * lot.n * 100 * (isShort(lot.type) ? 1 : -1) + lot.fees;
+	return lot.n * (lot.dividends - lot.price) + lot.fees;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 //                                 Positions                                 //
 ///////////////////////////////////////////////////////////////////////////////
@@ -279,13 +286,11 @@ struct OptionPosition
 struct Position
 {
 	int n;					
-	int shares_collateral; // currently unused
-	double cash_collateral;
 	double avgCost;			// of shares
 	double marketPrice;		// for CASH, cash from transfers
 	double realized_held;	// == sum(lot.realized) for shares. For CASH, cash from interest
 	double realized_unheld; // == head.sumReal + proceeds of open options. For CASH, net cash from transactions
-	double unrealized;		// includes intrinsic value gain(long) / loss(short) from options
+	double unrealized;		// includes intrinsic value gain(long) / loss(short) from options, and theta decay
 	double APY;
 	std::wstring ticker;
 	std::vector<OptionPosition> options; // p/l already included in above, but useful to keep around
@@ -300,8 +305,6 @@ struct Position
 			+ L", realized (unheld): "	+ std::to_wstring(realized_unheld)
 			+ L", unrealized: "	+ std::to_wstring(unrealized)
 			+ L", APY: "		+ std::to_wstring(APY)
-			+ L", collat (shares): "	+ std::to_wstring(shares_collateral)
-			+ L", collat (cash): "		+ std::to_wstring(cash_collateral)
 			+ L"\n";
 	}
 };

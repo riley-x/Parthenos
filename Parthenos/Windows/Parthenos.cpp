@@ -34,6 +34,8 @@ Parthenos::Parthenos(PCWSTR szClassName) :
 	//ohlcFile.Write(ohlcData.data(), sizeof(OHLC) * (ohlcData.size() - 5));
 	//ohlcFile.Close();
 
+	CalculateHoldings();
+
 }
 
 Parthenos::~Parthenos()
@@ -233,15 +235,8 @@ void Parthenos::InitData()
 // Data initializations dependent on realtime data (i.e. requires HTTP GET).
 void Parthenos::InitRealtimeData()
 {
-	// Read Holdings
-	FileIO holdingsFile;
-	holdingsFile.Init(ROOTDIR + L"port.hold");
-	holdingsFile.Open(GENERIC_READ);
-	std::vector<Holdings> out = holdingsFile.Read<Holdings>();
-	holdingsFile.Close();
-	NestedHoldings holdings = FlattenedHoldingsToTickers(out);
+	std::vector<Holdings> holdings(readHoldings(ROOTDIR + L"holdings.json"));
 
-	// Populate data members
 	m_tickers = GetTickers(holdings); // tickers from all accounts
 	m_tickerColors = Colors::Randomizer(m_tickers);
 	m_stats = GetBatchQuoteStats(m_tickers);
@@ -268,33 +263,17 @@ int Parthenos::AccountToIndex(std::wstring account)
 }
 
 // Calculates holdings from full transaction history
-NestedHoldings Parthenos::CalculateHoldings() const
+std::vector<Holdings> Parthenos::CalculateHoldings() const
 {
-	// Read transaction history
-	FileIO transFile;
-	transFile.Init(ROOTDIR + L"hist.trans");
-	transFile.Open(GENERIC_READ);
-	std::vector<Transaction> trans = transFile.Read<Transaction>();
-	transFile.Close();
-
-	// Transaction -> Holdings
-	NestedHoldings holdings = FullTransactionsToHoldings(trans);
-	std::vector<Holdings> out;
-	for (auto const & x : holdings) out.insert(out.end(), x.begin(), x.end());
-
-	// Write
-	FileIO holdingsFile;
-	holdingsFile.Init(ROOTDIR + L"port.hold");
-	holdingsFile.Open();
-	holdingsFile.Write(out.data(), sizeof(Holdings) * out.size());
-	holdingsFile.Close();
-
+	std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"trans.json"));
+	std::vector<Holdings> holdings(FullTransactionsToHoldings(trans));
+	::writeHoldings(ROOTDIR + L"holdings.json", holdings);
 	return holdings;
 }
 
 
 // Holdings -> Positions
-void Parthenos::CalculatePositions(NestedHoldings const & holdings)
+void Parthenos::CalculatePositions(std::vector<Holdings> const & holdings)
 {
 	date_t date = GetCurrentDate();
 	for (size_t i = 0; i < m_accountNames.size(); i++)
@@ -458,23 +437,14 @@ std::vector<TimeSeries> Parthenos::GetHist(size_t i)
 void Parthenos::AddTransaction(Transaction t)
 {
 	// Update transaction history
-	FileIO transFile;
-	transFile.Init(ROOTDIR + L"hist.trans");
-	transFile.Open();
-	transFile.Append(&t, sizeof(Transaction));
-	transFile.Close();
+	std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"trans.json"));
+	trans.push_back(t);
+	::writeTransactions(ROOTDIR + L"trans.json", trans);
 
 	// Update holdings
-	FileIO holdingsFile;
-	holdingsFile.Init(ROOTDIR + L"port.hold");
-	holdingsFile.Open();
-	std::vector<Holdings> flattenedHoldings = holdingsFile.Read<Holdings>();
-	NestedHoldings holdings = FlattenedHoldingsToTickers(flattenedHoldings);
+	std::vector<Holdings> holdings(::readHoldings(ROOTDIR + L"holdings.json"));
 	AddTransactionToHoldings(holdings, t);
-	std::vector<Holdings> out;
-	for (auto const & x : holdings) out.insert(out.end(), x.begin(), x.end());
-	holdingsFile.Write(out.data(), sizeof(Holdings) * out.size());
-	holdingsFile.Close();
+	::writeHoldings(ROOTDIR + L"holdings.json", holdings);
 
 	try { // non-critical fail here - just show not up-to-date history
 
@@ -891,15 +861,9 @@ void Parthenos::ProcessMenuMessage(bool & pop_front)
 		}
 		else if (msg.msg == L"Print Holdings")
 		{
-			// Read Holdings
-			FileIO holdingsFile;
-			holdingsFile.Init(ROOTDIR + L"port.hold");
-			holdingsFile.Open(GENERIC_READ);
-			std::vector<Holdings> out = holdingsFile.Read<Holdings>();
-			holdingsFile.Close();
-
-			NestedHoldings holdings = FlattenedHoldingsToTickers(out);
-			m_msgBox->Overwrite(NestedHoldingsToWString(holdings));
+			std::vector<Holdings> holdings(::readHoldings(ROOTDIR + L"holdings.json"));
+			for (Holdings const & h : holdings)
+				m_msgBox->Print(h.to_json());
 		}
 		else if (msg.msg == L"Print Equity History")
 		{
@@ -1000,7 +964,7 @@ void Parthenos::ProcessMenuMessage(bool & pop_front)
 			else if (!msg.sender) // sent from confirmation window
 			{
 				m_msgBox->Print(L"Recalculating holdings...\n");
-				NestedHoldings holdings = CalculateHoldings();
+				std::vector<Holdings> holdings = CalculateHoldings();
 				CalculatePositions(holdings);
 				m_msgBox->Print(L"Done.\n");
 			}

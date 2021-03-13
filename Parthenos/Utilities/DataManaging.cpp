@@ -86,7 +86,7 @@ void AddTransactionToHoldings(std::vector<Holdings>& holdings, Transaction const
 
 	// See if ticker is present already
 	auto it = std::lower_bound(holdings.begin(), holdings.end(), t.ticker,
-		[](Holdings const& h1, Holdings const& h2) { return h1.ticker < h2.ticker; }
+		[](Holdings const& h1, std::wstring const & t) { return h1.ticker < t; }
 	);
 
 	if (it == holdings.end() || std::wstring(it->ticker) != t.ticker)
@@ -104,7 +104,7 @@ void AddTransactionToHoldings(std::vector<Holdings>& holdings, Transaction const
 void addLot(Holdings& h, Transaction const& t)
 {
 	if (static_cast<size_t>(t.account) >= h.accts.size())
-		h.accts.resize(t.account);
+		h.accts.resize(1 + t.account);
 
 	Lot lot;
 	lot.type = t.type;
@@ -188,6 +188,8 @@ void AddTransactionToTickerHoldings(Holdings& h, Transaction const& t)
 	// Don't add lots for cash
 	if (t.ticker == L"CASH")
 	{
+		if (static_cast<size_t>(t.account) >= h.accts.size())
+			h.accts.resize(1 + t.account);
 		if (t.type == TransactionType::Transfer)
 			h.accts[t.account].sumWeights += t.value;
 		else if (t.type == TransactionType::Interest)
@@ -311,16 +313,14 @@ std::vector<Position> HoldingsToPositions(std::vector<Holdings> const & holdings
 	char account, date_t date, std::vector<double> prices)
 {
 	std::vector<Position> out;
-	double net_transactions = 0.0f;
+	double net_transactions = 0;
 
 	// Loop over tickers
 	size_t i = 0; // index into prices, discounting cash
-	for (std::vector<Holdings> h : holdings)
+	for (Holdings h : holdings)
 	{
-		if (h.empty()) throw std::invalid_argument("Holdings is empty");
-
 		Position temp = {};
-		temp.ticker = h[0].tickerInfo.ticker;
+		temp.ticker = h.ticker;
 		if (temp.ticker != L"CASH")
 		{
 			temp.marketPrice = prices[i];
@@ -331,29 +331,18 @@ std::vector<Position> HoldingsToPositions(std::vector<Holdings> const & holdings
 		double sumWeights = 0;
 
 		// Loop over accounts
-		int nAccounts = h[0].tickerInfo.nAccounts;
-		int iHeader = 1;
+		int nAccounts = h.accts.size();
 		int iAccount;
 		for (iAccount = 0; iAccount < nAccounts; iAccount++)
 		{
-			if (iHeader > static_cast<int>(holdings.size()))
-				throw std::invalid_argument("Headers misformed");
-
-			if (account >= 0 && h[iHeader].head.account != account)
-			{
-				iHeader += h[iHeader].head.nLots + h[iHeader].head.nOptions + 1;
-				continue;
-			}
-
-			ReduceSalesLots(h, iHeader, MkDate(9999, 0, 0)); // h is a copy, so ok the reduce everything
-			HoldingHeader const & header = h[iHeader].head;
+			if (account > 0 && iAccount != account) continue;
+			AccountHoldings const& header = h.accts[iAccount];
 
 			if (temp.ticker == L"CASH")
 			{
 				temp.marketPrice += header.sumWeights;
 				temp.realized_held += header.sumReal;
 				if (account >= 0) break;
-				iHeader += h[iHeader].head.nLots + h[iHeader].head.nOptions + 1;
 				continue;
 			}
 
@@ -362,64 +351,62 @@ std::vector<Position> HoldingsToPositions(std::vector<Holdings> const & holdings
 			temp.APY += header.sumReal1Y;
 
 			// Loop over stock lots
-			int iLot;
-			for (iLot = iHeader + 1; iLot < iHeader + header.nLots + 1; iLot++)
+			for (size_t iLot = 0; iLot < header.lots.size(); iLot++)
 			{
-				TaxLot const & lot = h.at(iLot).lot;
-				if (lot.active != 1) OutputMessage(L"Found inactive lot in HoldingsToPositions\n");
+				Lot const & lot = header.lots[iLot];
+				if (lot.type != TransactionType::Stock) continue;
 
 				temp.n += lot.n;
 				temp.avgCost += lot.n * lot.price; // divide by temp.n at end
-				temp.realized_held += lot.realized;
+				double realized = lot.dividends * lot.n + lot.fees;
 				double unrealized = (temp.marketPrice - lot.price) * lot.n;
+				temp.realized_held += realized;
 				temp.unrealized += unrealized;
-				temp.APY += GetWeightedAPY(unrealized + lot.realized, lot.date, date);
+				temp.APY += GetWeightedAPY(unrealized + realized, lot.date, date);
 				net_transactions += -lot.n * lot.price;
 			}
-
 			sumWeights += temp.avgCost; // this is total cost right now
 
 			// Loop over options lots;
-			for (iLot = iHeader + header.nLots + 1;
-				iLot < iHeader + header.nLots + header.nOptions + 1; iLot++)
+			for (size_t iLot = 0; iLot < header.lots.size(); iLot++)
 			{
-				Option const & opt = h.at(iLot).option;
+				Lot const & opt = header.lots[iLot];
+				if (!isOption(opt.type)) continue;
+
 				OptionPosition op_pos = {}; // Simply copy info for now, then collate at end
 				op_pos.shares = opt.n;
 				op_pos.expiration = opt.expiration;
 				op_pos.strike = opt.strike;
 				op_pos.price = opt.price;
-				//op_pos.realized = opt.realized;
+
+				temp.realized_unheld += getCashEffect(opt);
 
 				switch (opt.type)
 				{
 				case TransactionType::PutShort:
-					temp.realized_unheld += opt.realized;
-					temp.APY += GetWeightedAPY(opt.realized, opt.date, opt.expiration); // approximate hold to expiration
-					sumWeights += opt.strike * opt.n; // approximate weight as collateral of option
+					temp.APY += GetWeightedAPY(getCashEffect(opt), opt.date, opt.expiration); // approximate hold to expiration
+					sumWeights += opt.strike * opt.n * 100; // approximate weight as collateral of option
 					op_pos.type = OptionType::CSP;
 					break;
 				case TransactionType::PutLong:
-					temp.realized_unheld += -opt.price * opt.n + opt.realized;
 					temp.APY += GetWeightedAPY(-opt.price * opt.n, opt.date, date);
-					sumWeights += opt.price * opt.n;
+					sumWeights += opt.price * opt.n * 100;
 					op_pos.type = OptionType::LP;
 					break;
 				case TransactionType::CallShort:
-					temp.realized_unheld += opt.realized;
-					temp.APY += GetWeightedAPY(opt.realized, opt.date, opt.expiration); // approximate hold to expiration
-					sumWeights += opt.strike * opt.n; // approximate weight as strike of option
+					temp.APY += GetWeightedAPY(getCashEffect(opt), opt.date, opt.expiration); // approximate hold to expiration
+					sumWeights += opt.strike * opt.n * 100; // approximate weight as strike of option
 					op_pos.type = OptionType::CC;
 					break;
 				case TransactionType::CallLong:
-					temp.realized_unheld += -opt.price * opt.n + opt.realized;
 					temp.APY += GetWeightedAPY(-opt.price * opt.n, opt.date, date);
-					sumWeights += opt.price * opt.n;
+					sumWeights += opt.price * opt.n * 100;
 					op_pos.type = OptionType::LC;
 					break;
 				default:
 					OutputMessage(L"Bad option type in HoldingsToPositions\n");
 				}
+				// TODO add unrealized for theta effect
 				double unrealized = GetIntrinsicValue(opt, temp.marketPrice);
 				temp.unrealized += unrealized;
 				temp.APY += GetWeightedAPY(unrealized, opt.date, date);
@@ -427,9 +414,9 @@ std::vector<Position> HoldingsToPositions(std::vector<Holdings> const & holdings
 			}
 
 			if (account >= 0) break;
-			iHeader += h[iHeader].head.nLots + h[iHeader].head.nOptions + 1;
 		} // end loop over accounts
 		if (account >= 0 && iAccount == nAccounts) continue; // no info for this ticker for this account
+		
 		if (temp.n > 0) temp.avgCost = temp.avgCost / temp.n;
 		if (sumWeights > 0) temp.APY = temp.APY / sumWeights;
 		collateOptions(temp);
@@ -485,7 +472,6 @@ void collateOptions(Position& p)
 
 					shor->shares -= pos.shares;
 					lon->shares -= pos.shares;
-					p.cash_collateral += pos.cash_collateral;
 				}
 				if (shor->shares == 0) break;
 			}
@@ -493,7 +479,6 @@ void collateOptions(Position& p)
 			if (shor->shares > 0) // Cash secured put
 			{
 				shor->cash_collateral = shor->shares * shor->strike;
-				p.cash_collateral += shor->cash_collateral;
 				ops.push_back(*shor);
 			}
 		}
@@ -517,7 +502,6 @@ void collateOptions(Position& p)
 			if (shor->shares > 0) // Covered call
 			{
 				shor->shares_collateral = shor->shares;
-				p.shares_collateral += shor->shares;
 				ops.push_back(*shor);
 			}
 		}
@@ -806,41 +790,42 @@ std::vector<Play> GetOptionPerformance(std::vector<Transaction> const & trans)
 // For short calls, a mini transactions->holdings is done to find the cost basis of currently held shares.
 double GetCollateral(std::vector<Transaction> const& trans, size_t iOpen)
 {
-	if (!isShort(trans[iOpen].type))
-		return 100 * trans[iOpen].n * trans[iOpen].price;
-	if (trans[iOpen].type == TransactionType::PutShort)
-		return 100 * trans[iOpen].n * trans[iOpen].strike;
+	return 0;
+	//if (!isShort(trans[iOpen].type))
+	//	return 100 * trans[iOpen].n * trans[iOpen].price;
+	//if (trans[iOpen].type == TransactionType::PutShort)
+	//	return 100 * trans[iOpen].n * trans[iOpen].strike;
 
-	// Short call
-	std::wstring ticker(trans[iOpen].ticker);
-	std::vector<std::vector<Holdings>> holdings;
-	for (size_t i = 0; i < iOpen; i++)
-	{
-		if (
-			trans[i].ticker == ticker 
-			&& trans[i].account == trans[iOpen].account 
-			&& trans[i].type == TransactionType::Stock
-			)
-			AddTransactionToHoldings(holdings, trans[i]);
-	}
-	ReduceSalesLots(holdings[0], 1, MkDate(9999, 99, 99));
+	//// Short call
+	//std::wstring ticker(trans[iOpen].ticker);
+	//std::vector<std::vector<Holdings>> holdings;
+	//for (size_t i = 0; i < iOpen; i++)
+	//{
+	//	if (
+	//		trans[i].ticker == ticker 
+	//		&& trans[i].account == trans[iOpen].account 
+	//		&& trans[i].type == TransactionType::Stock
+	//		)
+	//		AddTransactionToHoldings(holdings, trans[i]);
+	//}
+	//ReduceSalesLots(holdings[0], 1, MkDate(9999, 99, 99));
 
-	double costBasis = 0; // add up cost of shares, divide at end
-	int shares = 100 * trans[iOpen].n; // decrement as we iterate through lots
-	for (auto it = holdings[0].rbegin(); it != holdings[0].rend(); it++)
-	{
-		if (it->lot.n >= shares) // all accounted for
-		{
-			costBasis += it->lot.price * shares;
-			break;
-		}
-		else
-		{
-			costBasis += it->lot.price * it->lot.n;
-			shares -= it->lot.n;
-		}
-	}
-	return costBasis / (100. * trans[iOpen].n);
+	//double costBasis = 0; // add up cost of shares, divide at end
+	//int shares = 100 * trans[iOpen].n; // decrement as we iterate through lots
+	//for (auto it = holdings[0].rbegin(); it != holdings[0].rend(); it++)
+	//{
+	//	if (it->lot.n >= shares) // all accounted for
+	//	{
+	//		costBasis += it->lot.price * shares;
+	//		break;
+	//	}
+	//	else
+	//	{
+	//		costBasis += it->lot.price * it->lot.n;
+	//		shares -= it->lot.n;
+	//	}
+	//}
+	//return costBasis / (100. * trans[iOpen].n);
 }
 
 
@@ -989,7 +974,7 @@ std::wstring AccountHoldings::to_json() const
 {
 	std::wstringstream ss;
 	ss << L"{\"sumWeights\":" << sumWeights
-		<< L",\"sumReal1Y\":" << sumReal1Y
+		<< L",\"sumReal1Y\":" << 0//sumReal1Y
 		<< L",\"sumReal\":" << sumReal
 		<< L",\"lots\":[";
 	for (size_t i = 0; i < lots.size(); i++)
