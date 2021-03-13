@@ -189,17 +189,20 @@ inline double GetIntrinsicValue(Lot const & opt, double latest)
 	switch (opt.type)
 	{
 	case TransactionType::PutShort:
-		return (latest < opt.strike) ? 100l * opt.n * (latest - opt.strike) : 0.0;
+		return (latest < opt.strike) ? (latest - opt.strike) * 100 * opt.n : 0.0;
 	case TransactionType::PutLong:
-		return (latest < opt.strike) ? 100l * opt.n * (opt.strike - latest) : 0.0;
+		return (latest < opt.strike) ? (opt.strike - latest) * 100 * opt.n : 0.0;
 	case TransactionType::CallShort:
-		return (latest > opt.strike) ? 100l * opt.n * (opt.strike - latest) : 0.0;
+		return (latest > opt.strike) ? (opt.strike - latest) * 100 * opt.n : 0.0;
 	case TransactionType::CallLong:
-		return (latest > opt.strike) ? 100l * opt.n * (latest - opt.strike) : 0.0;
+		return (latest > opt.strike) ? (latest - opt.strike) * 100 * opt.n : 0.0;
 	default:
 		return 0.0;
 	}
 }
+
+// Returns the gain/loss from theta on short/long options approximating linear decay
+double getThetaValue(Lot const& opt, date_t date);
 
 inline double getCashEffect(Lot const& lot)
 {

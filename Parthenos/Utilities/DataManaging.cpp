@@ -377,6 +377,16 @@ void writeHoldings(std::wstring const& filepath, std::vector<Holdings> const& ho
 	file.Close();
 }
 
+double getThetaValue(Lot const& opt, date_t date)
+{
+	if (!isOption(opt.type)) return 0;
+
+	int days_tot = ::DateDiff(opt.expiration, opt.date);
+	int days_held = ::DateDiff(date, opt.date);
+
+	return opt.price * opt.n * 100 * days_held / days_tot * (isShort(opt.type) ? 1 : -1);
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //							Holdings -> Positions                            //
@@ -427,7 +437,7 @@ Position holdingsToRawPosition(AccountHoldings const& header, date_t date, doubl
 		op_pos.price = opt.price;
 
 		// TODO add unrealized for theta effect, STO, include options in APY?
-		p.unrealized += GetIntrinsicValue(opt, p.marketPrice);
+		p.unrealized += GetIntrinsicValue(opt, price) + getThetaValue(opt, date);
 		p.cashEffect += getCashEffect(opt);
 		p.options.push_back(op_pos);
 	}
