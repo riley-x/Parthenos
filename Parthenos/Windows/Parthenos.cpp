@@ -1222,7 +1222,7 @@ void Parthenos::LoadPieChart()
 		}
 	}
 
-	// Get total equity
+	// Get pie total
 	double sum = std::accumulate(equities.begin(), equities.end(), 0.0);
 	sum += cash;
 
@@ -1239,8 +1239,9 @@ void Parthenos::LoadPieChart()
 	std::vector<D2D1_COLOR_F> slider_colors;
 
 	// Default long label
+	double equity = ::getLiquidatingValue(m_accounts[m_currAccount].positions);
 	wchar_t buffer[100];
-	swprintf_s(buffer, _countof(buffer), L"%s\n%s", acc.name.c_str(), FormatDollar(sum).c_str());
+	swprintf_s(buffer, _countof(buffer), L"%s\n%s", acc.name.c_str(), FormatDollar(equity).c_str());
 	long_labels.push_back(std::wstring(buffer));
 
 	// Sort by market value

@@ -396,8 +396,9 @@ inline double GetIntrinsicValue(OptionPosition const& opt, double latest)
 }
 
 double getThetaValue(OptionPosition const& opt, date_t date);
-
 double getTotalPL(std::vector<Position> const& pos);
+double getNetTransfers(std::vector<Position> const& pos);
+double getLiquidatingValue(std::vector<Position> const& pos);
 
 ///////////////////////////////////////////////////////////
 // --- Equity history ---

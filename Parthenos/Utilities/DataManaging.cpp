@@ -644,6 +644,26 @@ double getTotalPL(std::vector<Position> const& pos)
 	return equity;
 }
 
+double getNetTransfers(std::vector<Position> const& pos)
+{
+	for (Position const& p : pos)
+	{
+		if (p.ticker == L"CASH") return p.avgCost;
+	}
+	return 0;
+}
+
+double getLiquidatingValue(std::vector<Position> const& pos)
+{
+	double equity = 0;
+	for (Position const& p : pos)
+	{
+		if (p.ticker == L"CASH") equity += p.avgCost + p.realized;
+		else equity += p.realized + p.dividends + p.unrealized;
+	}
+	return equity;
+}
+
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -664,10 +684,8 @@ struct TickerData
 
 	double getPrice(date_t date) const
 	{
-		if (i >= ohlc.size()) 
-			return std::nan("");
-		if (ohlc[i].date != date) 
-			return std::nan("");
+		if (i >= ohlc.size()) return std::nan("");
+		if (ohlc[i].date != date) return std::nan("");
 		return ohlc[i].close;
 	}
 };
@@ -718,10 +736,8 @@ std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Tra
 	for (size_t i = voo.i; i < voo.ohlc.size(); i++)
 		dates.push_back(voo.ohlc[i].date);
 
-
 	std::map<std::wstring, TickerData> tickerData;
 	tickerData.insert({ L"VOO", voo });
-
 
 	std::vector<Holdings> h;
 	for (date_t date : dates)
