@@ -93,8 +93,8 @@ private:
 	void InitData();
 	void InitRealtimeData();
 	int AccountToIndex(std::wstring account);
-	NestedHoldings CalculateHoldings() const;
-	void CalculatePositions(NestedHoldings const & holdings);
+	std::vector<Holdings> CalculateHoldings() const;
+	void CalculatePositions(std::vector<Holdings> const & holdings);
 	void CalculateReturns();
 	void CalculateHistories();
 	void CalculateAllHistory();

@@ -56,7 +56,6 @@ public:
 		DWORD bytesRead = 0;
 		char *buffer = _Read(bytesRead, true);
 		std::string out(buffer, bytesRead);
-		//std::string out(buffer);
 		delete buffer;
 		return out;
 	}

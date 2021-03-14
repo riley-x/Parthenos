@@ -105,6 +105,25 @@ std::wstring SPrintException(const std::exception & e)
 	return out;
 }
 
+std::string w2s(const std::wstring& s)
+{
+	const size_t size = 10000;
+	char out[size];
+	int res = WideCharToMultiByte(
+		CP_UTF8,
+		0,
+		s.c_str(),
+		-1,
+		out,
+		size,
+		nullptr,
+		nullptr
+	);
+
+	if (res == 0) OutputError(L"w2s failed");
+	return std::string(out);
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // Time
@@ -176,6 +195,12 @@ time_t DateToTime(date_t date)
 	return _mkgmtime(&out);
 }
 
+
+int DateDiff(date_t a, date_t b)
+{
+	time_t time = DateToTime(a) - DateToTime(b);
+	return static_cast<int>(time / 86400);
+}
 
 // APPROXIMATE DIFFERENCE IN DAYS
 // Typically larger than real difference

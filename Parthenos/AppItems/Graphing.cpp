@@ -929,7 +929,8 @@ void Axes::CreateHoverText(size_t xind, D2D1_POINT_2F cursor)
 		else if (xind < m_dates.size()) xlabel = DateToWString(m_dates[xind]);
 
 		// Get y label (and adjust crosshairs for HoverStyle::snap) from first graph object
-		ylabel = (m_hoverStyle == HoverStyle::snap) ? m_graphObjects[0][0]->GetYLabel(xind) : std::to_wstring(DIPtoY(cursor.y));
+		ylabel = (m_hoverStyle == HoverStyle::snap) ? m_graphObjects[0][0]->GetYLabel(xind)
+			: (std::wstringstream() << std::fixed << std::setprecision(2) << DIPtoY(cursor.y)).str();
 
 		// Make layout
 		std::wstring label = xlabel + L"\n" + ylabel;
@@ -1018,7 +1019,8 @@ void LineGraph::Paint(D2Objects const & d2)
 
 std::wstring LineGraph::GetYLabel(size_t i) const
 {
-	if (i - m_offset < m_y.size()) return std::to_wstring(m_y[i - m_offset]);
+	if (i - m_offset < m_y.size()) 
+		return (std::wstringstream() << std::fixed << std::setprecision(2) << m_y[i - m_offset]).str();
 	return std::wstring();
 }
 
@@ -1175,7 +1177,8 @@ void BarGraph::Paint(D2Objects const & d2)
 
 std::wstring BarGraph::GetYLabel(size_t i) const
 {
-	if (i - m_offset < m_data.size()) return std::to_wstring(m_data[i - m_offset].first);
+	if (i - m_offset < m_data.size()) 
+		return (std::wstringstream() << std::fixed << std::setprecision(2) << m_data[i - m_offset].first).str();
 	return std::wstring();
 }
 

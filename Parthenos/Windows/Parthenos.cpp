@@ -22,17 +22,11 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 ///////////////////////////////////////////////////////////
 // --- Interface functions ---
 
+
+
 Parthenos::Parthenos(PCWSTR szClassName) : 
 	BorderlessWindow(szClassName)
 {	
-	//FileIO transFile;
-	//transFile.Init(ROOTDIR + L"hist.trans");
-	//transFile.Open();
-	//std::vector<Transaction> trans = transFile.Read<Transaction>();
-	//trans.resize(trans.size() - 2);
-	//transFile.Write(trans.data(), sizeof(Transaction)*trans.size());
-	//transFile.Close();
-
 	//FileIO ohlcFile;
 	//ohlcFile.Init(ROOTDIR + L"spy.iex.ohlc");
 	//ohlcFile.Open();
@@ -40,6 +34,7 @@ Parthenos::Parthenos(PCWSTR szClassName) :
 	//ohlcFile.Write(ohlcData.data(), sizeof(OHLC) * (ohlcData.size() - 5));
 	//ohlcFile.Close();
 
+	//CalculateHoldings();
 }
 
 Parthenos::~Parthenos()
@@ -239,15 +234,8 @@ void Parthenos::InitData()
 // Data initializations dependent on realtime data (i.e. requires HTTP GET).
 void Parthenos::InitRealtimeData()
 {
-	// Read Holdings
-	FileIO holdingsFile;
-	holdingsFile.Init(ROOTDIR + L"port.hold");
-	holdingsFile.Open(GENERIC_READ);
-	std::vector<Holdings> out = holdingsFile.Read<Holdings>();
-	holdingsFile.Close();
-	NestedHoldings holdings = FlattenedHoldingsToTickers(out);
+	std::vector<Holdings> holdings(readHoldings(ROOTDIR + L"holdings.json"));
 
-	// Populate data members
 	m_tickers = GetTickers(holdings); // tickers from all accounts
 	m_tickerColors = Colors::Randomizer(m_tickers);
 	m_stats = GetBatchQuoteStats(m_tickers);
@@ -274,33 +262,17 @@ int Parthenos::AccountToIndex(std::wstring account)
 }
 
 // Calculates holdings from full transaction history
-NestedHoldings Parthenos::CalculateHoldings() const
+std::vector<Holdings> Parthenos::CalculateHoldings() const
 {
-	// Read transaction history
-	FileIO transFile;
-	transFile.Init(ROOTDIR + L"hist.trans");
-	transFile.Open(GENERIC_READ);
-	std::vector<Transaction> trans = transFile.Read<Transaction>();
-	transFile.Close();
-
-	// Transaction -> Holdings
-	NestedHoldings holdings = FullTransactionsToHoldings(trans);
-	std::vector<Holdings> out;
-	for (auto const & x : holdings) out.insert(out.end(), x.begin(), x.end());
-
-	// Write
-	FileIO holdingsFile;
-	holdingsFile.Init(ROOTDIR + L"port.hold");
-	holdingsFile.Open();
-	holdingsFile.Write(out.data(), sizeof(Holdings) * out.size());
-	holdingsFile.Close();
-
+	std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"hist.trans"));
+	std::vector<Holdings> holdings(FullTransactionsToHoldings(trans));
+	::writeHoldings(ROOTDIR + L"holdings.json", holdings);
 	return holdings;
 }
 
 
 // Holdings -> Positions
-void Parthenos::CalculatePositions(NestedHoldings const & holdings)
+void Parthenos::CalculatePositions(std::vector<Holdings> const & holdings)
 {
 	date_t date = GetCurrentDate();
 	for (size_t i = 0; i < m_accountNames.size(); i++)
@@ -312,6 +284,12 @@ void Parthenos::CalculatePositions(NestedHoldings const & holdings)
 	std::vector<Position> positions = HoldingsToPositions(
 		holdings, -1, date, GetMarketPrices(m_stats)); // all accounts
 	m_accounts.back().positions = positions;
+
+	for (Position& p : m_accounts[2].positions)
+	{
+		OutputDebugString(p.to_wstring().c_str());
+		OutputDebugString(L"\n");
+	}
 }
 
 
@@ -333,9 +311,9 @@ void Parthenos::CalculateReturns()
 		{
 			Position const & p = acc.positions[i];
 			if (p.ticker == L"CASH") continue;
-			double returns = p.realized_held + p.realized_unheld + p.unrealized; 
+			double returns = p.realized + p.dividends + p.unrealized; 
 			double cost_basis = p.avgCost * p.n;
-			double perc = (cost_basis == 0) ? 0.0 : (p.realized_held + p.unrealized) / cost_basis * 100.0; 
+			double perc = (cost_basis == 0) ? 0.0 : (p.dividends + p.unrealized) / cost_basis * 100.0; 
 			D2D1_COLOR_F color = KeyMatch(m_tickers, m_tickerColors, p.ticker);
 
 			acc.returnsBarData.push_back({ returns, color });
@@ -464,23 +442,14 @@ std::vector<TimeSeries> Parthenos::GetHist(size_t i)
 void Parthenos::AddTransaction(Transaction t)
 {
 	// Update transaction history
-	FileIO transFile;
-	transFile.Init(ROOTDIR + L"hist.trans");
-	transFile.Open();
-	transFile.Append(&t, sizeof(Transaction));
-	transFile.Close();
+	std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"hist.trans"));
+	trans.push_back(t);
+	::writeTransactions(ROOTDIR + L"hist.trans", trans);
 
 	// Update holdings
-	FileIO holdingsFile;
-	holdingsFile.Init(ROOTDIR + L"port.hold");
-	holdingsFile.Open();
-	std::vector<Holdings> flattenedHoldings = holdingsFile.Read<Holdings>();
-	NestedHoldings holdings = FlattenedHoldingsToTickers(flattenedHoldings);
+	std::vector<Holdings> holdings(::readHoldings(ROOTDIR + L"holdings.json"));
 	AddTransactionToHoldings(holdings, t);
-	std::vector<Holdings> out;
-	for (auto const & x : holdings) out.insert(out.end(), x.begin(), x.end());
-	holdingsFile.Write(out.data(), sizeof(Holdings) * out.size());
-	holdingsFile.Close();
+	::writeHoldings(ROOTDIR + L"holdings.json", holdings);
 
 	try { // non-critical fail here - just show not up-to-date history
 
@@ -611,65 +580,52 @@ void Parthenos::PrintDividendSummary() const
 // For importing into excel
 void Parthenos::PrintOptionSummary() const
 {
-	// Get plays
-	FileIO transFile;
-	transFile.Init(ROOTDIR + L"hist.trans");
-	transFile.Open();
-	std::vector<Transaction> trans = transFile.Read<Transaction>();
-	transFile.Close();
+	m_msgBox->Print(L"Deprecated");
 
-	std::vector<Play> plays(GetOptionPerformance(trans));
+	//// Get plays
+	//std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"trans.json"));
+	//std::vector<Play> plays(GetOptionPerformance(trans));
 
-	// Manually fix GM manual assignment
-	plays[16].price_exit = 0;
-	plays[16].assignment_cost = -1140.0;
+	//// Get range of months
+	//date_t start = plays.front().start;
+	//date_t today = GetCurrentDate();
+	//std::vector<date_t> dates = MakeMonthRange(start, today);
 
-	// Get range of months
-	date_t start = plays.front().start;
-	date_t today = GetCurrentDate();
-	std::vector<date_t> dates = MakeMonthRange(start, today);
+	//// Collect the returns
+	//std::map<std::wstring, std::vector<double>> returns;
+	//for (Play const& p : plays)
+	//{
+	//	if (!isShort(p.type)) continue; // just look at short options for now
+	//	std::vector<double>& ticker_returns = returns[p.ticker];
+	//	if (ticker_returns.empty()) ticker_returns.resize(dates.size());
 
-	// Collect the returns
-	std::map<std::wstring, std::vector<double>> returns;
-	for (Play const& p : plays)
-	{
-		if (!isShort(p.type)) continue; // just look at short options for now
-		std::vector<double>& ticker_returns = returns[p.ticker];
-		if (ticker_returns.empty()) ticker_returns.resize(dates.size());
+	//	size_t offset = MonthDiff(p.start, start);
+	//	size_t nMonths = 1ull + MonthDiff((p.end > 0) ? p.end : p.expiration, p.start);
+	//	double pl = (p.price_enter - p.price_exit) * 100 * p.n;
+	//	for (size_t i = offset; i < offset + nMonths && i < dates.size(); i++)
+	//		ticker_returns[i] += pl / nMonths;
+	//	// Ignore assignment cost here
+	//}
 
-		size_t offset = MonthDiff(p.start, start);
-		size_t nMonths = 1ull + MonthDiff((p.end > 0) ? p.end : p.expiration, p.start);
-		double pl = (p.price_enter - p.price_exit) * 100 * p.n;
-		for (size_t i = offset; i < offset + nMonths && i < dates.size(); i++)
-			ticker_returns[i] += pl / nMonths;
-		// Ignore assignment cost here
-	}
+	//// Print out
+	//std::wstringstream ss;
+	//for (auto& t_r : returns) ss << L'\t' << t_r.first;
+	//ss << L'\n';
+	//for (size_t i = 0; i < dates.size(); i++)
+	//{
+	//	ss << DateToWString(dates[i]);
+	//	for (auto & t_r : returns)
+	//		ss << L'\t' << t_r.second[i];
+	//	ss << L'\n';
+	//}
 
-	// Print out
-	std::wstringstream ss;
-	for (auto& t_r : returns) ss << L'\t' << t_r.first;
-	ss << L'\n';
-	for (size_t i = 0; i < dates.size(); i++)
-	{
-		ss << DateToWString(dates[i]);
-		for (auto & t_r : returns)
-			ss << L'\t' << t_r.second[i];
-		ss << L'\n';
-	}
-
-	m_msgBox->Print(ss.str());
+	//m_msgBox->Print(ss.str());
 }
-
 
 
 std::vector<Transaction> Parthenos::GetTrans() const
 {
-	FileIO transFile;
-	transFile.Init(ROOTDIR + L"hist.trans");
-	transFile.Open();
-	std::vector<Transaction> trans = transFile.Read<Transaction>();
-	transFile.Close();
-
+	std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"hist.trans"));
 	if (trans.empty()) throw ws_exception(L"Empty transactions");
 	return trans;
 }
@@ -699,11 +655,7 @@ void Parthenos::InitItems()
 	m_menuBar->Refresh();
 
 	// Load transaction history into chart
-	FileIO transFile;
-	transFile.Init(ROOTDIR + L"hist.trans");
-	transFile.Open(GENERIC_READ);
-	std::vector<Transaction> trans = transFile.Read<Transaction>();
-	transFile.Close();
+	std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"hist.trans"));
 	m_chart->LoadHistory(trans);
 
 	// Watchlists
@@ -717,8 +669,9 @@ void Parthenos::InitItems()
 		{60.0f, WatchlistColumn::ReturnsT, L"%.2lf"},
 		{60.0f, WatchlistColumn::ReturnsP, L"%.2lf"},
 		{60.0f, WatchlistColumn::Realized, L"%.2lf"},
+		{60.0f, WatchlistColumn::APY, L"%.2lf"},
 		{60.0f, WatchlistColumn::EarningsDate, L""},
-		{60.0f, WatchlistColumn::EffectiveYield, L"%.2lf"},
+		//{60.0f, WatchlistColumn::EffectiveYield, L"%.2lf"},
 		{60.0f, WatchlistColumn::ExDiv, L""},
 	};
 	std::vector<WatchlistColumn> watchlistColumns = { // m_watchlistWidth = 350.0f;
@@ -883,13 +836,7 @@ void Parthenos::ProcessMenuMessage(bool & pop_front)
 	{
 		if (msg.msg == L"Print Transaction History")
 		{
-			// Read transaction history
-			FileIO transFile;
-			transFile.Init(ROOTDIR + L"hist.trans");
-			transFile.Open(GENERIC_READ);
-			std::vector<Transaction> trans = transFile.Read<Transaction>();;
-			transFile.Close();
-
+			std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"hist.trans"));
 			std::wstring out;
 			for (Transaction const & t : trans)
 				out.append(t.to_wstring(m_accountNames) + L"\n");
@@ -897,15 +844,10 @@ void Parthenos::ProcessMenuMessage(bool & pop_front)
 		}
 		else if (msg.msg == L"Print Holdings")
 		{
-			// Read Holdings
-			FileIO holdingsFile;
-			holdingsFile.Init(ROOTDIR + L"port.hold");
-			holdingsFile.Open(GENERIC_READ);
-			std::vector<Holdings> out = holdingsFile.Read<Holdings>();
-			holdingsFile.Close();
-
-			NestedHoldings holdings = FlattenedHoldingsToTickers(out);
-			m_msgBox->Overwrite(NestedHoldingsToWString(holdings));
+			m_msgBox->Clear();
+			std::vector<Holdings> holdings(::readHoldings(ROOTDIR + L"holdings.json"));
+			for (Holdings const & h : holdings)
+				m_msgBox->Print(h.to_wstring());
 		}
 		else if (msg.msg == L"Print Equity History")
 		{
@@ -1006,7 +948,7 @@ void Parthenos::ProcessMenuMessage(bool & pop_front)
 			else if (!msg.sender) // sent from confirmation window
 			{
 				m_msgBox->Print(L"Recalculating holdings...\n");
-				NestedHoldings holdings = CalculateHoldings();
+				std::vector<Holdings> holdings = CalculateHoldings();
 				CalculatePositions(holdings);
 				m_msgBox->Print(L"Done.\n");
 			}
@@ -1224,7 +1166,7 @@ void Parthenos::LoadPieChart()
 	{
 		if (p.ticker == L"CASH")
 		{
-			cash = p.marketPrice + p.realized_held + p.realized_unheld;
+			cash = p.avgCost + p.realized + p.cashEffect;
 			continue;
 		}
 

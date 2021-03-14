@@ -84,11 +84,15 @@ inline bool OHLC_Compare(const OHLC& a, const OHLC& b)
 	return a.date < b.date;
 }
 
-inline std::vector<double> GetMarketPrices(QStats const& qstats)
+inline std::map<std::wstring, double> GetMarketPrices(QStats const& qstats)
 {
-	std::vector<double> out;
-	out.reserve(qstats.size());
-	for (auto& x : qstats)	out.push_back(x.first.latestPrice);
+	std::map<std::wstring, double> out;
+	for (auto& x : qstats)
+	{
+		std::wstring ticker(x.first.ticker);
+		std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::toupper);
+		out.insert({ ticker, x.first.latestPrice });
+	}
 	return out;
 }
 

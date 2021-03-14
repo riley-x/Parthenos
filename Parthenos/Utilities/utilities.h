@@ -65,25 +65,8 @@ inline std::wstring s2w(const std::string & s)
 	return std::wstring(wstr);
 }
 
+std::string w2s(const std::wstring& s);
 
-inline std::string w2s(const std::wstring& s)
-{
-	const size_t size = 200;
-	char out[size];
-	int res = WideCharToMultiByte(
-		CP_UTF8,
-		0,
-		s.c_str(),
-		-1,
-		out,
-		size,
-		nullptr,
-		nullptr
-	);
-
-	if (res == 0) OutputError(L"w2s failed");
-	return std::string(out);
-}
 
 ///////////////////////////////////////////////////////////
 // --- Datetime --- 
@@ -112,6 +95,7 @@ inline void SetMonth(date_t & date, int month)
 	int year = GetYear(date); int day = GetDay(date);
 	date = MkDate(year, month, day);
 }
+int DateDiff(date_t a, date_t b); // returns a - b
 int ApproxDateDiff(date_t a, date_t b); // returns a-b
 inline bool SameYrMo(date_t a, date_t b) { return (a / DATE_T_1M) == (b / DATE_T_1M); }
 
