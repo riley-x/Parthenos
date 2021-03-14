@@ -15,9 +15,6 @@ double getAndUpdateCollateral(AccountHoldings& h, Transaction const& t);
 
 void collateOptions(Position& p);
 
-inline double GetAPY(double gain, double cost_in, date_t start_date, date_t end_date);
-inline double GetWeightedAPY(double gain, date_t start_date, date_t end_date);
-
 ///////////////////////////////////////////////////////////////////////////////
 //	                              Transactions			            		 //
 ///////////////////////////////////////////////////////////////////////////////
@@ -305,7 +302,7 @@ void AddCustomTransactionToHoldings(std::vector<Holdings>& holdings, Transaction
 			if (it->ticker == L"RTN") rtn = it;
 			else if (it->ticker == L"RTX") rtx = it;
 		}
-
+		if (rtn == holdings.end() || rtx == holdings.end()) return;
 		MergeHoldings(*rtx, *rtn);
 		holdings.erase(rtn);
 	}
@@ -420,6 +417,14 @@ double getThetaValue(Lot const& opt, date_t date)
 	return opt.price * opt.n * 100 * days_held / days_tot * (isShort(opt.type) ? 1 : -1);
 }
 
+double getTransfers(std::vector<Holdings> const& hold, char account)
+{
+	for (Holdings const& h : hold)
+		if (h.ticker == L"CASH")
+			return h.accts[account].sumWeights;
+	return 0;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //							Holdings -> Positions                            //
@@ -458,6 +463,7 @@ Position holdingsToRawPosition(AccountHoldings const& header, date_t date, doubl
 		else
 		{
 			OptionPosition op_pos; // Simply copy info for now, then collate at end
+			op_pos.date = lot.date;
 			op_pos.type = transToOptionType(lot.type);
 			op_pos.shares = lot.n * 100;
 			op_pos.expiration = lot.expiration;
@@ -552,7 +558,8 @@ void collateOptions(Position& p)
 		{
 			for (auto lon = shor + 1; lon != p.options.rend(); lon++)
 			{
-				if (lon->type != OptionType::LP || lon->expiration != shor->expiration || lon->shares == 0) continue;
+				if (lon->type != OptionType::LP || lon->date != shor->date 
+					|| lon->expiration != shor->expiration || lon->shares == 0) continue;
 
 				if (lon->strike > shor->strike) // Put debit spread
 				{
@@ -562,6 +569,7 @@ void collateOptions(Position& p)
 				{
 					OptionPosition pos = {};
 					pos.type = OptionType::PCS;
+					pos.date = shor->date;
 					pos.shares = min(lon->shares, shor->shares);
 					pos.expiration = shor->expiration;
 					pos.strike = shor->strike;
@@ -615,230 +623,168 @@ void collateOptions(Position& p)
 }
 
 
+
+double getThetaValue(OptionPosition const& opt, date_t date)
+{
+	int days_tot = ::DateDiff(opt.expiration, opt.date);
+	int days_held = ::DateDiff(date, opt.date);
+
+	return opt.price * opt.shares * days_held / days_tot * (isShort(opt.type) ? 1 : -1);
+}
+
+
+double getTotalPL(std::vector<Position> const& pos)
+{
+	double equity = 0;
+	for (Position const& p : pos)
+	{
+		if (p.ticker == L"CASH") equity += p.realized;
+		else equity += p.realized + p.dividends + p.unrealized;
+	}
+	return equity;
+}
+
+
+
 ///////////////////////////////////////////////////////////////////////////////
 //					               Equity                                    //
 ///////////////////////////////////////////////////////////////////////////////
 
 
-namespace EquityHistoryHelper
+struct TickerData
 {
-	// For each ticker, cummulate net transaction costs and net shares.
-	struct TickerHelper
+	TickerData(std::wstring const& ticker, date_t curr_date) 
 	{
-		int n = 0; // net shares
-		size_t iDate = 0; // index into ohlc for current date
-		std::wstring ticker;
-		std::vector<OptionPosition> opts; // use to calculate unrealized p/l
-		std::vector<OHLC> ohlc;
-	};
-
-	// Assumes iDates set appropriately. Curr_date used only for options
-	double GetEquity(std::vector<TickerHelper> & helper, date_t curr_date)
-	{
-		double out = 0.0;
-		for (auto & x : helper)
-		{
-			if (x.iDate >= x.ohlc.size())
-			{
-				throw ws_exception(
-					L"GetEquity date out of bounds: " + x.ticker + L" " +
-						DateToWString(x.ohlc.back().date) + L", VOO " + DateToWString(curr_date)
-				);
-			}
-			else if (x.ohlc[x.iDate].date != curr_date)
-			{
-				throw ws_exception(
-					L"GetEquity date mistmatch: " + x.ticker + L" " +
-					DateToWString(x.ohlc[x.iDate].date) + L", VOO " + DateToWString(curr_date)
-				);
-			}
-			out += x.n * x.ohlc[x.iDate].close;
-			for (auto & opt : x.opts)
-			{
-				if (curr_date < opt.expiration)
-					out += GetIntrinsicValue(opt, x.ohlc[x.iDate].close);
-			}
-		}
-		return out;
+		ohlc = GetOHLC(ticker, apiSource::alpha, 0, curr_date);
+		i = FindDateOHLC(ohlc, curr_date);
 	}
 
-	// Given a transaction, updates the helper, adding a new ticker entry if needed
-	void HelperAddTransaction(std::vector<TickerHelper> & helper, Transaction const & t, double & cash,
-		date_t curr_date, date_t lastCloseDate)
-	{
-		std::wstring tticker(t.ticker);
-		auto it = std::find_if(helper.begin(), helper.end(),
-			[&tticker](TickerHelper const & h) { return h.ticker == tticker; }
-		);
-		if (it == helper.end())
-		{
-			TickerHelper temp;
-			temp.ticker = tticker;
-			temp.n = 0;
-			temp.ohlc = GetOHLC(tticker, apiSource::alpha, 1000, lastCloseDate);
-			temp.iDate = FindDateOHLC(temp.ohlc, curr_date);
-			helper.push_back(temp);
-			it = helper.end() - 1;
-		}
+	std::vector<OHLC> ohlc;
+	size_t i;
 
-		// update helper/cash with transaction
-		cash += t.value;
-		if (isOption(t.type))
+	double getPrice(date_t date) const
+	{
+		if (i >= ohlc.size()) 
+			return std::nan("");
+		if (ohlc[i].date != date) 
+			return std::nan("");
+		return ohlc[i].close;
+	}
+};
+
+
+double getTotalPL(std::vector<Holdings> const & h, char account, std::map<std::wstring, TickerData>& tickerData, date_t date)
+{
+	std::map<std::wstring, double> prices;
+	for (std::wstring ticker : GetTickers(h))
+	{
+		auto it = tickerData.find(ticker);
+		if (it == tickerData.end())
 		{
-			OptionPosition temp; // only care about type, n, expiration, and strike
-			temp.type = transToOptionType(t.type);
-			temp.shares = t.n * 100; // FIXME if not always 100 / contract
-			temp.expiration = t.expiration;
-			temp.strike = t.strike;
-			it->opts.push_back(temp);
+			auto res = tickerData.try_emplace(ticker, ticker, date);
+			it = res.first;
 		}
-		else
-		{
-			it->n += t.n;
-		}
+		double price = it->second.getPrice(date);
+		if (std::isnan(price)) return price;
+		prices[ticker] = price;
 	}
 
+	std::vector<Position> pos(HoldingsToPositions(h, account, date, prices));
+	return getTotalPL(pos);
 }
 
-// This will almost always crash because Alpha only allows 5 api calls per minute.
-// Could launch a separate thread that sleeps for a minute
-//
-// Does not include transfers.
 std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Transaction> const & trans)
 {
 	std::vector<TimeSeries> out;
 	if (trans.empty()) return out;
 
 	// Get start date / transaction
-	date_t curr_date = 0;
+	date_t start_date = 0;
 	size_t iTrans = 0;
 	for (iTrans; iTrans < trans.size(); iTrans++)
 	{
 		if (trans[iTrans].account == account)
 		{
-			curr_date = trans[iTrans].date;
+			start_date = trans[iTrans].date;
 			break;
 		}
 	}
-	if (curr_date == 0) return out;
+	if (start_date == 0) return out;
 
-	std::vector<EquityHistoryHelper::TickerHelper> helper;
-	EquityHistoryHelper::TickerHelper temp;
-	temp.ticker = L"VOO"; // use VOO to keep track of trading days
-	temp.ohlc = GetOHLC(L"VOO", apiSource::alpha, 1000);
-	temp.iDate = FindDateOHLC(temp.ohlc, curr_date);
-	helper.push_back(temp);
+	// Get list of dates from voo
+	TickerData voo(L"VOO", start_date);
+	std::vector<date_t> dates;
+	dates.reserve(voo.ohlc.size() - voo.i);
+	for (size_t i = voo.i; i < voo.ohlc.size(); i++)
+		dates.push_back(voo.ohlc[i].date);
 
-	date_t lastCloseDate = temp.ohlc.back().date;
-	double cash = 0; // net transactions, including options and transfers
-	while (helper[0].iDate < helper[0].ohlc.size())
+
+	std::map<std::wstring, TickerData> tickerData;
+	tickerData.insert({ L"VOO", voo });
+
+
+	std::vector<Holdings> h;
+	for (date_t date : dates)
 	{
-		curr_date = helper[0].ohlc[helper[0].iDate].date;
-
 		// Loop over transactions of the current date
-		while (iTrans < trans.size() && trans[iTrans].date <= curr_date)
+		while (iTrans < trans.size() && trans[iTrans].date <= date)
 		{
 			Transaction const & t = trans[iTrans];
-			if (t.date < curr_date)
+			if (t.account == account || trans[iTrans].type == TransactionType::Custom)
 			{
-				throw ws_exception(
-					L"CalculateFullEquityHistory transaction date doesn't match VOO:\n" + t.to_wstring()
+				if (t.date < date) throw ws_exception(
+					L"CalculateFullEquityHistory transaction date expected:" + DateToWString(date) + L"\n" + t.to_wstring()
 				);
-			}
-			if (t.account == account)
-			{
-				if (std::wstring(t.ticker) == L"CASH")
-				{
-					if (t.type != TransactionType::Transfer) cash += t.value;
-				}
-				else HelperAddTransaction(helper, trans[iTrans], cash, curr_date, lastCloseDate);
+				AddTransactionToHoldings(h, t);
 			}
 			iTrans++;
 		}
 
-		double equity = GetEquity(helper, curr_date) + cash;
-		out.push_back({ curr_date, equity });
+		double equity = getTotalPL(h, account, tickerData, date);
+		if (std::isnan(equity))
+		{
+			OutputDebugString((L"Breaking on date " + DateToWString(date)).c_str());
+			break;
+		}
+		out.push_back({ date, equity });
 
-		for (auto & x : helper) x.iDate++;
+		for (auto & x : tickerData) x.second.i++;
 	}
 
 	return out;
 }
 
-// TODO reformulate everything with a list of dates to start with.
-void UpdateEquityHistory(std::vector<TimeSeries>& hist, std::vector<Position> const & positions, QStats const & qstats)
+
+// Assumes holdings has not changed since last history entry!!!!
+void UpdateEquityHistory(std::vector<TimeSeries>& hist, char account, std::vector<Holdings> const & holdings)
 {
-	if (hist.empty() || positions.empty()) 
-		throw std::invalid_argument("UpdateEquityHistory passed empty vector(s)");
+	// Get list of dates from voo
+	date_t start_date = hist.back().date;
+	TickerData voo(L"VOO", start_date);
+	voo.i++; // move to next new date
 
-	std::vector<EquityHistoryHelper::TickerHelper> helper;
-	helper.reserve(positions.size() - 1);
-	double cash = 0;
-	date_t lastHistDate = hist.back().date;
-	date_t lastCloseDate = 0;
+	std::vector<date_t> dates;
+	dates.reserve(voo.ohlc.size() - voo.i);
+	for (size_t i = voo.i; i < voo.ohlc.size(); i++)
+		dates.push_back(voo.ohlc[i].date);
 
-	for (Position const & p : positions)
+	// Store ticker ohlc data
+	std::map<std::wstring, TickerData> tickerData;
+	tickerData.insert({ L"VOO", voo });
+
+	for (date_t date : dates)
 	{
-		if (p.ticker == L"CASH")
+		double equity = getTotalPL(holdings, account, tickerData, date);
+		if (std::isnan(equity))
 		{
-			cash = p.avgCost + p.realized + p.cashEffect;
-			continue;
+			OutputDebugString((L"Breaking on date " + DateToWString(date)).c_str());
+			break;
 		}
-		apiSource source = apiSource::alpha;
-		auto it = FindQStat(qstats, p.ticker);
-		if (it != qstats.end())
-		{
-			if (lastCloseDate == 0 && it->first.closeTime != 0) lastCloseDate = GetDate(it->first.closeTime);
-			if (lastHistDate > it->second.exDividendDate) source = apiSource::iex;
-			// this is a bit too strict since exDivDate could be in the future, but would have to check
-			// ex div history instead
-		}
+		hist.push_back({ date, equity });
 
-		EquityHistoryHelper::TickerHelper temp;
-		temp.ticker = p.ticker;
-		temp.n = p.n;
-		temp.ohlc = GetOHLC(p.ticker, source, 1000, lastCloseDate); // lastCloseDate is updated by reference
-		temp.opts = p.options;
-		helper.push_back(temp);
-
-		if (lastHistDate == lastCloseDate) return; // short circuit so we don't have to loop through all the positions
+		for (auto& x : tickerData) x.second.i++;
 	}
 
-	// Use VOO to find the next date, and set iDate in the helpers.
-	date_t currDate;
-	size_t iCurrDate_0 = FindDateOHLC(helper[0].ohlc, lastHistDate) + 1;
-	if (iCurrDate_0 < helper[0].ohlc.size())
-		currDate = helper[0].ohlc[iCurrDate_0].date;
-	else 
-		return;
-	for (auto& h : helper)
-		h.iDate = FindDateOHLC(h.ohlc, currDate);
-
-	// Loop through days, using VOO as a tracker of market days
-	while (helper[0].iDate < helper[0].ohlc.size())
-	{
-		currDate = helper[0].ohlc[helper[0].iDate].date;
-		double equity = GetEquity(helper, currDate) + cash;
-		hist.push_back({ currDate, equity });
-
-		for (auto & x : helper) x.iDate++;
-	}
-}
-
-
-// Weight is cost_in, so cancels
-inline double GetWeightedAPY(double gain, date_t start_date, date_t end_date)
-{
-	time_t time_held = DateToTime(end_date) - DateToTime(start_date);
-	if (time_held <= 0) return gain * 365.0; // assume 1 day
-	return gain * 365.0 * 86400.0 / time_held;
-}
-
-inline double GetAPY(double gain, double cost_in, date_t start_date, date_t end_date)
-{
-	time_t time_held = DateToTime(end_date) - DateToTime(start_date);
-	if (time_held <= 0) return (gain / cost_in) * 365.0; // assume 1 day
-	return (gain / cost_in) * 365.0 * 86400.0 / time_held;
 }
 
 

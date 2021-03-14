@@ -229,6 +229,8 @@ inline double getCashEffect(Lot const& lot)
 	return lot.n * (lot.dividends - lot.price) + lot.fees;
 }
 
+double getTransfers(std::vector<Holdings> const& h, char account);
+
 ///////////////////////////////////////////////////////////////////////////////
 //                                 Positions                                 //
 ///////////////////////////////////////////////////////////////////////////////
@@ -247,11 +249,25 @@ inline OptionType transToOptionType(TransactionType t)
 	}
 }
 
+inline bool isShort(OptionType t)
+{
+	switch (t)
+	{
+	case OptionType::CSP:
+	case OptionType::CC:
+	case OptionType::PCS:
+		return true;
+	default:
+		return false;
+	}
+}
+
 struct OptionPosition
 {
 	OptionType type = OptionType::undefined;
 	unsigned shares = 0; // shares underlying
 	unsigned shares_collateral = 0; // For short positions
+	date_t date = 0;
 	date_t expiration = 0;
 	double strike = 0; // primary
 	double strike2 = 0; // ancillary
@@ -379,12 +395,15 @@ inline double GetIntrinsicValue(OptionPosition const& opt, double latest)
 	}
 }
 
+double getThetaValue(OptionPosition const& opt, date_t date);
+
+double getTotalPL(std::vector<Position> const& pos);
 
 ///////////////////////////////////////////////////////////
 // --- Equity history ---
 
 std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Transaction> const & trans);
-void UpdateEquityHistory(std::vector<TimeSeries> & hist, std::vector<Position> const & positions, QStats const & qstats);
+void UpdateEquityHistory(std::vector<TimeSeries> & hist, char account, std::vector<Holdings> const& holdings);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Plays

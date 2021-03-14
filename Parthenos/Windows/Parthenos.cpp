@@ -35,6 +35,22 @@ Parthenos::Parthenos(PCWSTR szClassName) :
 	//ohlcFile.Close();
 
 	//CalculateHoldings();
+
+	//std::vector<std::wstring> accts = { L"Robinhood", L"Arista", L"TD Ameritrade" };
+	//for (std::wstring & acc : accts)
+	//{
+	//	if (FileExists((ROOTDIR + acc + L".hist").c_str()))
+	//	{
+	//		FileIO histFile;
+	//		histFile.Init(ROOTDIR + acc + L".hist");
+	//		histFile.Open();
+	//		std::vector<TimeSeries> portHist;
+	//		portHist = histFile.Read<TimeSeries>();
+	//		portHist.erase(portHist.end() - 10);
+	//		histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
+	//		histFile.Close();
+	//	}
+	//}
 }
 
 Parthenos::~Parthenos()
@@ -410,11 +426,7 @@ std::vector<TimeSeries> Parthenos::GetHist(size_t i)
 	if (!exists) // Calculate full history
 	{
 		// Read transaction history
-		FileIO transFile;
-		transFile.Init(ROOTDIR + L"hist.trans");
-		transFile.Open(GENERIC_READ);
-		std::vector<Transaction> trans = transFile.Read<Transaction>();;
-		transFile.Close();
+		std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"hist.trans"));
 
 		// Calculate full equity history
 		portHist = CalculateFullEquityHistory(static_cast<char>(i), trans);
@@ -425,8 +437,9 @@ std::vector<TimeSeries> Parthenos::GetHist(size_t i)
 	else // assumes that holdings haven't changed since last update (add transaction will properly invalidate history)
 	{
 		portHist = histFile.Read<TimeSeries>();
+		std::vector<Holdings> holdings(::readHoldings(ROOTDIR + L"holdings.json"));
 		try { // non-critical fail here - just show not up-to-date history
-			UpdateEquityHistory(portHist, acc.positions, m_stats);
+			UpdateEquityHistory(portHist, i, holdings);
 			histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
 		}
 		catch (const std::exception & e) {
@@ -473,7 +486,7 @@ void Parthenos::AddTransaction(Transaction t)
 		);
 		portHist.erase(it, portHist.end());
 
-		UpdateEquityHistory(portHist, m_accounts[t.account].positions, m_stats);
+		UpdateEquityHistory(portHist, t.account, holdings);
 		histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
 		histFile.Close();
 
