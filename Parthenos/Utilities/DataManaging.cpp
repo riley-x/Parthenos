@@ -11,6 +11,7 @@ using namespace jsonette;
 void AddCustomTransactionToHoldings(std::vector<Holdings>& holdings, Transaction const& t);
 void AddTransactionToTickerHoldings(Holdings& h, Transaction const& t);
 void MergeHoldings(Holdings& target, Holdings const& mergee);
+double getAndUpdateCollateral(AccountHoldings& h, Transaction const& t);
 
 void collateOptions(Position& p);
 
@@ -175,11 +176,8 @@ void AddTransactionToHoldings(std::vector<Holdings>& holdings, Transaction const
 }
 
 // Adds t to h, assuming t is an open position in this stock
-void addLot(Holdings& h, Transaction const& t)
+void addLot(AccountHoldings& h, Transaction const& t)
 {
-	if (static_cast<size_t>(t.account) >= h.accts.size())
-		h.accts.resize(1ll + t.account);
-
 	Lot lot;
 	lot.type = t.type;
 	lot.date = t.date;
@@ -188,8 +186,9 @@ void addLot(Holdings& h, Transaction const& t)
 	lot.strike = t.strike;
 	lot.expiration = t.expiration;
 	lot.fees = t.value + t.n * t.price * (isShort(t.type) ? -1 : 1) * (isOption(t.type) ? 100 : 1); 
+	lot.collateral = getAndUpdateCollateral(h, t);
 
-	h.accts[t.account].lots.push_back(lot);
+	h.lots.push_back(lot);
 }
 
 // Search through lots to assign realized to lot
@@ -218,7 +217,7 @@ void addDividend(AccountHoldings& h, Transaction const& t)
 // TODO t.tax_lot, this is FIFO
 void closePosition(AccountHoldings& h, Transaction const& trans)
 {
-	Transaction t(trans);
+	Transaction t(trans); // copy to subtract from incrementally 
 	t.n = -t.n; // n is negative in close transactions
 	for (size_t i = 0; i < h.lots.size(); i++)
 	{
@@ -229,14 +228,12 @@ void closePosition(AccountHoldings& h, Transaction const& trans)
 		lot.n -= n; // lot.n = 0 is mark for removal
 		t.n -= n;
 
-		double realized = n * (t.price - lot.price) * (isOption(t.type) ? 100 : 1) * (isShort(t.type) ? -1 : 1);
+		double pl = n * (t.price - lot.price) * (isOption(t.type) ? 100 : 1) * (isShort(t.type) ? -1 : 1);
 		t.value -= n * t.price * (isOption(t.type) ? 100 : 1) * (isShort(t.type) ? -1 : 1);
-		realized += n * lot.dividends;
+		h.realized += pl + n * lot.dividends;
 
-		int days_held = min(1, ::DateDiff(t.date, lot.date));
-		double cost = (isShort(t.type) ? t.price : lot.price) * n * (isOption(t.type) ? 100 : 1);
-		h.sumWeights += cost * days_held;
-		h.realized += realized;
+		int days_held = max(1, ::DateDiff(t.date, lot.date));
+		h.sumWeights += lot.collateral * n * days_held;
 
 		if (t.n == 0) break;
 	}
@@ -259,14 +256,12 @@ void AddTransactionToTickerHoldings(Holdings& h, Transaction const& t)
 {
 	if (t.ticker != h.ticker)
 		throw ws_exception(L"AddTransactionToTickerHoldings wrong tickers:" + t.ticker + L" " + h.ticker);
-	if (t.n <= 0 && static_cast<size_t>(t.account) >= h.accts.size())
-		throw ws_exception(L"AddTransactionToTickerHoldings Bad account:" + t.to_wstring());
+	if (static_cast<size_t>(t.account) >= h.accts.size())
+		h.accts.resize(1ll + t.account);
 
 	// Don't add lots for cash
 	if (t.ticker == L"CASH")
 	{
-		if (static_cast<size_t>(t.account) >= h.accts.size())
-			h.accts.resize(1ll + t.account);
 		if (t.type == TransactionType::Transfer)
 			h.accts[t.account].sumWeights += t.value;
 		else if (t.type == TransactionType::Interest)
@@ -277,7 +272,7 @@ void AddTransactionToTickerHoldings(Holdings& h, Transaction const& t)
 	}
 
 	// Case on open/close position
-	if (t.n > 0) addLot(h, t);
+	if (t.n > 0) addLot(h.accts[t.account], t);
 	else if (t.n < 0) closePosition(h.accts[t.account], t);
 	else // misc transactions
 	{
@@ -335,6 +330,44 @@ void MergeHoldings(Holdings& target, Holdings const & mergee)
 	}
 }
 
+
+// This function assumes t is being added to h (but not yet) and
+// returns the collateral of the position. If part of a spread, the collateral 
+// for the long position is also updated to the true collateral.
+// TODO calendar spreads
+double getAndUpdateCollateral(AccountHoldings & h, Transaction const & t)
+{
+	if (!isOption(t.type)) return t.price;
+	if (!isShort(t.type)) return t.price * 100;
+
+	// First check if part of spread: long position must preceed short (i.e. last lot)
+	if (!h.lots.empty())
+	{
+		Lot& lot = h.lots.back();
+		if (lot.type == opposingType(t.type) && lot.expiration == t.expiration
+			&& lot.date == t.date && lot.n == t.n)
+		{
+			double collat = std::abs(t.strike - lot.strike) * 100;
+			lot.collateral = collat;
+			return collat;
+		}
+	}
+
+	// CSP
+	if (t.type == TransactionType::PutShort) return t.strike * 100;
+
+	// CC -- collateral is average cost of most recent shares
+	int n = t.n * 100;
+	double total_cost = 0;
+	for (auto lot = h.lots.rbegin(); lot != h.lots.rend(); lot++)
+	{
+		if (lot->type != TransactionType::Stock) continue;
+		total_cost += lot->price * min(n, lot->n);
+		n -= min(n, lot->n);
+		if (n == 0) break;
+	}
+	return total_cost / t.n;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 //	                                Holdings                                 //
@@ -409,37 +442,32 @@ Position holdingsToRawPosition(AccountHoldings const& header, date_t date, doubl
 	if (cash) p.avgCost += header.sumWeights;
 	else p.APY += header.sumWeights;
 
-	// Loop over stock lots
+	// Add up all lots
 	for (size_t iLot = 0; iLot < header.lots.size(); iLot++)
 	{
 		Lot const& lot = header.lots[iLot];
-		if (lot.type != TransactionType::Stock) continue;
-
-		p.n += lot.n;
-		p.avgCost += lot.n * lot.price; // divide by p.n at end
-		p.dividends += lot.dividends * lot.n + lot.fees;
-		p.unrealized += (price - lot.price) * lot.n;
-		p.APY += lot.n * lot.price * min(1, ::DateDiff(date, lot.date));
 		p.cashEffect += getCashEffect(lot);
-	}
+		p.APY += lot.n * lot.collateral * max(1, ::DateDiff(date, lot.date));
+		if (lot.type == TransactionType::Stock)
+		{
+			p.n += lot.n;
+			p.avgCost += lot.n * lot.price; // divide by p.n at end
+			p.dividends += lot.dividends * lot.n + lot.fees;
+			p.unrealized += (price - lot.price) * lot.n;
+		}
+		else
+		{
+			OptionPosition op_pos; // Simply copy info for now, then collate at end
+			op_pos.type = transToOptionType(lot.type);
+			op_pos.shares = lot.n * 100;
+			op_pos.expiration = lot.expiration;
+			op_pos.strike = lot.strike;
+			op_pos.price = lot.price;
 
-	// Loop over options lots;
-	for (size_t iLot = 0; iLot < header.lots.size(); iLot++)
-	{
-		Lot const& opt = header.lots[iLot];
-		if (!isOption(opt.type)) continue;
-
-		OptionPosition op_pos; // Simply copy info for now, then collate at end
-		op_pos.type = transToOptionType(opt.type);
-		op_pos.shares = opt.n * 100;
-		op_pos.expiration = opt.expiration;
-		op_pos.strike = opt.strike;
-		op_pos.price = opt.price;
-
-		// TODO add unrealized for theta effect, STO, include options in APY?
-		p.unrealized += GetIntrinsicValue(opt, price) + getThetaValue(opt, date);
-		p.cashEffect += getCashEffect(opt);
-		p.options.push_back(op_pos);
+			// TODO add unrealized for theta effect, STO, include options in APY?
+			p.unrealized += GetIntrinsicValue(lot, price) + getThetaValue(lot, date);
+			p.options.push_back(op_pos);
+		}
 	}
 
 	return p;
@@ -491,7 +519,7 @@ std::vector<Position> HoldingsToPositions(std::vector<Holdings> const & holdings
 
 		// Correct the "raw" position
 		if (p.n > 0) p.avgCost = p.avgCost / p.n;
-		if (p.APY > 0) p.APY = (p.realized + p.dividends + p.unrealized) / p.APY;
+		if (p.APY > 0) p.APY = (p.realized + p.dividends + p.unrealized) / p.APY * 365;
 		if (p.ticker != L"CASH") net_transactions += p.cashEffect + p.realized;
 		collateOptions(p);
 
@@ -1020,6 +1048,7 @@ Lot::Lot(jsonette::JSON const& json)
 	strike = json["strike"];
 	dividends = json["dividends"];
 	fees = json["fees"];
+	collateral = json["collateral"];
 }
 
 std::wstring Lot::to_json() const
@@ -1039,6 +1068,7 @@ std::wostream& operator<<(std::wostream& os, const Lot& l)
 		<< L",\"strike\":" << l.strike
 		<< L",\"dividends\":" << l.dividends
 		<< L",\"fees\":" << l.fees
+		<< L",\"collateral\":" << l.collateral
 		<< L"}";
 	return os;
 }
@@ -1052,7 +1082,8 @@ std::wstring Lot::to_wstring() const
 		+ L": " + std::to_wstring(n)
 		+ L" @ $" + std::to_wstring(price)
 		+ L", div: " + std::to_wstring(dividends)
-		+ L", fee: " + std::to_wstring(fees);
+		+ L", fee: " + std::to_wstring(fees)
+		+ L", col: " + std::to_wstring(collateral);
 
 	return out;
 }

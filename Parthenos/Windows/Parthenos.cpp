@@ -623,7 +623,6 @@ void Parthenos::PrintOptionSummary() const
 }
 
 
-
 std::vector<Transaction> Parthenos::GetTrans() const
 {
 	std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"hist.trans"));
@@ -670,8 +669,9 @@ void Parthenos::InitItems()
 		{60.0f, WatchlistColumn::ReturnsT, L"%.2lf"},
 		{60.0f, WatchlistColumn::ReturnsP, L"%.2lf"},
 		{60.0f, WatchlistColumn::Realized, L"%.2lf"},
+		{60.0f, WatchlistColumn::APY, L"%.2lf"},
 		{60.0f, WatchlistColumn::EarningsDate, L""},
-		{60.0f, WatchlistColumn::EffectiveYield, L"%.2lf"},
+		//{60.0f, WatchlistColumn::EffectiveYield, L"%.2lf"},
 		{60.0f, WatchlistColumn::ExDiv, L""},
 	};
 	std::vector<WatchlistColumn> watchlistColumns = { // m_watchlistWidth = 350.0f;

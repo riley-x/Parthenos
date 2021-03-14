@@ -61,6 +61,23 @@ inline bool isShort(TransactionType type)
 	}
 }
 
+inline TransactionType opposingType(TransactionType type)
+{
+	switch (type)
+	{
+	case TransactionType::PutShort:
+		return TransactionType::PutLong;
+	case TransactionType::PutLong:
+		return TransactionType::PutShort;
+	case TransactionType::CallShort:
+		return TransactionType::CallLong;
+	case TransactionType::CallLong:
+		return TransactionType::CallShort;
+	default:
+		return TransactionType::Custom;
+	}
+}
+
 inline std::wstring OptToLetter(TransactionType type)
 {
 	switch (type)
@@ -124,6 +141,7 @@ struct Lot
 	double strike = 0;
 	double dividends = 0;	// this is PER SHARE, i.e. should not change with n
 	double fees = 0;		// value + price * n, includes fees and rounding errors
+	double collateral = 0;	// PER SHARE/CONTRACT. long positions may have collateral != price due to spreads
 
 	std::wstring to_json() const;
 	std::wstring to_wstring() const;
