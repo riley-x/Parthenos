@@ -331,6 +331,10 @@ void MergeHoldings(Holdings& target, Holdings const & mergee)
 // This function assumes t is being added to h (but not yet) and
 // returns the collateral of the position. If part of a spread, the collateral 
 // for the long position is also updated to the true collateral.
+//
+// Note matched short positions have collateral 0 to not double count with the
+// long position.
+//
 // TODO calendar spreads
 double getAndUpdateCollateral(AccountHoldings & h, Transaction const & t)
 {
@@ -346,24 +350,14 @@ double getAndUpdateCollateral(AccountHoldings & h, Transaction const & t)
 		{
 			double collat = std::abs(t.strike - lot.strike) * 100;
 			lot.collateral = collat;
-			return collat;
+			return 0; // collateral is 0, since cost is included in collateral of long
 		}
 	}
 
 	// CSP
 	if (t.type == TransactionType::PutShort) return t.strike * 100;
-
-	// CC -- collateral is average cost of most recent shares
-	int n = t.n * 100;
-	double total_cost = 0;
-	for (auto lot = h.lots.rbegin(); lot != h.lots.rend(); lot++)
-	{
-		if (lot->type != TransactionType::Stock) continue;
-		total_cost += lot->price * min(n, lot->n);
-		n -= min(n, lot->n);
-		if (n == 0) break;
-	}
-	return total_cost / t.n;
+	// CC -- collateral is 0, since cost is included in collateral of shares
+	return 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
