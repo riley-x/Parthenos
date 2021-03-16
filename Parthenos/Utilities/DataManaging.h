@@ -403,8 +403,8 @@ double getLiquidatingValue(std::vector<Position> const& pos);
 ///////////////////////////////////////////////////////////
 // --- Equity history ---
 
-std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Transaction> const & trans);
-void UpdateEquityHistory(std::vector<TimeSeries> & hist, char account, std::vector<Holdings> const& holdings);
+std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Transaction> const & trans, QStats const& qstats);
+void UpdateEquityHistory(std::vector<TimeSeries> & hist, char account, std::vector<Holdings> const& holdings, QStats const& qstats);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Plays

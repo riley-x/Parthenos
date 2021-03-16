@@ -300,12 +300,6 @@ void Parthenos::CalculatePositions(std::vector<Holdings> const & holdings)
 	std::vector<Position> positions = HoldingsToPositions(
 		holdings, -1, date, GetMarketPrices(m_stats)); // all accounts
 	m_accounts.back().positions = positions;
-
-	for (Position& p : m_accounts[2].positions)
-	{
-		OutputDebugString(p.to_wstring().c_str());
-		OutputDebugString(L"\n");
-	}
 }
 
 
@@ -429,7 +423,7 @@ std::vector<TimeSeries> Parthenos::GetHist(size_t i)
 		std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"hist.trans"));
 
 		// Calculate full equity history
-		portHist = CalculateFullEquityHistory(static_cast<char>(i), trans);
+		portHist = CalculateFullEquityHistory(static_cast<char>(i), trans, m_stats);
 
 		// Write to file
 		histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
@@ -439,7 +433,7 @@ std::vector<TimeSeries> Parthenos::GetHist(size_t i)
 		portHist = histFile.Read<TimeSeries>();
 		std::vector<Holdings> holdings(::readHoldings(ROOTDIR + L"holdings.json"));
 		try { // non-critical fail here - just show not up-to-date history
-			UpdateEquityHistory(portHist, i, holdings);
+			UpdateEquityHistory(portHist, i, holdings, m_stats);
 			histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
 		}
 		catch (const std::exception & e) {
@@ -486,7 +480,7 @@ void Parthenos::AddTransaction(Transaction t)
 		);
 		portHist.erase(it, portHist.end());
 
-		UpdateEquityHistory(portHist, t.account, holdings);
+		UpdateEquityHistory(portHist, t.account, holdings, m_stats);
 		histFile.Write(portHist.data(), portHist.size() * sizeof(TimeSeries));
 		histFile.Close();
 

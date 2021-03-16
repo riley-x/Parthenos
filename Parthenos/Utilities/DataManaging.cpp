@@ -667,10 +667,13 @@ double getLiquidatingValue(std::vector<Position> const& pos)
 
 struct TickerData
 {
-	TickerData(std::wstring const& ticker, date_t curr_date) 
+	TickerData(std::wstring const& ticker, date_t init_date, date_t last_date, date_t ex_div) 
 	{
-		ohlc = GetOHLC(ticker, apiSource::alpha, 0, curr_date);
-		i = FindDateOHLC(ohlc, curr_date);
+		if (ex_div >= 0 && init_date > ex_div) // slightly over strict
+			ohlc = GetOHLC(ticker, apiSource::iex, 0, last_date);
+		else
+			ohlc = GetOHLC(ticker, apiSource::alpha, 0, last_date);
+		i = FindDateOHLC(ohlc, init_date);
 	}
 
 	std::vector<OHLC> ohlc;
@@ -685,7 +688,8 @@ struct TickerData
 };
 
 
-double getTotalPL(std::vector<Holdings> const & h, char account, std::map<std::wstring, TickerData>& tickerData, date_t date)
+double getTotalPL(std::vector<Holdings> const & h, char account, date_t date, date_t last_date,
+	std::map<std::wstring, TickerData>& tickerData, QStats const & qstats)
 {
 	std::map<std::wstring, double> prices;
 	for (std::wstring ticker : GetTickers(h))
@@ -693,7 +697,8 @@ double getTotalPL(std::vector<Holdings> const & h, char account, std::map<std::w
 		auto it = tickerData.find(ticker);
 		if (it == tickerData.end())
 		{
-			auto res = tickerData.try_emplace(ticker, ticker, date);
+			auto data = FindQStat(qstats, ticker);
+			auto res = tickerData.try_emplace(ticker, ticker, date, last_date, data == qstats.end() ? -1 : data->second.exDividendDate);
 			it = res.first;
 		}
 		double price = it->second.getPrice(date);
@@ -705,7 +710,7 @@ double getTotalPL(std::vector<Holdings> const & h, char account, std::map<std::w
 	return getTotalPL(pos);
 }
 
-std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Transaction> const & trans)
+std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Transaction> const & trans, QStats const & qstats)
 {
 	std::vector<TimeSeries> out;
 	if (trans.empty()) return out;
@@ -723,8 +728,13 @@ std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Tra
 	}
 	if (start_date == 0) return out;
 
+	// End date from voo in qstats
+	auto voo_stats = FindQStat(qstats, L"VOO");
+	if (voo_stats == qstats.end()) throw ws_exception(L"getTotalPL() Didn't find qstats for voo");
+	date_t last_date = GetDate(voo_stats->first.closeTime);
+
 	// Get list of dates from voo
-	TickerData voo(L"VOO", start_date);
+	TickerData voo(L"VOO", start_date, last_date, -1);
 	std::vector<date_t> dates;
 	dates.reserve(voo.ohlc.size() - voo.i);
 	for (size_t i = voo.i; i < voo.ohlc.size(); i++)
@@ -750,7 +760,7 @@ std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Tra
 			iTrans++;
 		}
 
-		double equity = getTotalPL(h, account, tickerData, date);
+		double equity = getTotalPL(h, account, date, last_date, tickerData, qstats);
 		if (std::isnan(equity))
 		{
 			OutputDebugString((L"Breaking on date " + DateToWString(date)).c_str());
@@ -766,13 +776,17 @@ std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Tra
 
 
 // Assumes holdings has not changed since last history entry!!!!
-void UpdateEquityHistory(std::vector<TimeSeries>& hist, char account, std::vector<Holdings> const & holdings)
+void UpdateEquityHistory(std::vector<TimeSeries>& hist, char account, std::vector<Holdings> const & holdings, QStats const& qstats)
 {
-	// Get list of dates from voo
+	// Get start/end date
 	date_t start_date = hist.back().date;
-	TickerData voo(L"VOO", start_date);
-	voo.i++; // move to next new date
+	auto voo_stats = FindQStat(qstats, L"VOO");
+	if (voo_stats == qstats.end()) throw ws_exception(L"getTotalPL() Didn't find qstats for voo");
+	date_t last_date = GetDate(voo_stats->first.closeTime);
 
+	// Get list of dates from voo
+	TickerData voo(L"VOO", start_date, last_date, -1);
+	voo.i++; // move to next new date
 	std::vector<date_t> dates;
 	dates.reserve(voo.ohlc.size() - voo.i);
 	for (size_t i = voo.i; i < voo.ohlc.size(); i++)
@@ -784,7 +798,7 @@ void UpdateEquityHistory(std::vector<TimeSeries>& hist, char account, std::vecto
 
 	for (date_t date : dates)
 	{
-		double equity = getTotalPL(holdings, account, tickerData, date);
+		double equity = getTotalPL(holdings, account, date, last_date, tickerData, qstats);
 		if (std::isnan(equity))
 		{
 			OutputDebugString((L"Breaking on date " + DateToWString(date)).c_str());
