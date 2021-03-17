@@ -21,7 +21,7 @@ const std::wstring TDHOST(L"api.tdameritrade.com");
 std::wstring TDKEY;
 
 const std::wstring QUOTEFILTERS(L"open,close,latestPrice,latestSource,latestUpdate,latestVolume,avgTotalVolume,"
-	L"previousClose,change,changePercent,closeTime");
+	L"previousClose,change,changePercent,iexCloseTime");
 // From IEX quote endpoint: All response attributes related to 15 minute delayed market-wide price data are only available to paid subscribers
 // So this includes open, close, high, low.
 
@@ -215,7 +215,7 @@ Quote parseIEXQuote(std::string const& json, std::wstring const& ticker)
 
 	const char format[] = R"({"open":%49[^,],"close":%49[^,],"latestPrice":%49[^,],"latestSource":%49[^,],)"
 		R"("latestUpdate":%49[^,],"latestVolume":%49[^,],"avgTotalVolume":%49[^,],"previousClose":%49[^,],)"
-		R"("change":%49[^,],"changePercent":%49[^,],"closeTime":%49[^}]})";
+		R"("change":%49[^,],"changePercent":%49[^,],"iexCloseTime":%49[^}]})";
 
 	int n = sscanf_s(json.c_str(), format,
 		buffer[0], static_cast<unsigned>(_countof(buffer[0])), // open
@@ -259,7 +259,7 @@ Quote parseIEXQuote(std::string const& json, std::wstring const& ticker)
 		quote.latestSource = iexLSource::null;
 
 	quote.latestUpdate /= 1000; // remove milliseconds
-	quote.closeTime /= 1000;
+	quote.closeTime /= 1000; // this is sometimes 0 (maybe before market open)?
 	quote.ticker = ticker;
 	std::transform(quote.ticker.begin(), quote.ticker.end(), quote.ticker.begin(), ::toupper);
 	return quote;
