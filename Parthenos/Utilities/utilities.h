@@ -55,16 +55,7 @@ public:
 
 std::wstring SPrintException(const std::exception & e);
 
-inline std::wstring s2w(const std::string & s)
-{
-	size_t newsize = s.size() + 1;
-	wchar_t *wstr = new wchar_t[newsize];
-	size_t convertedChars = 0;
-	errno_t err = mbstowcs_s(&convertedChars, wstr, newsize, s.data(), _TRUNCATE);
-	if (err) OutputError(L"s2w mbstowcs_s failed\n");
-	return std::wstring(wstr);
-}
-
+std::wstring s2w(const std::string& s);
 std::string w2s(const std::wstring& s);
 
 

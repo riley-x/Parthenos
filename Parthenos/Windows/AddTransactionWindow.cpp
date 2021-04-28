@@ -182,10 +182,7 @@ Transaction* AddTransactionWindow::CreateTransaction()
 		t->type = TransactionStringToEnum(m_transactionTypeButton->Name());
 		t->tax_lot = stoi(m_taxLotBox->String());
 
-		std::wstring ticker = m_tickerBox->String();
-		std::transform(ticker.begin(), ticker.end(), ticker.begin(), ::toupper);
-		wcscpy_s(t->ticker.data(), PortfolioObjects::maxTickerLen + 1, ticker.c_str());
-
+		t->ticker = m_tickerBox->String();
 		t->n = stoi(m_nsharesBox->String());
 		t->date = stoi(m_dateBox->String());
 		t->expiration = stoi(m_expirationBox->String());

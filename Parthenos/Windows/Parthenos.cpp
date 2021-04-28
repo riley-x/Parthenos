@@ -27,14 +27,18 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 Parthenos::Parthenos(PCWSTR szClassName) : 
 	BorderlessWindow(szClassName)
 {	
+	//std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"hist.trans"));
+	//trans.resize(trans.size() - 1);
+	//::writeTransactions(ROOTDIR + L"hist.trans", trans);
+
+	//CalculateHoldings();
+
 	//FileIO ohlcFile;
 	//ohlcFile.Init(ROOTDIR + L"spy.iex.ohlc");
 	//ohlcFile.Open();
 	//std::vector<OHLC> ohlcData = ohlcFile.Read<OHLC>();
 	//ohlcFile.Write(ohlcData.data(), sizeof(OHLC) * (ohlcData.size() - 5));
 	//ohlcFile.Close();
-
-	//CalculateHoldings();
 
 	//std::vector<std::wstring> accts = { L"Robinhood", L"Arista", L"TD Ameritrade" };
 	//for (std::wstring & acc : accts)
@@ -653,11 +657,11 @@ void Parthenos::InitItems()
 	std::vector<std::vector<std::wstring>> items = {
 		{ L"Print Transaction History", L"Print Holdings", L"Print Equity History", L"Update Last Equity History Entry" },
 		m_accountNames, // Add "All Accounts" below
-		{ L"Add", L"Edit", L"Recalculate All" },
+		{ L"Add", L"Edit", L"Save to JSON", L"Recalculate All" },
 		{ L"Print OHLC", L"Delete Last OHLC Entry", L"Print Dividend Summary", L"Print Option Summary" }
 	};
 	items[1].push_back(L"All Accounts");
-	std::vector<std::vector<size_t>> divisions = { {3}, {m_accountNames.size()}, {2}, {} };
+	std::vector<std::vector<size_t>> divisions = { {3}, {m_accountNames.size()}, {3}, {} };
 	m_menuBar->SetMenus(menus, items, divisions);
 	m_menuBar->Refresh();
 
@@ -930,6 +934,12 @@ void Parthenos::ProcessMenuMessage(bool & pop_front)
 				delete editTWin;
 				OutputError(L"Create AddTransaction window failed");
 			}
+		}
+		else if (msg.msg == L"Save to JSON")
+		{
+			std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"hist.trans"));
+			::writeTransactions_JSON(ROOTDIR + L"trans.json", trans);
+			m_msgBox->Print(L"Transactions saved to " + ROOTDIR + L"trans.json\n");
 		}
 		else if (msg.msg == L"Recalculate All")
 		{

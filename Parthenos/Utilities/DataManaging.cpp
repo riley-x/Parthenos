@@ -670,9 +670,9 @@ struct TickerData
 	TickerData(std::wstring const& ticker, date_t init_date, date_t last_date, date_t ex_div) 
 	{
 		if (ex_div >= 0 && init_date > ex_div) // slightly over strict
-			ohlc = GetOHLC(ticker, apiSource::iex, 0, last_date);
+			ohlc = GetOHLC(ticker, apiSource::iex, 100, last_date);
 		else
-			ohlc = GetOHLC(ticker, apiSource::alpha, 0, last_date);
+			ohlc = GetOHLC(ticker, apiSource::alpha, 100, last_date);
 		i = FindDateOHLC(ohlc, init_date);
 	}
 

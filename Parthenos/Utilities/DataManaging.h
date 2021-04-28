@@ -121,6 +121,7 @@ struct Transaction
 
 std::vector<Transaction> readTransactions(std::wstring const & filepath);
 void writeTransactions(std::wstring const& filepath, std::vector<Transaction> const& trans);
+void writeTransactions_JSON(std::wstring const& filepath, std::vector<Transaction> const& trans);
 
 
 ///////////////////////////////////////////////////////////////////////////////

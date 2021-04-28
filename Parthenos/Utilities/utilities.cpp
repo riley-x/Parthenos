@@ -107,21 +107,22 @@ std::wstring SPrintException(const std::exception & e)
 
 std::string w2s(const std::wstring& s)
 {
-	const size_t size = 10000;
-	char out[size];
-	int res = WideCharToMultiByte(
-		CP_UTF8,
-		0,
-		s.c_str(),
-		-1,
-		out,
-		size,
-		nullptr,
-		nullptr
-	);
-
+	int size_needed = WideCharToMultiByte(CP_UTF8, 0, s.c_str(), (int)s.size(), NULL, 0, NULL, NULL);
+	std::string strTo(size_needed, 0);
+	int res = WideCharToMultiByte(CP_UTF8, 0, s.c_str(), (int)s.size(), &strTo[0], size_needed, NULL, NULL);
+	
 	if (res == 0) OutputError(L"w2s failed");
-	return std::string(out);
+	return strTo;
+}
+
+std::wstring s2w(const std::string& str)
+{
+	if (str.empty()) return std::wstring();
+	int size_needed = MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), NULL, 0);
+	std::wstring wstrTo(size_needed, 0);
+	int res = MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), &wstrTo[0], size_needed);
+	if (res == 0) OutputError(L"s2w failed");
+	return wstrTo;
 }
 
 
