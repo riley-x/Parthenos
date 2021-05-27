@@ -132,6 +132,33 @@ void writeTransactions_JSON(std::wstring const & filepath, std::vector<Transacti
 	transFile.Close();
 }
 
+std::vector<std::pair<date_t, double>> getTransfers(std::vector<Transaction> const& trans, int account)
+{
+	std::vector<std::pair<date_t, double>> out;
+	for (auto& t : trans)
+	{
+		if (t.type != TransactionType::Transfer) continue;
+		if (account >= 0 && t.account != account) continue;
+		out.emplace_back(t.date, t.value);
+	}
+	return out;
+}
+
+
+double getCashWeight(int account, std::vector<Transaction> const& trans, date_t date)
+{
+	double totalWeight = 0;
+	for (Transaction const& t : trans)
+	{
+		if (t.type != TransactionType::Transfer) continue;
+		if (account >= 0 && t.account != account) continue;
+		if (t.date > date) break;
+		totalWeight += t.value * max(1, DateDiff(date, t.date));
+	}
+	return totalWeight;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 //	                      Transcations --> Holdings		            		 //
 ///////////////////////////////////////////////////////////////////////////////
@@ -710,6 +737,7 @@ double getTotalPL(std::vector<Holdings> const & h, char account, date_t date, da
 	return getTotalPL(pos);
 }
 
+// Returns the P/L history for the given account. Note this does not include cash from transfers.
 std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Transaction> const & trans, QStats const & qstats)
 {
 	std::vector<TimeSeries> out;

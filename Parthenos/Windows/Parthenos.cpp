@@ -23,7 +23,6 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 // --- Interface functions ---
 
 
-
 Parthenos::Parthenos(PCWSTR szClassName) : 
 	BorderlessWindow(szClassName)
 {	
@@ -348,18 +347,18 @@ void Parthenos::CalculateHistories()
 	for (size_t i = 0; i < m_accountNames.size(); i++)
 	{
 		Account & acc = m_accounts[i];
-		std::vector<TimeSeries> portHist = GetHist(i);
+		std::vector<TimeSeries> portHist(GetHist(i));
 
 		// Add to Account object for plotting
 		acc.histDate.clear();
 		acc.histEquity.clear();
 		acc.histDate.reserve(portHist.size());
 		acc.histEquity.reserve(portHist.size());
-		double cash_in = GetCash(acc.positions).second;
-		for (auto const & x : portHist)
+		double cash_in_end = GetCash(acc.positions).second;
+		for (TimeSeries const & x : portHist)
 		{
 			acc.histDate.push_back(x.date);
-			acc.histEquity.push_back(x.prices + cash_in);
+			acc.histEquity.push_back(x.prices + cash_in_end);
 		}
 	}
 
@@ -374,7 +373,7 @@ void Parthenos::CalculateAllHistory()
 	// Find account with longest history, and total cash in.
 	std::vector<double> cashIn(m_accounts.size() - 1);
 	size_t maxSize = 0;
-	size_t iAccMax; // index of account with maximum history length
+	size_t iAccMax = 0; // index of account with maximum history length
 	for (size_t i = 0; i < m_accounts.size() - 1; i++)
 	{
 		cashIn[i] = GetCash(m_accounts[i].positions).second;
@@ -386,10 +385,12 @@ void Parthenos::CalculateAllHistory()
 	}
 	double totCashIn = std::accumulate(cashIn.begin(), cashIn.end(), 0.0);
 
+	// Clear and reserve
+	accAll.histDate.clear();		accAll.histDate.reserve(maxSize);
+	accAll.histEquity.clear();		accAll.histEquity.reserve(maxSize);
 
+	// Fill the equity vectors
 	std::vector<size_t> iAccDate(m_accounts.size() - 1); // index into each account's histDate
-	accAll.histDate.clear();	accAll.histDate.reserve(maxSize);
-	accAll.histEquity.clear();	accAll.histEquity.reserve(maxSize);
 	while (iAccDate[iAccMax] < m_accounts[iAccMax].histDate.size())
 	{
 		date_t date = m_accounts[iAccMax].histDate[iAccDate[iAccMax]];
@@ -1291,6 +1292,7 @@ void Parthenos::UpdatePortfolioPlotters(char account, bool init)
 	if (m_currAccount != account) return;
 	Account const & acc = m_accounts[account];
 
+	std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"hist.trans"));
 	std::vector<std::wstring> tickers = GetTickers(acc.positions);
 	std::pair<double, double> cash = GetCash(acc.positions);
 
@@ -1302,8 +1304,10 @@ void Parthenos::UpdatePortfolioPlotters(char account, bool init)
 
 	wchar_t buffer[100];
 	double returns = acc.histEquity.back() - cash.second;
-	swprintf_s(buffer, _countof(buffer), L"%s: %s (%.2lf%%)", acc.name.c_str(), 
-		FormatDollar(returns).c_str(), returns / cash.second * 100.0);
+	double returns_annualized = returns / ::getCashWeight(account, trans, acc.histDate.back()) * 100;
+	swprintf_s(buffer, _countof(buffer), L"%s: %s (%.2lf%%, %.2lf%% normalized, %.2lf%% APY)", acc.name.c_str(), 
+		FormatDollar(returns).c_str(), returns / cash.second * 100.0, 
+		returns_annualized * ::DateDiff(acc.histDate.back(), acc.histDate.front()), returns_annualized * 365);
 	m_eqHistoryAxes->SetTitle(buffer);
 	m_eqHistoryAxes->SetXAxisPos((float)cash.second);
 	m_eqHistoryAxes->Clear();

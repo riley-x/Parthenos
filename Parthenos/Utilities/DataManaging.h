@@ -123,6 +123,10 @@ std::vector<Transaction> readTransactions(std::wstring const & filepath);
 void writeTransactions(std::wstring const& filepath, std::vector<Transaction> const& trans);
 void writeTransactions_JSON(std::wstring const& filepath, std::vector<Transaction> const& trans);
 
+std::vector<std::pair<date_t, double>> getTransfers(std::vector<Transaction> const& trans, int account = -1);
+
+// Returns the weight for calculating APY returns from initial deposits.
+double getCashWeight(int account, std::vector<Transaction> const& trans, date_t date);
 
 ///////////////////////////////////////////////////////////////////////////////
 //                                 Holdings                                  //
@@ -406,6 +410,7 @@ double getLiquidatingValue(std::vector<Position> const& pos);
 
 std::vector<TimeSeries> CalculateFullEquityHistory(char account, std::vector<Transaction> const & trans, QStats const& qstats);
 void UpdateEquityHistory(std::vector<TimeSeries> & hist, char account, std::vector<Holdings> const& holdings, QStats const& qstats);
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // Plays
