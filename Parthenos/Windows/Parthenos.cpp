@@ -1291,20 +1291,23 @@ void Parthenos::UpdatePortfolioPlotters(char account, bool init)
 {
 	if (m_currAccount != account) return;
 	Account const & acc = m_accounts[account];
-
 	std::vector<Transaction> trans(::readTransactions(ROOTDIR + L"hist.trans"));
 	std::vector<std::wstring> tickers = GetTickers(acc.positions);
 	std::pair<double, double> cash = GetCash(acc.positions);
 
+	// Portfolio list
 	m_portfolioList->Load(tickers, acc.positions, FilterByKeyMatch(m_tickers, m_stats, tickers));
 	if (!init) m_portfolioList->Refresh();
 
+	// Pie chart
 	LoadPieChart();
 	if (!init) m_pieChart->Refresh();
 
+	// Equity history panel
 	wchar_t buffer[100];
 	double returns = acc.histEquity.back() - cash.second;
-	double returns_annualized = returns / ::getCashWeight(account, trans, acc.histDate.back()) * 100;
+	int acc_all = (account == m_accounts.size() - 1 ? -1 : account);
+	double returns_annualized = returns / ::getCashWeight(acc_all, trans, acc.histDate.back()) * 100;
 	swprintf_s(buffer, _countof(buffer), L"%s: %s (%.2lf%%, %.2lf%% normalized, %.2lf%% APY)", acc.name.c_str(), 
 		FormatDollar(returns).c_str(), returns / cash.second * 100.0, 
 		returns_annualized * ::DateDiff(acc.histDate.back(), acc.histDate.front()), returns_annualized * 365);
@@ -1313,6 +1316,7 @@ void Parthenos::UpdatePortfolioPlotters(char account, bool init)
 	m_eqHistoryAxes->Clear();
 	m_eqHistoryAxes->Line(acc.histDate, acc.histEquity);
 
+	// Returns and return % graphs
 	m_returnsAxes->Clear();
 	m_returnsPercAxes->Clear();
 	m_returnsAxes->SetXLabels(acc.tickers, false);
