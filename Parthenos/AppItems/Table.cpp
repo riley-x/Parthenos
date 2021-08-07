@@ -299,6 +299,7 @@ void Table::Load(std::vector<TableRowItem*> const & items)
 void Table::CalculatePositions()
 {
 	m_currLine = m_scrollBar.SetSteps(m_items.size(), m_visibleLines, ScrollBar::SetPosMethod::MaintainOffsetTop);
+	m_scrollBar.Refresh();
 
 	m_hLines.clear();
 	float top = m_dipRect.top + m_headerHeight;

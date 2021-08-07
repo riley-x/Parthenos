@@ -142,16 +142,17 @@ struct Lot
 	int n = 0;				// shares or contracts
 	date_t date = 0;
 	date_t expiration = 0;
-	double price = 0;
+	double price = 0;		// for ITM options, this can be set to the extrinsic price only
 	double strike = 0;
 	double dividends = 0;	// this is PER SHARE, i.e. should not change with n
-	double fees = 0;		// value + price * n, includes fees and rounding errors
+	double fees = 0;		// value + price * n, includes fees and rounding errors, intrinsic value from opening ITM options
 	double collateral = 0;	// PER SHARE/CONTRACT. long positions may have collateral != price due to spreads
 
 	std::wstring to_json() const;
 	std::wstring to_wstring() const;
 };
 
+// Holdings per ticker per account
 struct AccountHoldings
 {
 	AccountHoldings() = default;
@@ -165,6 +166,7 @@ struct AccountHoldings
 	std::wstring to_wstring() const;
 };
 
+// Holdings per ticker
 struct Holdings
 {
 	Holdings() = default;
@@ -306,10 +308,10 @@ struct Position
 	int n = 0;					// Shares only		
 	double avgCost = 0;			// Of shares. For CASH, cash from transfers 
 	double marketPrice = 0;		// 
-	double realized = 0;		// == header.realized, proceeds from closed lots. For CASH, cash from interest
+	double realized = 0;		// == header.realized, proceeds from closed lots ONLY, no STO proceeds. For CASH, cash from interest
 	double dividends = 0;		// Sum of dividends and fees from open lots
 	double unrealized = 0;		// includes intrinsic value, STO proceeds, and theta decay from options
-	double cashEffect = 0;		// dividends - purchase cost of open lots. For CASH, stores sum + realized from other holdings
+	double cashEffect = 0;		// cash effect from open lots (dividends + fees - purchase price). For CASH, stores sum of cash effects + realized from other holdings
 	double APY = 0;
 	std::wstring ticker;
 	std::vector<OptionPosition> options; // p/l already included in above, but useful to keep around

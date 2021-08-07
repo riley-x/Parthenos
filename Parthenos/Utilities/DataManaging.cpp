@@ -279,7 +279,7 @@ void closePosition(AccountHoldings& h, Transaction const& trans)
 void AddTransactionToTickerHoldings(Holdings& h, Transaction const& t)
 {
 	if (t.ticker != h.ticker)
-		throw ws_exception(L"AddTransactionToTickerHoldings wrong tickers:" + t.ticker + L" " + h.ticker);
+		throw ws_exception(L"AddTransactionToTickerHoldings wrong tickers: " + t.ticker + L" " + h.ticker);
 	if (static_cast<size_t>(t.account) >= h.accts.size())
 		h.accts.resize(1ll + t.account);
 
@@ -491,8 +491,7 @@ Position holdingsToRawPosition(AccountHoldings const& header, date_t date, doubl
 			op_pos.strike = lot.strike;
 			op_pos.price = lot.price;
 
-			// TODO add unrealized for theta effect, STO, include options in APY?
-			p.unrealized += GetIntrinsicValue(lot, price) + getThetaValue(lot, date);
+			p.unrealized += GetIntrinsicValue(lot, price) + getThetaValue(lot, date) + lot.fees; // STO proceeds get amortized in here with getThetaValue
 			p.options.push_back(op_pos);
 		}
 	}
