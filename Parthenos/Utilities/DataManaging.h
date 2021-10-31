@@ -173,7 +173,7 @@ struct Holdings
 	Holdings(jsonette::JSON const& json);
 
 	std::wstring ticker; // all uppercase
-	std::vector<AccountHoldings> accts;
+	std::vector<AccountHoldings> accts; // sized to the largest account index that has data, in-between accounts are default constructed
 
 	std::wstring to_json() const;
 	std::wstring to_wstring() const;

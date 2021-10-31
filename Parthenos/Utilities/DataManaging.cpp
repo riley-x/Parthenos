@@ -516,7 +516,7 @@ std::vector<Position> HoldingsToPositions(std::vector<Holdings> const & holdings
 		if (account != -1)
 		{
 			if (static_cast<size_t>(account) >= h.accts.size()) continue;
-			if (h.accts[account].lots.empty() && h.accts[account].realized == 0) continue;
+			if (h.accts[account].lots.empty() && h.accts[account].sumWeights == 0) continue;
 		}
 
 		// Object to fill
@@ -530,7 +530,7 @@ std::vector<Position> HoldingsToPositions(std::vector<Holdings> const & holdings
 		for (unsigned iAccount = start; iAccount < end; iAccount++)
 		{
 			AccountHoldings const& header = h.accts[iAccount];
-			if (header.lots.empty() && header.realized == 0) continue; // empty
+			if (header.lots.empty() && header.sumWeights == 0) continue; // empty
 
 			Position p_acc = holdingsToRawPosition(header, date, p.marketPrice, p.ticker == L"CASH");
 			p.n += p_acc.n;
