@@ -783,6 +783,7 @@ void Parthenos::ProcessCTPMessages()
 			{
 				for (auto item : m_allItems)
 					item->SetSize(CalculateItemRect(item, dipRect));
+				m_sizeChanged = false;
 			}
 			CalculateDividingLines(dipRect);
 			::InvalidateRect(m_hwnd, NULL, false);

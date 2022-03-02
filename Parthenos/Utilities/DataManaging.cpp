@@ -232,7 +232,7 @@ void addDividend(AccountHoldings& h, Transaction const& t)
 	}
 
 	if (nshares < 0)
-		throw ws_exception(L"AddTransactionToTickerHoldings() dividend negative nshares: " + std::to_wstring(nshares));
+		OutputMessage(L"AddTransactionToTickerHoldings() dividend negative nshares: %d", nshares);
 
 	h.realized += leftover; // give extra to header (includes partial cents)
 }
@@ -513,7 +513,11 @@ std::vector<Position> HoldingsToPositions(std::vector<Holdings> const & holdings
 	for (Holdings h : holdings)
 	{
 		// Check this account has info on this ticker
-		if (account != -1 && static_cast<size_t>(account) >= h.accts.size()) continue;
+		if (account != -1)
+		{
+			if (static_cast<size_t>(account) >= h.accts.size()) continue;
+			if (h.accts[account].lots.empty() && h.accts[account].sumWeights == 0 && h.accts[account].realized == 0) continue; // empty
+		}
 
 		// Object to fill
 		Position p;
