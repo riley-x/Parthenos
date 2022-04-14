@@ -33,8 +33,8 @@ private:
 	std::vector<std::wstring> const m_labels = { L"Account:", L"Transaction:", L"Date:", L"Ticker:",
 		L"Shares/Contracts:", L"Price:", L"Value:",
 		L"Ex Date:", L"Strike:", L"Tax Lot:" };
-	std::vector<size_t> const		extra_inds = { 2, 4, 6, 7 };
-	std::vector<std::wstring> const	extra_labels = { L"YYYYMMDD", L"signed", L"signed", L"YYYYMMDD" };
+	std::vector<size_t> const		extra_inds = { 2, 4, 5, 6, 7 };
+	std::vector<std::wstring> const	extra_labels = { L"YYYYMMDD", L"signed", L"extrinsic only", L"signed", L"YYYYMMDD" };
 
 	// Layout
 	float		m_center;
