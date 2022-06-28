@@ -966,10 +966,17 @@ void Parthenos::ProcessMenuMessage(bool & pop_front)
 			}
 			else if (!msg.sender) // sent from confirmation window
 			{
-				m_msgBox->Print(L"Recalculating holdings...\n");
-				std::vector<Holdings> holdings = CalculateHoldings();
-				CalculatePositions(holdings);
-				m_msgBox->Print(L"Done.\n");
+				try 
+				{
+					m_msgBox->Print(L"Recalculating holdings...\n");
+					std::vector<Holdings> holdings = CalculateHoldings();
+					CalculatePositions(holdings);
+					m_msgBox->Print(L"Done.\n");
+				}
+				catch (const ws_exception& e) 
+				{
+					m_msgBox->Print(e.ws_what());
+				}
 			}
 		}
 	}
@@ -1384,7 +1391,7 @@ LRESULT Parthenos::OnCreate()
 	}
 	if (FAILED(hr))
 	{
-		throw Error(L"OnCreate failed!");
+		OutputHRerr(hr, L"OnCreate failed!");
 		return -1;  // Fail CreateWindowEx.
 	}
 

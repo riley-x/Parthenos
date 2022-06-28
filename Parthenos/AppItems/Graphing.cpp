@@ -763,7 +763,7 @@ void Axes::CreateCachedImage()
 		&m_primaryCache
 	);
 	if (FAILED(hr)) return OutputHRerr(hr, L"Axes::CreateCachedImage failed");
-	
+
 
 	// This function should always be called from OnPaint(), i.e. inside the current paint loop,
 	// so end the current draw.
@@ -777,6 +777,7 @@ void Axes::CreateCachedImage()
 	// Render static content to the sceneBitmap.
 	m_d2.pD2DContext->SetTarget(m_primaryCache.Get());
 	m_d2.pD2DContext->BeginDraw();
+	m_d2.pD2DContext->Clear(); // the bitmap is uninitialized right now, clear to transparent
 
 	// Grid lines
 	m_d2.pBrush->SetColor(Colors::DULL_LINE);
