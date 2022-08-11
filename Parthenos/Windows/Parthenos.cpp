@@ -1188,7 +1188,7 @@ void Parthenos::LoadPieChart()
 	std::vector<Collat> collaterals;
 
 	Account const & acc = m_accounts[m_currAccount];
-	for (Position const & p : acc.positions)
+	for (Position const& p : acc.positions)
 	{
 		if (p.ticker == L"CASH")
 		{
@@ -1223,6 +1223,21 @@ void Parthenos::LoadPieChart()
 				collaterals.push_back(temp_collat);
 				break;
 			}
+			case OptionType::CDS:
+			{
+				// WARNING relies on strict ordering of long position before CDS position
+				unsigned i = 0;
+				for (i; i < tickers.size(); i++)
+					if (tickers[i].find(p.ticker + L"-C") != std::wstring::npos) break; // TODO not matching expirations or strikes at all
+				if (i == tickers.size()) throw ws_exception(L"LoadPieChart() couldn't find matching long position for a CDS");
+
+				temp_collat.name = p.ticker + L"-" + opt.to_wstring();
+				temp_collat.i = i;
+				temp_collat.value = equities[i]; // TODO different n in long and short position
+				temp_collat.color = Colors::RED;
+				collaterals.push_back(temp_collat);
+				break;
+			}
 			case OptionType::LC:
 			case OptionType::LP:
 			{
@@ -1234,6 +1249,7 @@ void Parthenos::LoadPieChart()
 			}
 		}
 	}
+
 
 	// Get pie total
 	double sum = std::accumulate(equities.begin(), equities.end(), 0.0);

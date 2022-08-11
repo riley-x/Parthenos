@@ -242,7 +242,7 @@ double getTransfers(std::vector<Holdings> const& h, char account);
 //                                 Positions                                 //
 ///////////////////////////////////////////////////////////////////////////////
 
-enum class OptionType { CSP, CC, PCS, LP, LC, undefined };
+enum class OptionType { CSP, CC, PCS, CCS, PDS, CDS, LP, LC, undefined };
 
 inline OptionType transToOptionType(TransactionType t)
 {
@@ -286,6 +286,7 @@ struct OptionPosition
 		switch (type)
 		{
 		case OptionType::CC:
+		case OptionType::CDS:
 			return FormatMsg(L"CC%.2f-%u", strike, expiration);
 		case OptionType::CSP:
 			return FormatMsg(L"CSP%.2f-%u", strike, expiration);

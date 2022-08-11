@@ -579,7 +579,7 @@ void collateOptions(Position& p)
 			for (auto lon = shor + 1; lon != p.options.rend(); lon++)
 			{
 				if (lon->type != OptionType::LP || lon->date != shor->date 
-					|| lon->expiration != shor->expiration || lon->shares == 0) continue;
+					|| lon->expiration < shor->expiration || lon->shares == 0) continue;
 
 				if (lon->strike > shor->strike) // Put debit spread
 				{
@@ -614,11 +614,13 @@ void collateOptions(Position& p)
 		{
 			for (auto lon = shor + 1; lon != p.options.rend(); lon++)
 			{
-				if (lon->type != OptionType::LC || lon->expiration != shor->expiration || lon->shares == 0) continue;
+				if (lon->type != OptionType::LC || lon->expiration < shor->expiration || lon->shares == 0) continue;
 
-				if (lon->strike < shor->strike) // Call debit spread
+				if (lon->strike < shor->strike) // Call debit spread -- treat like covered call
 				{
-					// TODO
+					shor->type = OptionType::CDS;
+					shor->strike2 = lon->strike;
+					break; // will reach the covered call block below
 				}
 				else // Call credit spread
 				{
@@ -639,6 +641,7 @@ void collateOptions(Position& p)
 		}
 	} // End reverse loop over options 
 
+	std::reverse(ops.begin(), ops.end());
 	p.options = ops;
 }
 
