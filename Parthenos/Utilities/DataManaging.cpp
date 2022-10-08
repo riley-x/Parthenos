@@ -1008,7 +1008,8 @@ std::wstring Transaction::to_wstring(std::vector<std::wstring> const& accounts) 
 std::wstring Transaction::to_json() const
 {
 	std::wstringstream ss;
-	ss << L"{\"type\": " << L"\"" << ::to_wstring(type) << L"\""
+	ss << std::fixed << std::setprecision(6)
+		<< L"{\"type\": " << L"\"" << ::to_wstring(type) << L"\""
 		<< L",\"account\": " << account
 		<< L",\"lot\": " << tax_lot
 		<< L",\"n\": " << n
